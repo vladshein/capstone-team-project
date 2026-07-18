@@ -1,0 +1,33 @@
+{
+  "name": "capstone-project-shift",
+  "type": "module",
+  "scripts": {
+    "start": "cross-env NODE_ENV=production node app.js",
+    "dev": "cross-env NODE_ENV=development nodemon app.js",
+    "devmon": "cross-env NODE_ENV=production nodemon app.js",
+    "build-docs": "redocly bundle ./docs/openapi.yaml --ext json --output ./docs/swagger.json"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "bson": "^7.0.0",
+    "cors": "^2.8.5",
+    "cross-env": "^10.1.0",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "gravatar": "^1.8.2",
+    "joi": "^17.11.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.1",
+    "multer": "^2.0.2",
+    "nanoid": "^5.1.6",
+    "pg": "^8.16.3",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.37.7",
+    "swagger-ui-express": "^5.0.1"
+  },
+  "devDependencies": {
+    "@redocly/cli": "^2.12.5",
+    "nodemon": "^3.0.2",
+    "prettier": "^3.7.4"
+  }
+}
