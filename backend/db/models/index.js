@@ -7,6 +7,10 @@ import Area from "./Area.js";
 import JobPosition from "./JobPosition.js";
 import ShiftApplication from "./ShiftApplication.js";
 import WorkerProfile from "./WorkerProfile.js";
+import Category from "./Category.js";
+import Review from "./Review.js";
+import Wallet from "./Wallet.js";
+import Transaction from "./Transaction.js";
 import seedAll from "./seedDBs.js";
 
 // --- 1. User <-> WorkerProfile (1:1) ---
@@ -67,6 +71,53 @@ ShiftApplication.belongsTo(User, { foreignKey: "workerId" });
 Shift.hasMany(ShiftApplication, { foreignKey: "shiftId" });
 ShiftApplication.belongsTo(Shift, { foreignKey: "shiftId" });
 
+// --- 7. Category <-> Shift (1:M) ---
+Category.hasMany(Shift, {
+  foreignKey: { name: "categoryId", allowNull: false },
+  onDelete: "RESTRICT",
+});
+Shift.belongsTo(Category, { foreignKey: "categoryId" });
+
+// --- 8. Зв'язки для Відгуків (Reviews) ---
+Shift.hasMany(Review, {
+  foreignKey: { name: "shiftId", allowNull: false },
+  onDelete: "CASCADE",
+});
+Review.belongsTo(Shift, { foreignKey: "shiftId" });
+
+// Хто залишив відгук (Reviewer)
+User.hasMany(Review, {
+  foreignKey: { name: "reviewerId", allowNull: false },
+  as: "GivenReviews",
+});
+Review.belongsTo(User, { foreignKey: "reviewerId", as: "Reviewer" });
+
+// Кому залишили відгук (Reviewee)
+User.hasMany(Review, {
+  foreignKey: { name: "revieweeId", allowNull: false },
+  as: "ReceivedReviews",
+});
+Review.belongsTo(User, { foreignKey: "revieweeId", as: "Reviewee" });
+
+// --- 9. Зв'язки для Фінансів (Wallets & Transactions) ---
+User.hasOne(Wallet, {
+  foreignKey: { name: "userId", allowNull: false, unique: true },
+  onDelete: "CASCADE",
+});
+Wallet.belongsTo(User, { foreignKey: "userId" });
+
+User.hasMany(Transaction, { foreignKey: "senderId", as: "SentTransactions" });
+Transaction.belongsTo(User, { foreignKey: "senderId", as: "Sender" });
+
+User.hasMany(Transaction, {
+  foreignKey: "receiverId",
+  as: "ReceivedTransactions",
+});
+Transaction.belongsTo(User, { foreignKey: "receiverId", as: "Receiver" });
+
+Shift.hasMany(Transaction, { foreignKey: "shiftId", onDelete: "SET NULL" });
+Transaction.belongsTo(Shift, { foreignKey: "shiftId" });
+
 // Синхронізація (тільки для розробки)
 // У продакшені використовуйте міграції
 const syncDatabase = async () => {
@@ -89,5 +140,9 @@ export {
   Location,
   JobPosition,
   WorkerProfile,
+  Category,
+  Review,
+  Transaction,
+  Wallet,
   syncDatabase,
 };
