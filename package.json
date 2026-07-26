@@ -1,0 +1,10 @@
+{
+  "name": "capstone-project-root",
+  "private": true,
+  "scripts": {
+    "dev:backend": "pnpm --filter backend dev",
+    "dev:frontend": "pnpm --filter frontend dev",
+    "dev": "pnpm --parallel --filter \"./*\" dev",
+    "build": "pnpm --recursive build"
+  }
+}

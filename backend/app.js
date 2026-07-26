@@ -3,7 +3,6 @@ import morgan from "morgan";
 import cors from "cors";
 import "dotenv/config";
 import path from "node:path";
-
 import authRouter from "./routes/authRouter.js";
 import userRouter from "./routes/userRouter.js";
 import commonRouter from "./routes/commonRouter.js";
@@ -14,18 +13,21 @@ import errorHandler from "./middlewares/errorHandler.js";
 import connectDatabase from "./db/connectDatabase.js";
 import { swaggerDocs } from "./middlewares/swaggerDocs.js"; // swagger
 import { syncDatabase } from "./db/models/index.js";
+import { fileURLToPath } from "node:url";
 
 const app = express();
 
 syncDatabase();
 
-const publicDir = path.join(process.cwd(), "public");
-const tempDir = path.join(process.cwd(), "temp");
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const publicDir = path.join(__dirname, "public");
+const tempDir = path.join(__dirname, "temp");
 
 app.use(morgan("tiny"));
 app.use(
   cors({
-    origin: "*",
+    origin: process.env.FRONTEND_URL || "*",
+    credentials: true,
   }),
 );
 app.use(express.json());
@@ -43,7 +45,12 @@ app.use(notFoundHandler);
 
 app.use(errorHandler);
 
-await connectDatabase();
+try {
+  await connectDatabase();
+} catch (err) {
+  console.error("❌ Failed to connect to database:", err.message);
+  process.exit(1);
+}
 
 const port = Number(process.env.PORT) || 3000;
 
