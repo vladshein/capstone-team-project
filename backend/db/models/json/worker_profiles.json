@@ -1,47 +1,22 @@
 [
 {
 "id": 1,
-"phone": "+380501112233",
-"email": "owner@silpo.ua",
-"passwordHash": "$2b$10$dummyHashStringForTesting123",
-"role": "business_client",
-"isVerified": true,
-"created_at": "2026-07-20T10:00:00Z"
+"userId": 3,
+"firstName": "Іван",
+"lastName": "Шевченко",
+"birthDate": "1998-05-15",
+"taxNumber": "3214567890",
+"rating": 4.80,
+"avatarUrl": "https://example.com/avatars/ivan.jpg"
 },
 {
 "id": 2,
-"phone": "+380671112233",
-"email": "coffee@lviv.ua",
-"passwordHash": "$2b$10$dummyHashStringForTesting123",
-"role": "business_client",
-"isVerified": true,
-"created_at": "2026-07-21T11:00:00Z"
-},
-{
-"id": 3,
-"phone": "+380931112233",
-"email": "ivan.worker@gmail.com",
-"passwordHash": "$2b$10$dummyHashStringForTesting123",
-"role": "worker",
-"isVerified": true,
-"created_at": "2026-07-22T09:00:00Z"
-},
-{
-"id": 4,
-"phone": "+380631112233",
-"email": "maria.worker@ukr.net",
-"passwordHash": "$2b$10$dummyHashStringForTesting123",
-"role": "worker",
-"isVerified": true,
-"created_at": "2026-07-22T09:30:00Z"
-},
-{
-"id": 5,
-"phone": "+380990000000",
-"email": "admin@smena.ua",
-"passwordHash": "$2b$10$dummyHashStringForTesting123",
-"role": "admin",
-"isVerified": true,
-"created_at": "2026-01-01T00:00:00Z"
+"userId": 4,
+"firstName": "Марія",
+"lastName": "Коваленко",
+"birthDate": "2001-10-22",
+"taxNumber": "3344556677",
+"rating": 5.00,
+"avatarUrl": "https://example.com/avatars/maria.jpg"
 }
 ]
