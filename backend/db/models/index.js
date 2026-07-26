@@ -7,9 +7,9 @@ import Area from "./Area.js";
 import JobPosition from "./JobPosition.js";
 import ShiftApplication from "./ShiftApplication.js";
 import WorkerProfile from "./WorkerProfile.js";
-import Category from "./Category.js";
 import Review from "./Review.js";
 import Wallet from "./Wallet.js";
+import Company from "./Company.js";
 import Transaction from "./Transaction.js";
 import seedAll from "./seedDBs.js";
 
@@ -122,8 +122,9 @@ Transaction.belongsTo(Shift, { foreignKey: "shiftId" });
 // У продакшені використовуйте міграції
 const syncDatabase = async () => {
   try {
-    await sequelize.sync({ force: true });
-    await seedAll();
+    // await sequelize.sync({ force: true });
+    await sequelize.sync({ alter: true });
+    // await seedAll();
     // await seedA();
     console.log("Database synchronized successfully");
   } catch (error) {
@@ -133,6 +134,7 @@ const syncDatabase = async () => {
 
 export {
   User,
+  Company,
   Category,
   Area,
   Shift,
@@ -140,7 +142,6 @@ export {
   Location,
   JobPosition,
   WorkerProfile,
-  Category,
   Review,
   Transaction,
   Wallet,

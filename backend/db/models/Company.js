@@ -8,6 +8,11 @@ const Company = sequelize.define(
     name: { type: DataTypes.STRING(100), allowNull: false },
     edrpou: { type: DataTypes.STRING(8), unique: true, allowNull: false },
     legalAddress: { type: DataTypes.TEXT },
+    avatar: {
+      type: DataTypes.STRING,
+      defaultValue: null,
+      allowNull: true,
+    },
   },
   {
     tableName: "companies",

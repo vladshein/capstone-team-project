@@ -1,0 +1,29 @@
+[
+{
+"id": 1,
+"companyId": 1,
+"title": "Сільпо (Поділ)",
+"city": "Київ",
+"address": "вул. Петра Сагайдачного, 41",
+"latitude": 50.4651,
+"longitude": 30.5213
+},
+{
+"id": 2,
+"companyId": 1,
+"title": "Сільпо (ТРЦ Gulliver)",
+"city": "Київ",
+"address": "Спортивна площа, 1А",
+"latitude": 50.4385,
+"longitude": 30.5226
+},
+{
+"id": 3,
+"companyId": 2,
+"title": "Кав'ярня 'Зерно' (Центр)",
+"city": "Львів",
+"address": "пл. Ринок, 10",
+"latitude": 49.8415,
+"longitude": 24.0324
+}
+]

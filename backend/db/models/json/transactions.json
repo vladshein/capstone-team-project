@@ -1,0 +1,56 @@
+[
+{
+"id": 1,
+"senderId": null,
+"receiverId": 1,
+"shiftId": null,
+"amount": 20000.00,
+"type": "deposit",
+"status": "completed"
+},
+{
+"id": 2,
+"senderId": null,
+"receiverId": 2,
+"shiftId": null,
+"amount": 5000.00,
+"type": "deposit",
+"status": "completed"
+},
+{
+"id": 3,
+"senderId": 1,
+"receiverId": null,
+"shiftId": 2,
+"amount": 1640.00,
+"type": "hold",
+"status": "completed"
+},
+{
+"id": 4,
+"senderId": 2,
+"receiverId": null,
+"shiftId": 3,
+"amount": 1280.00,
+"type": "hold",
+"status": "completed"
+},
+{
+"id": 5,
+"senderId": null,
+"receiverId": 4,
+"shiftId": 3,
+"amount": 1280.00,
+"type": "release_payout",
+"status": "completed"
+},
+{
+"id": 6,
+"senderId": null,
+"receiverId": 5,
+"shiftId": 3,
+"amount": 128.00,
+"type": "release_commission",
+"status": "completed"
+}
+]

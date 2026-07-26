@@ -1,6 +1,11 @@
-import { Recipe, User, FavoriteRecipe, UserFollowers } from '../db/models/index.js';
-import { fn, col } from 'sequelize';
-import HttpError from '../helpers/HttpError.js';
+import {
+  Shift,
+  User,
+  // FavoriteRecipe,
+  // UserFollowers,
+} from "../db/models/index.js";
+import { fn, col } from "sequelize";
+import HttpError from "../helpers/HttpError.js";
 
 /**
  * function with universal where statement
@@ -24,44 +29,53 @@ export const getCurrentUserInfo = async (userId) => {
     where: { id: userId },
 
     attributes: [
-      'id',
-      'avatar',
-      'name',
-      'email',
-      [fn('COUNT', fn('DISTINCT', col('recipesHas.id'))), 'count_user_recipes'],
-      [fn('COUNT', fn('DISTINCT', col('favoriteRecipesHas.recipeId'))), 'count_favorite_recipes'],
-      [fn('COUNT', fn('DISTINCT', col('followersHas.followerId'))), 'count_followers'],
-      [fn('COUNT', fn('DISTINCT', col('followingHas.followingId'))), 'count_following'],
+      "id",
+      "avatar",
+      "name",
+      "email",
+      // [fn("COUNT", fn("DISTINCT", col("recipesHas.id"))), "count_user_recipes"],
+      // [
+      //   fn("COUNT", fn("DISTINCT", col("favoriteRecipesHas.recipeId"))),
+      //   "count_favorite_recipes",
+      // ],
+      // [
+      //   fn("COUNT", fn("DISTINCT", col("followersHas.followerId"))),
+      //   "count_followers",
+      // ],
+      // [
+      //   fn("COUNT", fn("DISTINCT", col("followingHas.followingId"))),
+      //   "count_following",
+      // ],
     ],
 
-    include: [
-      {
-        model: Recipe,
-        as: 'recipesHas',
-        attributes: [],
-        required: false, // LEFT JOIN
-      },
-      {
-        model: FavoriteRecipe,
-        as: 'favoriteRecipesHas',
-        attributes: [],
-        required: false,
-      },
-      {
-        model: UserFollowers,
-        as: 'followersHas', // uf1 — users who follow this user
-        attributes: [],
-        required: false,
-      },
-      {
-        model: UserFollowers,
-        as: 'followingHas', // uf2 — users this user follows
-        attributes: [],
-        required: false,
-      },
-    ],
+    // include: [
+    //   {
+    //     model: Recipe,
+    //     as: "recipesHas",
+    //     attributes: [],
+    //     required: false, // LEFT JOIN
+    //   },
+    //   {
+    //     model: FavoriteRecipe,
+    //     as: "favoriteRecipesHas",
+    //     attributes: [],
+    //     required: false,
+    //   },
+    //   {
+    //     model: UserFollowers,
+    //     as: "followersHas", // uf1 — users who follow this user
+    //     attributes: [],
+    //     required: false,
+    //   },
+    //   {
+    //     model: UserFollowers,
+    //     as: "followingHas", // uf2 — users this user follows
+    //     attributes: [],
+    //     required: false,
+    //   },
+    // ],
 
-    group: ['user.id', 'user.avatar', 'user.name', 'user.email'],
+    group: ["user.id", "user.avatar", "user.name", "user.email"],
   });
 };
 
@@ -71,97 +85,99 @@ export const getCurrentUserInfo = async (userId) => {
  * @param {*} userId
  * @returns
  */
-export const getUserById = async (userId) => {
-  const user = await User.findByPk(userId, {
-    include: [
-      {
-        model: Recipe,
-        as: 'recipesHas',
-        attributes: ['id'],
-        where: { ownerId: userId },
-        required: false,
-      },
-    ],
-  });
+// export const getUserById = async (userId) => {
+//   const user = await User.findByPk(userId, {
+//     include: [
+//       {
+//         model: Recipe,
+//         as: "recipesHas",
+//         attributes: ["id"],
+//         where: { ownerId: userId },
+//         required: false,
+//       },
+//     ],
+//   });
 
-  const followerCount = await UserFollowers.count({ where: { followingId: userId } });
+//   const followerCount = await UserFollowers.count({
+//     where: { followingId: userId },
+//   });
 
-  if (!user) {
-    throw HttpError(404, 'User not found');
-  }
-  return {
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    avatar: user.avatar,
-    count_user_recipes: user.recipesHas.length,
-    count_followers: followerCount,
-  };
-};
+//   if (!user) {
+//     throw HttpError(404, "User not found");
+//   }
+//   return {
+//     id: user.id,
+//     name: user.name,
+//     email: user.email,
+//     avatar: user.avatar,
+//     count_user_recipes: user.recipesHas.length,
+//     count_followers: followerCount,
+//   };
+// };
 
-export const getFollowingsList = async (userId, limit = 5, page = 1) => {
-  const user = await User.findByPk(userId, {
-    include: [
-      {
-        model: User,
-        as: 'following',
-        attributes: ['id', 'name', 'email', 'avatar'],
-        through: { attributes: [] },
-        include: [
-          {
-            model: Recipe,
-            as: 'recipesHas',
-            attributes: ['id', 'title', 'thumb'],
-            limit: 4,
-          },
-        ],
-      },
-    ],
-    limit: limit,
-    offset: (page - 1) * limit,
-  });
+// export const getFollowingsList = async (userId, limit = 5, page = 1) => {
+//   const user = await User.findByPk(userId, {
+//     include: [
+//       {
+//         model: User,
+//         as: "following",
+//         attributes: ["id", "name", "email", "avatar"],
+//         through: { attributes: [] },
+//         include: [
+//           {
+//             model: Recipe,
+//             as: "recipesHas",
+//             attributes: ["id", "title", "thumb"],
+//             limit: 4,
+//           },
+//         ],
+//       },
+//     ],
+//     limit: limit,
+//     offset: (page - 1) * limit,
+//   });
 
-  const followingListWithRecipesCount = await Promise.all(
-    user.following.map(async (user) => {
-      const count = await Recipe.count({ where: { ownerId: user.id } });
-      return { ...user.dataValues, recipesCount: count };
-    })
-  );
+//   const followingListWithRecipesCount = await Promise.all(
+//     user.following.map(async (user) => {
+//       const count = await Recipe.count({ where: { ownerId: user.id } });
+//       return { ...user.dataValues, recipesCount: count };
+//     }),
+//   );
 
-  return followingListWithRecipesCount;
-};
+//   return followingListWithRecipesCount;
+// };
 
-export const getFollowersList = async (userId, limit = 5, page = 1) => {
-  const user = await User.findByPk(userId, {
-    include: [
-      {
-        model: User,
-        as: 'followers',
-        attributes: ['id', 'name', 'email', 'avatar'],
-        through: { attributes: [] },
-        include: [
-          {
-            model: Recipe,
-            as: 'recipesHas',
-            attributes: ['id', 'title', 'thumb'],
-            limit: 4,
-          },
-        ],
-      },
-    ],
-    limit: limit,
-    offset: (page - 1) * limit,
-  });
+// export const getFollowersList = async (userId, limit = 5, page = 1) => {
+//   const user = await User.findByPk(userId, {
+//     include: [
+//       {
+//         model: User,
+//         as: "followers",
+//         attributes: ["id", "name", "email", "avatar"],
+//         through: { attributes: [] },
+//         include: [
+//           {
+//             model: Recipe,
+//             as: "recipesHas",
+//             attributes: ["id", "title", "thumb"],
+//             limit: 4,
+//           },
+//         ],
+//       },
+//     ],
+//     limit: limit,
+//     offset: (page - 1) * limit,
+//   });
 
-  const followersListWithRecipesCount = await Promise.all(
-    user.followers.map(async (user) => {
-      const count = await Recipe.count({ where: { ownerId: user.id } });
-      return { ...user.dataValues, recipesCount: count };
-    })
-  );
+//   const followersListWithRecipesCount = await Promise.all(
+//     user.followers.map(async (user) => {
+//       const count = await Recipe.count({ where: { ownerId: user.id } });
+//       return { ...user.dataValues, recipesCount: count };
+//     }),
+//   );
 
-  return followersListWithRecipesCount;
-};
+//   return followersListWithRecipesCount;
+// };
 
 // export const getFollowingsList = async (userId) => {
 //   try {

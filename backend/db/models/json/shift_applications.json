@@ -1,0 +1,20 @@
+[
+{
+"id": 1,
+"shiftId": 2,
+"workerId": 3,
+"status": "approved",
+"appliedAt": "2026-07-26T10:15:00Z",
+"actualStartTime": null,
+"actualEndTime": null
+},
+{
+"id": 2,
+"shiftId": 3,
+"workerId": 4,
+"status": "completed",
+"appliedAt": "2026-07-24T12:00:00Z",
+"actualStartTime": "2026-07-25T06:55:00Z",
+"actualEndTime": "2026-07-25T15:10:00Z"
+}
+]

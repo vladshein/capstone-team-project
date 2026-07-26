@@ -7,11 +7,6 @@ const User = sequelize.define(
   {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     phone: { type: DataTypes.STRING(15), unique: true, allowNull: false },
-    name: {
-      // duplicated in worker profile, check if needed
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
     email: {
       type: DataTypes.STRING(100),
       allowNull: false,

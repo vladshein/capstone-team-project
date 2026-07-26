@@ -1,22 +1,6 @@
-// import { Sequelize } from "sequelize";
+import { Sequelize } from "sequelize";
 
-// const sequelize = new Sequelize({
-//     dialect: process.env.DATABASE_DIALECT,
-//     username: process.env.DATABASE_USERNAME,
-//     password: process.env.DATABASE_PASSWORD,
-//     host: process.env.DATABASE_HOST,
-//     database: process.env.DATABASE_NAME,
-//     port: process.env.DATABASE_PORT,
-//     dialectOptions: {
-//         ssl: true,
-//     },
-// });
-
-// export default sequelize;
-
-import { Sequelize } from 'sequelize';
-
-const isProduction = process.env.NODE_ENV === 'production';
+const isProduction = process.env.NODE_ENV === "production";
 
 const connectioParams = isProduction
   ? {
@@ -37,11 +21,14 @@ const connectioParams = isProduction
       host: process.env.DATABASE_HOST_DEV,
       database: process.env.DATABASE_NAME_DEV,
       port: process.env.DATABASE_PORT_DEV,
+      dialectOptions: {
+        ssl: true,
+      },
     };
 
 const sequelize = new Sequelize({
   ...connectioParams,
-  logging: true,
+  logging: (msg) => console.log(`[Sequelize] ${msg}`),
 });
 
 export default sequelize;

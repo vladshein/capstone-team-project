@@ -13,11 +13,11 @@ import notFoundHandler from "./middlewares/notFoundHandler.js";
 import errorHandler from "./middlewares/errorHandler.js";
 import connectDatabase from "./db/connectDatabase.js";
 import { swaggerDocs } from "./middlewares/swaggerDocs.js"; // swagger
-// import { syncDatabase } from './db/models/index.js';
+import { syncDatabase } from "./db/models/index.js";
 
 const app = express();
 
-// syncDatabase();
+syncDatabase();
 
 const publicDir = path.join(process.cwd(), "public");
 const tempDir = path.join(process.cwd(), "temp");

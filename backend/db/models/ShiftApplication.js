@@ -5,6 +5,8 @@ const ShiftApplication = sequelize.define(
   "ShiftApplication",
   {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    shiftId: { type: DataTypes.INTEGER, allowNull: false },
+    workerId: { type: DataTypes.INTEGER, allowNull: false },
     status: {
       type: DataTypes.ENUM(
         "pending",
@@ -23,12 +25,7 @@ const ShiftApplication = sequelize.define(
   {
     tableName: "shift_applications",
     timestamps: false,
-    indexes: [
-      {
-        unique: true,
-        fields: ["shift_id", "worker_id"],
-      },
-    ],
+    // Ми ВИДАЛИЛИ блок indexes, оскільки belongsToMany створить цей унікальний індекс автоматично
   },
 );
 

@@ -1,19 +1,21 @@
-import sequelize from "../sequelize.js";
-
 import fs from "fs";
 import path from "path";
-
 import { fileURLToPath } from "url";
+
+// Assuming your models are correctly exported from index.js
 import {
   Area,
   Category,
-  Shift,
-  ShiftApplication,
-  Location,
-  Company,
   JobPosition,
   User,
   WorkerProfile,
+  Company,
+  Location,
+  Wallet,
+  Shift,
+  ShiftApplication,
+  Transaction,
+  Review,
 } from "./index.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -21,126 +23,88 @@ const __dirname = path.dirname(__filename);
 
 // Helper to load JSON files
 function loadJson(filename) {
-  return JSON.parse(fs.readFileSync(path.join(__dirname, filename), "utf-8"));
+  try {
+    const filePath = path.join(__dirname, filename);
+    if (fs.existsSync(filePath)) {
+      return JSON.parse(fs.readFileSync(filePath, "utf-8"));
+    }
+    console.warn(`Warning: File not found ${filename}`);
+    return [];
+  } catch (error) {
+    console.error(`Error parsing ${filename}:`, error);
+    return [];
+  }
 }
 
 export default async function seedAll() {
   try {
-    // Load JSON data
-    // const areasJson = loadJson("json/areas.json");
-    // const categoriesJson = loadJson("json/categories.json");
-    // const ingredientsJson = loadJson("json/ingredients.json");
-    // const testimonialsJson = loadJson("json/testimonials.json");
-    // const recipesJson = loadJson("json/recipes.json");
+    console.log("Starting database seeding...");
+
+    // 1. Load all JSON data
+    const areasJson = loadJson("json/areas.json");
+    const categoriesJson = loadJson("json/categories.json");
+    const jobPositionsJson = loadJson("json/job_positions.json");
     const usersJson = loadJson("json/users.json");
 
-    // // Insert Areas
-    // for (const area of areasJson) {
-    //   await Area.create({
-    //     id: area._id.$oid,
-    //     name: area.name,
-    //   });
-    // }
+    const workerProfilesJson = loadJson("json/worker_profiles.json");
+    const companiesJson = loadJson("json/companies.json");
+    const walletsJson = loadJson("json/wallets.json");
 
-    // // Insert Categories
-    // for (const cat of categoriesJson) {
-    //   await Category.create({
-    //     id: cat._id.$oid,
-    //     name: cat.name,
-    //   });
-    // }
+    const locationsJson = loadJson("json/locations.json");
+    const shiftsJson = loadJson("json/shifts.json");
 
-    // // Insert Ingredients
-    // for (const ing of ingredientsJson) {
-    //   await Ingredient.create({
-    //     id: ing._id,
-    //     name: ing.name,
-    //     desc: ing.desc,
-    //     img: ing.img,
-    //   });
-    // }
+    const shiftApplicationsJson = loadJson("json/shift_applications.json");
+    const reviewsJson = loadJson("json/reviews.json");
+    const transactionsJson = loadJson("json/transactions.json");
 
-    for (const u of usersJson) {
-      await User.create({
-        id: u._id.$oid,
-        name: u.name,
-        avatar: u.avatar,
-        email: u.email,
-      });
+    // =========================================================================
+    // 2. INSERTION ORDER IS CRITICAL (Parent tables first, then child tables)
+    // =========================================================================
+
+    // LEVEL 1: Independent Tables (No Foreign Keys)
+    console.log("Seeding independent tables...");
+
+    // Custom mapping for Area (handling the MongoDB-style $oid you had)
+    if (areasJson.length > 0) {
+      const mappedAreas = areasJson.map((area) => ({
+        id: area._id?.$oid || area.id,
+        name: area.name,
+      }));
+      await Area.bulkCreate(mappedAreas);
     }
 
-    // // Insert Testimonials
-    // for (const t of testimonialsJson) {
-    //   await Testimonial.create({
-    //     id: t._id.$oid,
-    //     ownerId: t.owner.$oid,
-    //     testimonial: t.testimonial,
-    //   });
-    // }
+    if (categoriesJson.length > 0) await Category.bulkCreate(categoriesJson);
+    if (jobPositionsJson.length > 0)
+      await JobPosition.bulkCreate(jobPositionsJson);
+    if (usersJson.length > 0) await User.bulkCreate(usersJson);
 
-    // // Insert Recipes + RecipeIngredients
-    // for (const recipeData of recipesJson) {
-    //   const category = await Category.findOne({
-    //     where: { name: recipeData.category },
-    //   });
-    //   const area = await Area.findOne({ where: { name: recipeData.area } });
+    // LEVEL 2: Tables dependent on Users
+    console.log(
+      "Seeding user-dependent tables (Profiles, Companies, Wallets)...",
+    );
+    if (workerProfilesJson.length > 0)
+      await WorkerProfile.bulkCreate(workerProfilesJson);
+    if (companiesJson.length > 0) await Company.bulkCreate(companiesJson);
+    if (walletsJson.length > 0) await Wallet.bulkCreate(walletsJson);
 
-    //   const recipe = await Recipe.create({
-    //     id: recipeData._id.$oid,
-    //     title: recipeData.title,
-    //     categoryId: category ? category.id : null,
-    //     ownerId: recipeData.owner.$oid,
-    //     areaId: area ? area.id : null,
-    //     instructions: recipeData.instructions,
-    //     description: recipeData.description,
-    //     thumb: recipeData.thumb,
-    //     time: recipeData.time ? parseInt(recipeData.time) : null,
-    //     createdAt: new Date(Number(recipeData.createdAt.$date.$numberLong)),
-    //     updatedAt: new Date(Number(recipeData.updatedAt.$date.$numberLong)),
-    //   });
+    // LEVEL 3: Tables dependent on Companies
+    console.log("Seeding Locations...");
+    if (locationsJson.length > 0) await Location.bulkCreate(locationsJson);
 
-    //   // Link ingredients
-    //   for (const ing of recipeData.ingredients) {
-    //     await RecipeIngredient.create({
-    //       recipeId: recipe.id,
-    //       ingredientId: ing.id,
-    //       measure: ing.measure,
-    //     });
-    //   }
+    // LEVEL 4: Tables dependent on Locations, Positions, and Categories
+    console.log("Seeding Shifts...");
+    if (shiftsJson.length > 0) await Shift.bulkCreate(shiftsJson);
 
-    //   for (const u of usersJson) {
-    //     if (u.favorites) {
-    //       for (const recipeId of u.favorites) {
-    //         await FavoriteRecipe.create({
-    //           userId: u._id.$oid,
-    //           recipeId,
-    //         });
-    //       }
-    //     }
-    //   }
-    //   for (const u of usersJson) {
-    //     const userId = u._id.$oid;
+    // LEVEL 5: Tables dependent on Shifts and Users
+    console.log("Seeding Shift Applications, Reviews, and Transactions...");
+    if (shiftApplicationsJson.length > 0)
+      await ShiftApplication.bulkCreate(shiftApplicationsJson);
+    if (reviewsJson.length > 0) await Review.bulkCreate(reviewsJson);
+    if (transactionsJson.length > 0)
+      await Transaction.bulkCreate(transactionsJson);
 
-    //     // Followers: who follows this user
-    //     for (const followerId of u.followers) {
-    //       await UserFollowers.create({
-    //         followerId,
-    //         followingId: userId,
-    //       });
-    //     }
-
-    //     // Following: who this user follows
-    //     for (const followingId of u.following) {
-    //       await UserFollowers.create({
-    //         followerId: userId,
-    //         followingId,
-    //       });
-    //     }
-    //   }
-    // }
-
-    console.log("✅ Seed data inserted successfully");
+    console.log("Seed data inserted successfully!");
   } catch (err) {
-    console.error("❌ Error seeding data:", err);
+    console.error("Error seeding data:", err);
   }
 }
