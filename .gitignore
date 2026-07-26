@@ -26,6 +26,8 @@ dist-ssr
 *.sln
 *.sw?
 
+frontend/.env
+backend/.env
 .env
 .prettierrc.json
 ai-report.md
