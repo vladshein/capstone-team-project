@@ -1,11 +1,10 @@
 import Joi from 'joi';
-import { emailRegExp } from '../constants/authConstants.js';
+import { emailRegExp, phoneRegExp } from '../constants/authConstants.js';
 
 export const registerSchema = Joi.object({
-  name: Joi.string().required().min(2).max(20).messages({
-    'any.required': 'Username is required',
-    'string.base': 'Username must be a string',
-    // min: "Password must be at least 8 symbols",
+  phone: Joi.string().pattern(phoneRegExp).required().messages({
+    'string.pattern.base': 'Invalid phone format',
+    'any.required': 'Phone is required',
   }),
 
   password: Joi.string().required().min(8).messages({
@@ -15,16 +14,20 @@ export const registerSchema = Joi.object({
   }),
 
   email: Joi.string().pattern(emailRegExp).required().messages({
-    'any.required': 'Username is required',
+    'any.required': 'Email is required',
   }),
+
+  role: Joi.string()
+    .valid('worker', 'business_client', 'admin')
+    .default("worker"),
 });
 
 export const loginSchema = Joi.object({
   password: Joi.string().required().min(8).messages({
-    'any.required': 'Username is required',
+    'any.required': 'Password is required',
   }),
 
   email: Joi.string().pattern(emailRegExp).required().messages({
-    'any.required': 'Username is required',
+    'any.required': 'Email is required',
   }),
 });
