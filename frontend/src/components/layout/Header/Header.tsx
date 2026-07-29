@@ -6,16 +6,20 @@ import { MobileMenu } from "./MobileMenu";
 
 export interface HeaderProps {
   isAuthenticated?: boolean;
+  userRole?: string;
   userBalance?: number;
   onOpenSignIn?: () => void;
   onOpenSignUp?: () => void;
+  onLogout?: () => void;
 }
 
 export function Header({
   isAuthenticated = false,
+  userRole,
   userBalance = 0,
   onOpenSignIn,
   onOpenSignUp,
+  onLogout,
 }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -29,13 +33,14 @@ export function Header({
           Зміна<span className="text-accent">.ua</span>
         </a>
 
-        <HeaderNav />
+        <HeaderNav isAuthenticated={isAuthenticated} userRole={userRole} />
 
         <HeaderAuth
           isAuthenticated={isAuthenticated}
           userBalance={userBalance}
           onOpenSignIn={onOpenSignIn}
           onOpenSignUp={onOpenSignUp}
+          onLogout={onLogout}
         />
 
         <button
@@ -55,7 +60,9 @@ export function Header({
         userBalance={userBalance}
         onOpenSignIn={onOpenSignIn}
         onOpenSignUp={onOpenSignUp}
+        onLogout={onLogout}
       />
     </header>
   );
 }
+
