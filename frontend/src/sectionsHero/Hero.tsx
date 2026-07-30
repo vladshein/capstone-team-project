@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { MapPin, Search, Wallet, ShieldCheck, Zap } from "lucide-react";
 import { ShiftCard } from "../components/cards/ShiftCard";
 import { Ticker } from "../components/ui/Ticker";
+import { TasksBoard } from "./TasksBoard";
 import { TestimonialsSlider } from "./Testimonials";
 import { FEATURED_SHIFTS, HOW_IT_WORKS } from "../constants/mockData";
 
@@ -142,6 +143,7 @@ export function Hero({ onOpenSignUp }: HeroProps) {
       </section>
 
       <Ticker />
+      <TasksBoard />
 
       {/* Стандартні секції контенту — 3-тіерний ритм відносно --space-section */}
       <section className="mx-auto max-w-7xl px-4 py-[calc(var(--space-section)-1.5rem)] sm:px-6 sm:py-[calc(var(--space-section)-1rem)] md:px-8 md:py-[var(--space-section)]">
