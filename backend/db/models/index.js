@@ -123,7 +123,7 @@ Transaction.belongsTo(Shift, { foreignKey: "shiftId" });
 const syncDatabase = async () => {
   try {
     // await sequelize.sync({ force: true });
-    await sequelize.sync({ alter: true });
+    // await sequelize.sync({ alter: true });
     // await seedAll();
     // await seedA();
     console.log("Database synchronized successfully");

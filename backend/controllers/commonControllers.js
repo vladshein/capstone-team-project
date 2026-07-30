@@ -7,8 +7,8 @@ import {
 
 export const categoriesController = async (req, res) => {
   // const { id: owner } = req.user;
-  const contacts = await getCategories();
-  res.json(contacts);
+  const categories = await getCategories();
+  res.json(categories);
 };
 
 export const areasController = async (req, res) => {

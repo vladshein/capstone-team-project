@@ -10,6 +10,7 @@ import {
 import { updateAvatarController } from "../controllers/authControllers.js";
 
 const userRouter = express.Router();
+
 userRouter.get("/current", authenticate, getCurrentUser);
 userRouter.patch(
   "/avatars",

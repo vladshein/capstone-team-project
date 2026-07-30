@@ -3,11 +3,14 @@ import morgan from "morgan";
 import cors from "cors";
 import "dotenv/config";
 import path from "node:path";
+// import routes
 import authRouter from "./routes/authRouter.js";
 import userRouter from "./routes/userRouter.js";
 import commonRouter from "./routes/commonRouter.js";
+import shiftRouter from "./routes/shiftRouter.js";
 // import recipesRouter from "./routes/recipesRouter.js";
 // import followRouter from "./routes/followRouter.js";
+//import handlers
 import notFoundHandler from "./middlewares/notFoundHandler.js";
 import errorHandler from "./middlewares/errorHandler.js";
 import connectDatabase from "./db/connectDatabase.js";
@@ -37,6 +40,8 @@ app.use("/temp", express.static(tempDir));
 app.use("/api/auth", authRouter);
 app.use("/api/users", userRouter);
 app.use("/api", commonRouter);
+app.use("/api/shifts", shiftRouter);
+
 // app.use('/api/recipes', recipesRouter);
 // app.use('/api/following', followRouter);
 app.use("/api-docs", swaggerDocs()); // swagger
