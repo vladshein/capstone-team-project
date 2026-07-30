@@ -81,3 +81,31 @@ export const getShiftById = async (shiftId) => {
     ],
   });
 };
+
+/**
+ * Перевіряє, чи належить локація компанії, власником якої є користувач.
+ * Це необхідно для захисту від створення змін на чужих локаціях.
+ */
+export const verifyLocationOwnership = async (locationId, userId) => {
+  const location = await Location.findByPk(locationId, {
+    include: [
+      {
+        model: Company,
+        attributes: ["ownerId"],
+      },
+    ],
+  });
+
+  // Якщо локації немає, або ownerId компанії не збігається з userId того, хто робить запит
+  if (!location || location.Company.ownerId !== userId) {
+    return false;
+  }
+  return true;
+};
+
+/**
+ * Створює нову зміну в базі даних.
+ */
+export const createShift = async (shiftData) => {
+  return await Shift.create(shiftData);
+};

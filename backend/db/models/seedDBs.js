@@ -4,6 +4,7 @@ import { fileURLToPath } from "url";
 
 // Assuming your models are correctly exported from index.js
 import {
+  sequelize,
   Area,
   Category,
   JobPosition,
@@ -102,6 +103,39 @@ export default async function seedAll() {
     if (reviewsJson.length > 0) await Review.bulkCreate(reviewsJson);
     if (transactionsJson.length > 0)
       await Transaction.bulkCreate(transactionsJson);
+
+    // =========================================================================
+    // 3. ОНОВЛЕННЯ ЛІЧИЛЬНИКІВ POSTGRESQL (SEQUENCE)
+    // =========================================================================
+    console.log("🔄 Resetting PostgreSQL sequences...");
+
+    // Перелік таблиць, які мають SERIAL PRIMARY KEY (integer id)
+    const tablesWithSequences = [
+      "users",
+      "worker_profiles",
+      "companies",
+      "locations",
+      "job_positions",
+      "categories",
+      "shifts",
+      "shift_applications",
+      "wallets",
+      "transactions",
+    ];
+
+    for (const table of tablesWithSequences) {
+      try {
+        // SQL запит, який каже базі: "Встанови лічильник на максимальний існуючий ID в таблиці"
+        await sequelize.query(
+          `SELECT setval('"${table}_id_seq"', (SELECT COALESCE(MAX(id), 1) FROM "${table}"));`,
+        );
+      } catch (seqError) {
+        console.warn(
+          `⚠️ Could not reset sequence for ${table}:`,
+          seqError.message,
+        );
+      }
+    }
 
     console.log("Seed data inserted successfully!");
   } catch (err) {

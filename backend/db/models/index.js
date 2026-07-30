@@ -133,6 +133,7 @@ const syncDatabase = async () => {
 };
 
 export {
+  sequelize,
   User,
   Company,
   Category,

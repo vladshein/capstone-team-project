@@ -4,7 +4,7 @@ import * as shiftService from "../services/shiftServices.js";
  * Обробляє запит на отримання всіх змін.
  * Витягує параметри запиту та формує HTTP-відповідь.
  */
-export const getAllShifts = async (req, res) => {
+export const getAllShifts = async (req, res, next) => {
   try {
     // 1. Отримуємо параметри з Query рядка
     const { page = 1, limit = 10, minPrice, maxPrice, categoryId } = req.query;
@@ -21,17 +21,14 @@ export const getAllShifts = async (req, res) => {
     // 3. Відправляємо успішну відповідь
     res.status(200).json(result);
   } catch (error) {
-    console.error("Error in ShiftController.getAllShifts:", error);
-    res
-      .status(500)
-      .json({ message: "Internal server error while fetching shifts." });
+    next(error); // Передаємо помилку в центральний errorHandler
   }
 };
 
 /**
  * Обробляє запит на отримання конкретної зміни за ID.
  */
-export const getShiftById = async (req, res) => {
+export const getShiftById = async (req, res, next) => {
   try {
     const shiftId = req.params.id;
 
@@ -39,17 +36,69 @@ export const getShiftById = async (req, res) => {
     const shift = await shiftService.getShiftById(shiftId);
 
     if (!shift) {
-      return res.status(404).json({ message: "Shift not found." });
+      const error = new Error("Shift not found.");
+      error.status = 404;
+      throw error;
     }
 
     res.status(200).json(shift);
   } catch (error) {
-    console.error(
-      `Error in ShiftController.getShiftById (${req.params.id}):`,
-      error,
+    next(error); // Передаємо помилку в центральний errorHandler
+  }
+};
+
+/**
+ * Обробляє запит на створення нової зміни (тільки для замовників/бізнесу).
+ */
+export const createShift = async (req, res, next) => {
+  try {
+    // В реальному додатку userId ми беремо з токена авторизації (наприклад req.user.id)
+    // Для тестування поки захардкодимо ID власника "Сільпо" (id: 1) з наших сідів.
+    const userId = req.user?.id || 1;
+
+    // Всі дані вже провалідовані через Joi у validateBody
+    const {
+      locationId,
+      positionId,
+      categoryId,
+      startTime,
+      endTime,
+      hourlyRate,
+      bonusRate,
+      description,
+    } = req.body;
+
+    // 1. Перевірка безпеки: чи належить ця локація цьому користувачу?
+    const isOwner = await shiftService.verifyLocationOwnership(
+      locationId,
+      userId,
     );
-    res
-      .status(500)
-      .json({ message: "Internal server error while fetching the shift." });
+    if (!isOwner) {
+      const error = new Error(
+        "У вас немає прав створювати зміну на цій локації.",
+      );
+      error.status = 403; // Forbidden
+      throw error;
+    }
+
+    // 2. Створення зміни
+    const newShift = await shiftService.createShift({
+      locationId,
+      positionId,
+      categoryId,
+      startTime,
+      endTime,
+      hourlyRate,
+      bonusRate: bonusRate || 0.0,
+      description,
+      status: "open", // За замовчуванням нова зміна є відкритою
+    });
+
+    res.status(201).json({
+      message: "Зміну успішно створено",
+      data: newShift,
+    });
+  } catch (error) {
+    next(error); // Передаємо помилку в центральний errorHandler
   }
 };
