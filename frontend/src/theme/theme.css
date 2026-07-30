@@ -77,7 +77,6 @@
     --theme-font-heading: var(--font-space-grotesk);
     --theme-font-body: var(--font-inter);
     --theme-radius-card: 1rem;
-    /* трохи заокруглено — "жвавий gig-маркет" */
     --theme-radius-pill: 9999px;
     --theme-space-section: 5rem;
     /* вертикальний padding секцій */

@@ -76,7 +76,7 @@ export const loginUser = async ({ password, email }) => {
   };
 };
 
-export const refreshUser = async () => {
+export const refreshUser = async (user) => {
   const token = createToken({ id: user.id });
   await user.update({ token });
 

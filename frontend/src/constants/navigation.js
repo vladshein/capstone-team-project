@@ -1,7 +1,7 @@
 export const USER_ROLES = {
   GUEST: "guest",
   WORKER: "worker",
-  BUSINESS: "business",
+  BUSINESS: "business_client",
 };
 
 export const navLinks = [
