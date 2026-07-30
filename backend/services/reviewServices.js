@@ -1,6 +1,11 @@
-import * as shiftApplicationsServices from "./shiftApplicationsServices.js";
 import * as shiftServices from "./shiftServices.js";
-import { Review } from "../db/models/index.js";
+import {
+  Review,
+  Shift,
+  Location,
+  Company,
+  ShiftApplication,
+} from "../db/models/index.js";
 import HTTPError from "../helpers/HttpError.js";
 
 export const getReviewById = async (reviewId) => {
@@ -18,9 +23,27 @@ export const getReviewsByShiftId = async (shiftId) => {
 
 export const createReview = async ({ userId, shiftId, rating, comment }) => {
   // Check if the shift exists and is completed
-  const shift = await shiftServices.getShiftById(shiftId);
+  const shift = await Shift.findOne({
+    where: { id: shiftId },
+    include: [
+      {
+        model: Location,
+        include: [
+          {
+            model: Company,
+            attributes: ["ownerId"], // Витягуємо замовника
+          },
+        ],
+      },
+      {
+        model: ShiftApplication,
+        attributes: ["workerId"], // Витягуємо працівника
+      },
+    ],
+  });
+
   if (!shift) {
-    throw HTTPError(404, "Shift not found.");
+    throw HTTPError(404, "Зміна не знайдена.");
   }
   if (shift.status !== "completed") {
     throw HTTPError(
@@ -44,16 +67,28 @@ export const createReview = async ({ userId, shiftId, rating, comment }) => {
   }
 
   // Check if the user is authorized to create a review for this shift
-  const shiftApp =
-    await shiftApplicationsServices.getShiftApplicationByShiftId(shiftId);
-  if (shiftApp.workerId !== userId) {
-    throw HTTPError(403, "У вас немає прав створювати відгук на цій зміні.");
+  const applications = shift.ShiftApplications;
+
+  // Перевіряємо, чи взагалі існує хоча б одна заявка на цю зміну
+  if (!applications || applications.length === 0) {
+    throw HTTPError(
+      404,
+      "Заявку на цю зміну не знайдено. Неможливо створити відгук.",
+    );
   }
 
+  const workerId = applications[0].workerId;
+
+  // Check if the user is authorized to create a review for this shift
+  if (workerId !== userId) {
+    throw HTTPError(403, `У вас немає прав створювати відгук на цій зміні.`);
+  }
+
+  // Assuming the reviewee is the worker who completed the shift
   const newReview = await Review.create({
     reviewerId: userId,
     shiftId: shiftId,
-    revieweeId: 1, // Assuming revieweeId is the same as shiftId for this example; adjust as needed
+    revieweeId: shift.Location.Company.ownerId,
     rating,
     comment,
   });
