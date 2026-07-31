@@ -1,11 +1,18 @@
-import { navLinks } from "../../../constants/navigation";
+import { getFilteredNavLinks } from "../../../utils/navigation.ts";
 
-export function HeaderNav() {
+interface HeaderNavProps {
+  isAuthenticated: boolean;
+  userRole?: string;
+}
+
+export function HeaderNav({ isAuthenticated, userRole }: HeaderNavProps) {
+  const links = getFilteredNavLinks(isAuthenticated, userRole);
+
   return (
     <nav className="hidden items-center gap-8 md:flex">
-      {navLinks.map((link) => (
+      {links.map((link) => (
         <a
-          key={link.href}
+          key={link.id}
           href={link.href}
           className="text-sm font-medium text-text-muted transition-colors hover:text-accent"
         >

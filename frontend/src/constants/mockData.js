@@ -1,3 +1,5 @@
+import { USER_ROLES } from "./navigation";
+
 export const TICKER_SHIFTS = [
   { role: "Бариста", company: "Aroma Kava", rate: 220, distance: 1.2 },
   { role: "Офіціант", company: "Пузата Хата", rate: 190, distance: 0.8 },
