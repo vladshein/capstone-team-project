@@ -3,7 +3,7 @@
 
 ### development mode
 
-- you MUST have a Docker and Docker Compose
+- you MUST have preinstalled a Docker and Docker Compose
 - rename **.env.template** to **.env** and fill env data
 - run **docker compose up --build**
 - enjoy!
