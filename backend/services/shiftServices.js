@@ -11,7 +11,7 @@ import {
  * Отримує зміни з бази даних на основі фільтрів та пагінації.
  * Містить всю логіку запитів до БД.
  */
-export const getShifts = async ({
+export const getAllShifts = async ({
   page,
   limit,
   minPrice,
