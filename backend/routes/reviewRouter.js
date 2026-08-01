@@ -9,7 +9,7 @@ const reviewRouter = express.Router();
 reviewRouter.post(
   "/:shiftId",
   validateBody(createReviewSchema),
-  // authenticate,
+  authenticate,
   reviewController.createReview,
 );
 

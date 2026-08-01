@@ -23,24 +23,19 @@ export const getReviewsByShiftId = async (shiftId) => {
 
 export const createReview = async ({ userId, shiftId, rating, comment }) => {
   // Check if the shift exists and is completed
-  const shift = await Shift.findOne({
-    where: { id: shiftId },
-    include: [
-      {
-        model: Location,
-        include: [
-          {
-            model: Company,
-            attributes: ["ownerId"], // Витягуємо замовника
-          },
-        ],
-      },
-      {
-        model: ShiftApplication,
-        attributes: ["workerId"], // Витягуємо працівника
-      },
-    ],
-  });
+ const shift = await Shift.findOne({
+   where: { id: shiftId },
+   include: [
+     {
+       model: Company,
+       attributes: ["ownerId"], 
+     },
+     {
+       model: ShiftApplication,
+       attributes: ["workerId"],
+     },
+   ],
+ });
 
   if (!shift) {
     throw HTTPError(404, "Зміна не знайдена.");
@@ -88,7 +83,7 @@ export const createReview = async ({ userId, shiftId, rating, comment }) => {
   const newReview = await Review.create({
     reviewerId: userId,
     shiftId: shiftId,
-    revieweeId: shift.Location.Company.ownerId,
+    revieweeId: shift.Company.ownerId,
     rating,
     comment,
   });
