@@ -1,12 +1,29 @@
-# Capstone Team Project
-
 ## 🚀 Запуск проєкту
 
 ### Передумови
 - Встановлений [Docker](https://www.docker.com/) та Docker Compose
-- Створений файл `.env` в корені проєкту (на основі `.env.template`) та `backend/.env`
+- Створений файл `.env` в корені проєкту
 
-### 1. Запуск контейнерів
+### 1. Налаштування змінних оточення
+
+Створіть файл `.env` в корені проєкту (можна скопіювати з `.env.template`):
+
+```env
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=capstone
+NODE_ENV=development
+PORT=5000
+DB_HOST=postgres
+DB_PORT=5432
+REDIS_HOST=valkey
+REDIS_PORT=6379
+VITE_API_URL=http://localhost:5000/api
+```
+
+> ⚠️ Значення вище — приклад для локальної розробки. Не використовуйте ці креденшли в продакшн-середовищі.
+
+### 2. Запуск контейнерів
 
 ```bash
 docker compose up -d
@@ -18,7 +35,7 @@ docker compose up -d
 - **backend** — Express API (порт `5000`)
 - **frontend** — React додаток (порт `5173`)
 
-### 2. Ініціалізація бази даних
+### 3. Ініціалізація бази даних
 
 При першому запуску потрібно створити таблиці та засіяти тестовими даними:
 
@@ -32,7 +49,7 @@ docker compose exec backend npm run db:seed
 
 > ⚠️ `db:sync` використовує `sequelize.sync({ alter: true })` — підходить для розробки. Не використовуйте цю команду в продакшн-середовищі без міграцій.
 
-### 3. Перевірка
+### 4. Перевірка
 
 - Backend API: [http://localhost:5000](http://localhost:5000)
 - Frontend: [http://localhost:5173](http://localhost:5173)
