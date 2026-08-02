@@ -2,6 +2,7 @@ import express from "express";
 import * as shiftController from "../controllers/shiftControllers.js";
 import validateBody from "../helpers/validateBody.js";
 import { createShiftSchema } from "../schemas/shiftSchemas.js";
+import authenticate from "../middlewares/authenticate.js";
 
 const shiftRouter = express.Router();
 
@@ -26,6 +27,7 @@ shiftRouter.get("/:id", shiftController.getShiftById);
 shiftRouter.post(
   "/",
   validateBody(createShiftSchema),
+  authenticate,
   shiftController.createShift,
 );
 
