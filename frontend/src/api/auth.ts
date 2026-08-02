@@ -3,7 +3,7 @@ import api from "./axiosInstance";
 export interface AuthUser {
   id: number;
   email: string;
-  role: "worker" | "business";
+  role: "worker" | "business_client";
   displayName: string;
   avatarUrl?: string | null;
   balance: number;
@@ -23,7 +23,7 @@ export async function loginRequest(payload: {
 }
 
 export async function registerRequest(payload: {
-  role: "worker" | "business";
+  role: "worker" | "business_client";
   email: string;
   phone: string;
   password: string;
