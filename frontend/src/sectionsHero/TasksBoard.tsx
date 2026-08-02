@@ -1,72 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
-
-interface DailyTask {
-  id: string;
-  title: string;
-  timeRange: string;
-  partner: string;
-  address: string;
-  priceLabel: string;
-  logoInitial: string;
-}
-
-const DAILY_TASKS: DailyTask[] = [
-  {
-    id: "t1",
-    title: "Операційні послуги на складі (відрядна оплата)",
-    timeRange: "07:00–19:00",
-    partner: "Rozetka Fulfillment",
-    address: "просп. Столєтова, 12",
-    priceLabel: "від 2 019₴ до 5 048₴",
-    logoInitial: "R",
-  },
-  {
-    id: "t2",
-    title: "Фасування продукції (пекарня)",
-    timeRange: "07:00–18:00",
-    partner: "Сільпо",
-    address: "вул. Хрещатик, 7",
-    priceLabel: "~3 451₴",
-    logoInitial: "С",
-  },
-  {
-    id: "t3",
-    title: "Випічка хліба",
-    timeRange: "07:00–19:00",
-    partner: "АТБ",
-    address: "вул. Машинобудівників, 22",
-    priceLabel: "~3 255₴",
-    logoInitial: "А",
-  },
-  {
-    id: "t4",
-    title: "Доставка замовлень на авто",
-    timeRange: "07:00–11:00",
-    partner: "Glovo",
-    address: "вул. Крупської, 26А",
-    priceLabel: "~1 053₴",
-    logoInitial: "G",
-  },
-  {
-    id: "t5",
-    title: "Прибирання торгового залу",
-    timeRange: "06:00–14:00",
-    partner: "Novus",
-    address: "вул. Володимирська, 45",
-    priceLabel: "~2 100₴",
-    logoInitial: "N",
-  },
-  {
-    id: "t6",
-    title: "Промо-стійка новинки",
-    timeRange: "10:00–18:00",
-    partner: "Епіцентр",
-    address: "просп. Перемоги, 100",
-    priceLabel: "~1 800₴",
-    logoInitial: "Е",
-  },
-];
+import { getAllShifts, type Shift } from "../api/shifts";
 
 interface FilterOption {
   label: string;
@@ -145,6 +79,13 @@ const SELECTED_LABEL_FORMATTER = new Intl.DateTimeFormat("uk-UA", {
   month: "long",
   weekday: "long",
 });
+const TIME_FORMATTER = new Intl.DateTimeFormat("uk-UA", {
+  hour: "2-digit",
+  minute: "2-digit",
+});
+const PRICE_FORMATTER = new Intl.NumberFormat("uk-UA", {
+  maximumFractionDigits: 0,
+});
 
 function buildWeekStrip(centerOffset: number) {
   const today = new Date();
@@ -153,6 +94,24 @@ function buildWeekStrip(centerOffset: number) {
     d.setDate(today.getDate() - 3 + i + centerOffset);
     return d;
   });
+}
+
+function formatTimeRange(startTime: string, endTime: string) {
+  try {
+    return `${TIME_FORMATTER.format(new Date(startTime))}–${TIME_FORMATTER.format(
+      new Date(endTime),
+    )}`;
+  } catch {
+    return "";
+  }
+}
+
+function formatPriceLabel(shift: Shift) {
+  const start = new Date(shift.startTime).getTime();
+  const end = new Date(shift.endTime).getTime();
+  const hours = Number.isFinite(start) && Number.isFinite(end) ? Math.max((end - start) / 3_600_000, 0) : 0;
+  const total = hours * shift.hourlyRate + (shift.bonusRate ?? 0);
+  return total > 0 ? `~${PRICE_FORMATTER.format(total)}₴` : `${PRICE_FORMATTER.format(shift.hourlyRate)}₴/год`;
 }
 
 function DateStrip() {
@@ -271,27 +230,33 @@ function FilterAccordion({ section }: { section: FilterSection }) {
   );
 }
 
-function TaskCard({ task }: { task: DailyTask }) {
+function TaskCard({ shift }: { shift: Shift }) {
+  const companyName = shift.Location?.Company?.name ?? "";
+  const logoInitial = companyName ? companyName[0].toUpperCase() : "?";
+  const title = shift.description || shift.JobPosition?.title || shift.Category?.name || "Завдання";
+
   return (
     <div className="flex flex-col justify-between rounded-[var(--radius-card)] border border-border bg-bg p-5">
       <div>
         <div className="flex items-start justify-between gap-3">
           <h3 className="font-heading text-base font-semibold leading-snug">
-            {task.title}
+            {title}
           </h3>
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-pill)] bg-bg-muted font-heading text-sm font-semibold text-ink">
-            {task.logoInitial}
+            {logoInitial}
           </span>
         </div>
-        <p className="mt-2 text-xs text-text-muted">{task.timeRange}</p>
-        <p className="mt-3 text-sm font-medium">{task.partner}</p>
-        <p className="text-sm text-text-muted">{task.address}</p>
+        <p className="mt-2 text-xs text-text-muted">
+          {formatTimeRange(shift.startTime, shift.endTime)}
+        </p>
+        <p className="mt-3 text-sm font-medium">{companyName}</p>
+        <p className="text-sm text-text-muted">{shift.Location?.address}</p>
       </div>
 
       <div className="mt-5 flex items-end justify-between gap-3 border-t border-border pt-4">
         <div>
           <p className="font-mono text-base font-semibold text-accent">
-            {task.priceLabel}
+            {formatPriceLabel(shift)}
           </p>
           <p className="text-xs text-text-subtle">ви отримаєте за завдання</p>
         </div>
@@ -307,6 +272,38 @@ function TaskCard({ task }: { task: DailyTask }) {
 }
 
 export function TasksBoard() {
+  const [shifts, setShifts] = useState<Shift[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadShifts() {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await getAllShifts({ page: 1, limit: 20 });
+        if (!cancelled) {
+          setShifts(response.data);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError("Не вдалося завантажити завдання. Спробуйте пізніше.");
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadShifts();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <section className="mx-auto max-w-7xl px-4 py-[calc(var(--space-section)-1.5rem)] sm:px-6 sm:py-[calc(var(--space-section)-1rem)] md:px-8 md:py-[var(--space-section)]">
       <h2 className="font-heading text-3xl font-bold uppercase leading-[1.1] tracking-tight sm:text-4xl md:text-5xl">
@@ -324,9 +321,18 @@ export function TasksBoard() {
         </aside>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
-          {DAILY_TASKS.map((task) => (
-            <TaskCard key={task.id} task={task} />
-          ))}
+          {isLoading && (
+            <p className="text-sm text-text-muted sm:col-span-2">Завантаження завдань…</p>
+          )}
+          {error && (
+            <p className="text-sm text-red-600 sm:col-span-2">{error}</p>
+          )}
+          {!isLoading && !error && shifts.length === 0 && (
+            <p className="text-sm text-text-muted sm:col-span-2">Наразі немає доступних завдань.</p>
+          )}
+          {!isLoading &&
+            !error &&
+            shifts.map((shift) => <TaskCard key={shift.id} shift={shift} />)}
         </div>
       </div>
     </section>

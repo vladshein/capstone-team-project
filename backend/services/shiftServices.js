@@ -18,7 +18,25 @@ export const getAllShifts = async ({
   maxPrice,
   categoryId,
 }) => {
-  const offset = (page - 1) * limit;
+  console.log("[shiftsService] getAllShifts called with params:", {
+    page,
+    limit,
+    minPrice,
+    maxPrice,
+    categoryId,
+  });
+
+  // Приводимо page/limit до чисел і підстраховуємось дефолтами,
+  // бо з query-стрінги вони завжди приходять як string або undefined
+  const parsedPage = Number.parseInt(page, 10) || 1;
+  const parsedLimit = Number.parseInt(limit, 10) || 20;
+  const offset = (parsedPage - 1) * parsedLimit;
+
+  console.log("[shiftsService] parsed pagination:", {
+    parsedPage,
+    parsedLimit,
+    offset,
+  });
 
   // Базова умова: показувати тільки відкриті зміни
   const whereCondition = {
@@ -39,30 +57,47 @@ export const getAllShifts = async ({
     whereCondition.hourlyRate = { [Op.lte]: maxPrice };
   }
 
-  // Виконання запиту з підключенням зв'язаних таблиць (Eager Loading)
-  const { count, rows } = await Shift.findAndCountAll({
-    where: whereCondition,
-    limit: limit,
-    offset: offset,
-    order: [["startTime", "ASC"]],
-    include: [
-      { model: Category, attributes: ["id", "name"] },
-      { model: JobPosition, attributes: ["id", "title"] },
-      {
-        model: Location,
-        attributes: ["id", "title", "address", "city"],
-        include: [{ model: Company, attributes: ["id", "name"] }],
-      },
-    ],
-  });
+  console.log("[shiftsService] whereCondition:", whereCondition);
 
-  // Форматування об'єкта результату
-  return {
-    totalItems: count,
-    totalPages: Math.ceil(count / limit),
-    currentPage: page,
-    data: rows,
-  };
+  try {
+    // Виконання запиту з підключенням зв'язаних таблиць (Eager Loading)
+    const { count, rows } = await Shift.findAndCountAll({
+      where: whereCondition,
+      limit: parsedLimit,
+      offset: offset,
+      order: [["startTime", "ASC"]],
+      include: [
+        { model: Category, attributes: ["id", "name"] },
+        { model: JobPosition, attributes: ["id", "title"] },
+        {
+          model: Location,
+          attributes: ["id", "title", "address", "city"],
+          include: [{ model: Company, attributes: ["id", "name"] }],
+        },
+      ],
+    });
+
+    console.log(
+      `[shiftsService] found ${count} shift(s), returning page ${parsedPage} (${rows.length} row(s))`,
+    );
+
+    // Форматування об'єкта результату
+    return {
+      totalItems: count,
+      totalPages: Math.ceil(count / parsedLimit),
+      currentPage: parsedPage,
+      data: rows,
+    };
+  } catch (error) {
+    console.error("[shiftsService] Failed to fetch shifts:", {
+      message: error.message,
+      name: error.name,
+      sql: error.sql, // з'явиться, якщо це SequelizeDatabaseError
+      original: error.original?.message, // реальна помилка з драйвера БД
+      stack: error.stack,
+    });
+    throw error;
+  }
 };
 
 /**
@@ -76,7 +111,10 @@ export const getShiftById = async (shiftId) => {
       {
         model: Location,
         attributes: ["id", "title", "address", "city", "latitude", "longitude"],
-        include: [{ model: Company, attributes: ["id", "name", "edrpou"] }],
+        // ДОДАНО ownerId, щоб ми могли перевіряти права доступу
+        include: [
+          { model: Company, attributes: ["id", "name", "edrpou", "ownerId"] },
+        ],
       },
     ],
   });
@@ -109,4 +147,22 @@ export const verifyLocationOwnership = async (locationId, userId) => {
  */
 export const createShift = async (shiftData) => {
   return await Shift.create(shiftData);
+};
+
+/**
+ * Оновлює існуючу зміну
+ */
+export const updateShift = async (shiftId, updateData) => {
+  const shift = await Shift.findByPk(shiftId);
+  if (!shift) return null;
+  return await shift.update(updateData);
+};
+
+/**
+ * Переводить зміну в статус скасованої
+ */
+export const cancelShift = async (shiftId) => {
+  const shift = await Shift.findByPk(shiftId);
+  if (!shift) return null;
+  return await shift.update({ status: "cancelled" });
 };

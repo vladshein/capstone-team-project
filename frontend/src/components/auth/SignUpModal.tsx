@@ -3,7 +3,7 @@ import { Modal } from "../ui/Modal";
 import { FormField } from "../ui/FormField";
 import { emailRegExp, phoneRegExp } from "../../constants/authConstants";
 
-export type UserRole = "worker" | "business";
+export type UserRole = "worker" | "business_client";
 
 export interface SignUpPayload {
   role: UserRole;
@@ -20,7 +20,7 @@ interface SignUpModalProps {
 }
 
 interface FormErrors {
-  role?: "worker" | "business";
+  role?: "worker" | "business_client";
   email?: string;
   phone?: string;
   password?: string;
@@ -109,9 +109,9 @@ export function SignUpModal({
           </button>
           <button
             type="button"
-            onClick={() => setRole("business")}
+            onClick={() => setRole("business_client")}
             className={`flex-1 rounded-[var(--radius-pill)] px-3 py-2 font-medium transition-colors ${
-              role === "business" ? "bg-ink text-white" : "text-text"
+              role === "business_client" ? "bg-ink text-white" : "text-text"
             }`}
           >
             Я бізнес

@@ -18,3 +18,21 @@ export const createShiftSchema = Joi.object({
   bonusRate: Joi.number().min(0).precision(2).default(0.0),
   description: Joi.string().allow("").optional(),
 });
+
+// Схема для редагування зміни (всі поля опціональні)
+export const updateShiftSchema = Joi.object({
+  locationId: Joi.number().integer().positive().optional(),
+  positionId: Joi.number().integer().positive().optional(),
+  categoryId: Joi.number().integer().positive().optional(),
+
+  startTime: Joi.date().iso().optional(),
+
+  endTime: Joi.date().iso().greater(Joi.ref("startTime")).optional().messages({
+    "date.greater":
+      "Час закінчення (endTime) має бути більшим за час початку (startTime).",
+  }),
+
+  hourlyRate: Joi.number().positive().precision(2).optional(),
+  bonusRate: Joi.number().min(0).precision(2).optional(),
+  description: Joi.string().allow("").optional(),
+});
