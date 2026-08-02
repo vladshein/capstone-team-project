@@ -75,7 +75,7 @@ export interface CreateShiftPayload {
  * Отримати список відкритих змін з опційною фільтрацією та пагінацією.
  * Відповідає GET /api/shifts
  */
-export async function getShifts(
+export async function getAllShifts(
   params: GetShiftsParams = {},
 ): Promise<PaginatedShiftsResponse> {
   const { data } = await api.get<PaginatedShiftsResponse>("/shifts", {

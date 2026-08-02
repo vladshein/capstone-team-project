@@ -37,6 +37,21 @@ function loadJson(filename) {
   }
 }
 
+/**
+ * Безпечний bulkCreate: пропускає записи, чий PK вже існує в таблиці
+ * (ON CONFLICT DO NOTHING на Postgres), нічого не перезаписує і не падає
+ * з помилкою unique/primary key constraint при повторному запуску.
+ */
+async function safeBulkCreate(Model, data, options = {}) {
+  if (!data || data.length === 0) return;
+
+  await Model.bulkCreate(data, {
+    ignoreDuplicates: true, // Postgres: ON CONFLICT (pk) DO NOTHING
+    validate: true,
+    ...options,
+  });
+}
+
 export default async function seedAll() {
   try {
     console.log("Starting database seeding...");
@@ -71,38 +86,34 @@ export default async function seedAll() {
         id: area._id?.$oid || area.id,
         name: area.name,
       }));
-      await Area.bulkCreate(mappedAreas);
+      await safeBulkCreate(Area, mappedAreas);
     }
 
-    if (categoriesJson.length > 0) await Category.bulkCreate(categoriesJson);
-    if (jobPositionsJson.length > 0)
-      await JobPosition.bulkCreate(jobPositionsJson);
-    if (usersJson.length > 0) await User.bulkCreate(usersJson);
+    await safeBulkCreate(Category, categoriesJson);
+    await safeBulkCreate(JobPosition, jobPositionsJson);
+    await safeBulkCreate(User, usersJson);
 
     // LEVEL 2: Tables dependent on Users
     console.log(
       "Seeding user-dependent tables (Profiles, Companies, Wallets)...",
     );
-    if (workerProfilesJson.length > 0)
-      await WorkerProfile.bulkCreate(workerProfilesJson);
-    if (companiesJson.length > 0) await Company.bulkCreate(companiesJson);
-    if (walletsJson.length > 0) await Wallet.bulkCreate(walletsJson);
+    await safeBulkCreate(WorkerProfile, workerProfilesJson);
+    await safeBulkCreate(Company, companiesJson);
+    await safeBulkCreate(Wallet, walletsJson);
 
     // LEVEL 3: Tables dependent on Companies
     console.log("Seeding Locations...");
-    if (locationsJson.length > 0) await Location.bulkCreate(locationsJson);
+    await safeBulkCreate(Location, locationsJson);
 
     // LEVEL 4: Tables dependent on Locations, Positions, and Categories
     console.log("Seeding Shifts...");
-    if (shiftsJson.length > 0) await Shift.bulkCreate(shiftsJson);
+    await safeBulkCreate(Shift, shiftsJson);
 
     // LEVEL 5: Tables dependent on Shifts and Users
     console.log("Seeding Shift Applications, Reviews, and Transactions...");
-    if (shiftApplicationsJson.length > 0)
-      await ShiftApplication.bulkCreate(shiftApplicationsJson);
-    if (reviewsJson.length > 0) await Review.bulkCreate(reviewsJson);
-    if (transactionsJson.length > 0)
-      await Transaction.bulkCreate(transactionsJson);
+    await safeBulkCreate(ShiftApplication, shiftApplicationsJson);
+    await safeBulkCreate(Review, reviewsJson);
+    await safeBulkCreate(Transaction, transactionsJson);
 
     // =========================================================================
     // 3. ОНОВЛЕННЯ ЛІЧИЛЬНИКІВ POSTGRESQL (SEQUENCE)
@@ -125,9 +136,15 @@ export default async function seedAll() {
 
     for (const table of tablesWithSequences) {
       try {
-        // SQL запит, який каже базі: "Встанови лічильник на максимальний існуючий ID в таблиці"
+        // COALESCE(MAX(id), 1) захищає від помилки на порожній таблиці,
+        // а третій аргумент false у setval гарантує, що наступний nextval()
+        // поверне саме MAX(id)+1, а не пропустить/повторить значення.
         await sequelize.query(
-          `SELECT setval('"${table}_id_seq"', (SELECT COALESCE(MAX(id), 1) FROM "${table}"));`,
+          `SELECT setval(
+             pg_get_serial_sequence('"${table}"', 'id'),
+             (SELECT COALESCE(MAX(id), 1) FROM "${table}"),
+             (SELECT COUNT(*) > 0 FROM "${table}")
+           );`,
         );
       } catch (seqError) {
         console.warn(
