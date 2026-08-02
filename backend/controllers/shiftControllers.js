@@ -1,4 +1,4 @@
-import * as shiftService from "../services/shiftServices.js";
+import * as shiftService from "./shift.service.js";
 
 /**
  * Обробляє запит на отримання всіх змін.
@@ -10,7 +10,7 @@ export const getAllShifts = async (req, res, next) => {
     const { page = 1, limit = 10, minPrice, maxPrice, categoryId } = req.query;
 
     // 2. Передаємо параметри в Service layer
-    const result = await shiftService.getAllShifts({
+    const result = await shiftService.getShifts({
       page: parseInt(page, 10),
       limit: parseInt(limit, 10),
       minPrice: minPrice ? parseFloat(minPrice) : undefined,
@@ -100,5 +100,94 @@ export const createShift = async (req, res, next) => {
     });
   } catch (error) {
     next(error); // Передаємо помилку в центральний errorHandler
+  }
+};
+
+/**
+ * Обробляє запит на оновлення зміни (тільки для власника)
+ */
+export const updateShift = async (req, res, next) => {
+  try {
+    const shiftId = req.params.id;
+    const userId = req.user?.id || 1; // Заглушка авторизації
+
+    // 1. Отримуємо зміну
+    const shift = await shiftService.getShiftById(shiftId);
+    if (!shift) {
+      const error = new Error("Зміну не знайдено.");
+      error.status = 404;
+      throw error;
+    }
+
+    // 2. Перевірка власника (через зв'язки Shift -> Location -> Company)
+    if (shift.Location.Company.ownerId !== userId) {
+      const error = new Error("У вас немає прав на редагування цієї зміни.");
+      error.status = 403;
+      throw error;
+    }
+
+    // 3. Бізнес-логіка: забороняємо редагувати зміну, якщо вона вже заброньована або завершена
+    if (shift.status !== "open") {
+      const error = new Error(
+        "Не можна редагувати зміну, яка вже заброньована робітником або завершена.",
+      );
+      error.status = 400; // Bad Request
+      throw error;
+    }
+
+    // 4. Оновлення
+    const updatedShift = await shiftService.updateShift(shiftId, req.body);
+
+    res.status(200).json({
+      message: "Зміну успішно оновлено",
+      data: updatedShift,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Обробляє запит на скасування зміни
+ */
+export const cancelShift = async (req, res, next) => {
+  try {
+    const shiftId = req.params.id;
+    const userId = req.user?.id || 1; // Заглушка авторизації
+
+    const shift = await shiftService.getShiftById(shiftId);
+    if (!shift) {
+      const error = new Error("Зміну не знайдено.");
+      error.status = 404;
+      throw error;
+    }
+
+    // Перевірка власника
+    if (shift.Location.Company.ownerId !== userId) {
+      const error = new Error("У вас немає прав на скасування цієї зміни.");
+      error.status = 403;
+      throw error;
+    }
+
+    // Якщо вона вже скасована або успішно завершена
+    if (shift.status === "cancelled" || shift.status === "completed") {
+      const error = new Error(
+        "Цю зміну не можна скасувати, вона вже завершена або скасована раніше.",
+      );
+      error.status = 400;
+      throw error;
+    }
+
+    // TODO в майбутньому: якщо статус був 'booked' (робітник вже знайшовся),
+    // тут треба додати логіку повернення коштів з холду (Frozen Balance) на звичайний баланс бізнесу.
+
+    const cancelledShift = await shiftService.cancelShift(shiftId);
+
+    res.status(200).json({
+      message: "Зміну успішно скасовано",
+      data: cancelledShift,
+    });
+  } catch (error) {
+    next(error);
   }
 };
