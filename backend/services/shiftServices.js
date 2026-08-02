@@ -111,7 +111,10 @@ export const getShiftById = async (shiftId) => {
       {
         model: Location,
         attributes: ["id", "title", "address", "city", "latitude", "longitude"],
-        include: [{ model: Company, attributes: ["id", "name", "edrpou"] }],
+        // ДОДАНО ownerId, щоб ми могли перевіряти права доступу
+        include: [
+          { model: Company, attributes: ["id", "name", "edrpou", "ownerId"] },
+        ],
       },
     ],
   });
@@ -143,4 +146,22 @@ export const verifyLocationOwnership = async (locationId, userId) => {
  */
 export const createShift = async (shiftData) => {
   return await Shift.create(shiftData);
+};
+
+/**
+ * Оновлює існуючу зміну
+ */
+export const updateShift = async (shiftId, updateData) => {
+  const shift = await Shift.findByPk(shiftId);
+  if (!shift) return null;
+  return await shift.update(updateData);
+};
+
+/**
+ * Переводить зміну в статус скасованої
+ */
+export const cancelShift = async (shiftId) => {
+  const shift = await Shift.findByPk(shiftId);
+  if (!shift) return null;
+  return await shift.update({ status: "cancelled" });
 };
