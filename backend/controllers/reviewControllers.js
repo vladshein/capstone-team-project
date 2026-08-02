@@ -21,3 +21,17 @@ export const createReview = async (req, res, next) => {
     next(error);
   }
 };
+
+export const getReviewsByShiftId = async (req, res, next) => {
+  try {
+    const shiftId = parseInt(req.params.shiftId, 10);
+    const reviews = await reviewService.getReviewsByShiftId(shiftId);
+
+    res.status(200).json({
+      message: "Відгуки успішно отримано",
+      data: reviews,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

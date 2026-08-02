@@ -5,19 +5,12 @@ import {
   logoutUser,
   updateAvatar,
   getUserFollowers,
-} from '../services/authServices.js';
+} from "../services/authServices.js";
 
 export const registerController = async (req, res) => {
-  const newUser = await registerUser(req.body);
+  const result = await registerUser(req.body);
 
-  res.status(201).json({
-    id: newUser.id,
-    email: newUser.email,
-    phone: newUser.phone,
-    role: newUser.role,
-    avatar: newUser.avatar,
-    isVerified: newUser.isVerified,
-  });
+  res.status(201).json(result);
 };
 
 export const loginController = async (req, res) => {
@@ -38,7 +31,7 @@ export const logoutController = async (req, res) => {
 export const updateAvatarController = async (req, res, next) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ message: 'Please upload a file' });
+      return res.status(400).json({ message: "Please upload a file" });
     }
 
     const result = await updateAvatar(req.user, req.file);

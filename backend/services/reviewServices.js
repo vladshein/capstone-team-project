@@ -2,11 +2,108 @@ import * as shiftServices from "./shiftServices.js";
 import {
   Review,
   Shift,
-  Location,
   Company,
   ShiftApplication,
+  User,
 } from "../db/models/index.js";
 import HTTPError from "../helpers/HttpError.js";
+
+const getReviewContext = async ({ userId, shiftId, rating }) => {
+  const user = await User.findByPk(userId);
+
+  if (!user) {
+    throw HTTPError(404, "Користувача не знайдено.");
+  }
+
+  if (!user.role || !["worker", "business_client"].includes(user.role)) {
+    throw HTTPError(403, "Ця роль не може створювати відгуки.");
+  }
+
+  if (rating < 1 || rating > 5) {
+    throw HTTPError(400, "Рейтинг зміни має бути від 1 до 5.");
+  }
+
+  const shift = await Shift.findOne({
+    where: { id: shiftId },
+    include: [
+      {
+        model: Company,
+        attributes: ["ownerId"],
+      },
+      {
+        model: ShiftApplication,
+        attributes: ["workerId", "status"],
+      },
+    ],
+  });
+
+  if (!shift) {
+    throw HTTPError(404, "Зміна не знайдена.");
+  }
+
+  if (shift.status !== "completed") {
+    throw HTTPError(
+      400,
+      "Ви можете створити відгук лише для завершеної зміни.",
+    );
+  }
+
+  const applications = shift.ShiftApplications;
+
+  if (!applications || applications.length === 0) {
+    throw HTTPError(
+      404,
+      "Заявку на цю зміну не знайдено. Неможливо створити відгук.",
+    );
+  }
+
+  const completedApplication = applications.find(
+    (application) => application.status === "completed",
+  );
+
+  if (!completedApplication) {
+    throw HTTPError(404, "Виконавця, який завершив цю зміну, не знайдено.");
+  }
+
+  return {
+    user,
+    shift,
+    companyOwnerId: shift.Company.ownerId,
+    workerId: completedApplication.workerId,
+  };
+};
+
+const resolveReviewDirection = ({ user, companyOwnerId, workerId }) => {
+  if (user.role === "business_client") {
+    if (user.id !== companyOwnerId) {
+      throw HTTPError(
+        403,
+        "Лише власник компанії може створювати відгук на виконавця.",
+      );
+    }
+
+    return {
+      reviewerId: companyOwnerId,
+      revieweeId: workerId,
+    };
+  }
+
+  if (user.role === "worker") {
+    if (user.id !== workerId) {
+      throw HTTPError(
+        403,
+        "Лише виконавець цієї зміни може створювати відгук на компанію.",
+      );
+    }
+
+    return {
+      reviewerId: workerId,
+      revieweeId: companyOwnerId,
+    };
+  }
+
+  throw HTTPError(403, "Ця роль не може створювати відгуки.");
+};
 
 export const getReviewById = async (reviewId) => {
   const review = await Review.findByPk(reviewId);
@@ -22,68 +119,22 @@ export const getReviewsByShiftId = async (shiftId) => {
 };
 
 export const createReview = async ({ userId, shiftId, rating, comment }) => {
-  // Check if the shift exists and is completed
- const shift = await Shift.findOne({
-   where: { id: shiftId },
-   include: [
-     {
-       model: Company,
-       attributes: ["ownerId"], 
-     },
-     {
-       model: ShiftApplication,
-       attributes: ["workerId"],
-     },
-   ],
- });
+  const { user, companyOwnerId, workerId } = await getReviewContext({
+    userId,
+    shiftId,
+    rating,
+  });
 
-  if (!shift) {
-    throw HTTPError(404, "Зміна не знайдена.");
-  }
-  if (shift.status !== "completed") {
-    throw HTTPError(
-      400,
-      "Ви можете створити відгук лише для завершеної зміни.",
-    );
-  }
+  const { reviewerId, revieweeId } = resolveReviewDirection({
+    user,
+    companyOwnerId,
+    workerId,
+  });
 
-  // Check if the user has already left a review for this shift
-  const reviews = await getReviewsByShiftId(shiftId);
-  if (
-    reviews.length > 0 &&
-    reviews.some((review) => review.reviewerId === userId)
-  ) {
-    throw HTTPError(400, "Ви вже залишали відгук для цієї зміни.");
-  }
-
-  // Validate rating
-  if (rating < 1 || rating > 5) {
-    throw HTTPError(400, "Рейтинг зміни має бути від 1 до 5.");
-  }
-
-  // Check if the user is authorized to create a review for this shift
-  const applications = shift.ShiftApplications;
-
-  // Перевіряємо, чи взагалі існує хоча б одна заявка на цю зміну
-  if (!applications || applications.length === 0) {
-    throw HTTPError(
-      404,
-      "Заявку на цю зміну не знайдено. Неможливо створити відгук.",
-    );
-  }
-
-  const workerId = applications[0].workerId;
-
-  // Check if the user is authorized to create a review for this shift
-  if (workerId !== userId) {
-    throw HTTPError(403, `У вас немає прав створювати відгук на цій зміні.`);
-  }
-
-  // Assuming the reviewee is the worker who completed the shift
   const newReview = await Review.create({
-    reviewerId: userId,
-    shiftId: shiftId,
-    revieweeId: shift.Company.ownerId,
+    reviewerId,
+    shiftId,
+    revieweeId,
     rating,
     comment,
   });
