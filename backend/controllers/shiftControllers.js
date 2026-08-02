@@ -10,7 +10,7 @@ export const getAllShifts = async (req, res, next) => {
     const { page = 1, limit = 10, minPrice, maxPrice, categoryId } = req.query;
 
     // 2. Передаємо параметри в Service layer
-    const result = await shiftService.getShifts({
+    const result = await shiftService.getAllShifts({
       page: parseInt(page, 10),
       limit: parseInt(limit, 10),
       minPrice: minPrice ? parseFloat(minPrice) : undefined,
