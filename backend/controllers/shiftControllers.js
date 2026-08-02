@@ -1,4 +1,4 @@
-import * as shiftService from "./shift.service.js";
+import * as shiftService from "../services/shiftServices.js";
 
 /**
  * Обробляє запит на отримання всіх змін.
