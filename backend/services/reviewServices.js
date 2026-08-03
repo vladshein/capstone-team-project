@@ -8,6 +8,16 @@ import {
 } from "../db/models/index.js";
 import HTTPError from "../helpers/HttpError.js";
 
+const checkPermissionToModifyReview = async (reviewId, userId) => {
+  const review = await Review.findByPk(reviewId);
+  if (!review) {
+    throw HTTPError(404, "Відгук не знайдено.");
+  }
+  if (userId !== review.reviewerId) {
+    throw HTTPError(403, "Ви не маєте права редагувати цей відгук.");
+  }
+};
+
 const getReviewContext = async ({ userId, shiftId, rating }) => {
   const user = await User.findByPk(userId);
 
@@ -140,4 +150,27 @@ export const createReview = async ({ userId, shiftId, rating, comment }) => {
   });
 
   return newReview;
+};
+
+export const updateReview = async (reviewId, userId, updateData) => {
+  const review = await getReviewById(reviewId);
+  await checkPermissionToModifyReview(reviewId, userId);
+  if (!updateData.rating) {
+    if (updateData.rating < 1 || updateData.rating > 5) {
+      throw HTTPError(400, "Рейтинг зміни має бути від 1 до 5.");
+    }
+  }
+  const updatedReview = await review.update(updateData);
+  return updatedReview;
+};
+
+export const deleteReview = async (reviewId, userId) => {
+  const review = await getReviewById(reviewId);
+  await checkPermissionToModifyReview(reviewId, userId);
+  await review.destroy();
+};
+
+export const getReviewsByRevieweeId = async (revieweeId) => {
+  const reviews = await Review.findAll({ where: { revieweeId } });
+  return reviews;
 };
