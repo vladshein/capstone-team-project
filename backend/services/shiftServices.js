@@ -129,7 +129,7 @@ export const verifyLocationOwnership = async (locationId, userId) => {
     include: [
       {
         model: Company,
-        attributes: ["ownerId"],
+        attributes: ["id", "ownerId"],
       },
     ],
   });
@@ -138,7 +138,8 @@ export const verifyLocationOwnership = async (locationId, userId) => {
   if (!location || location.Company.ownerId !== userId) {
     return false;
   }
-  return true;
+
+  return location.Company.id;
 };
 
 /**

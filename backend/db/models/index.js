@@ -35,6 +35,13 @@ Company.hasMany(Location, {
 });
 Location.belongsTo(Company, { foreignKey: "companyId" });
 
+// Додаємо прямий зв'язок: Company <-> Shift (1:M)
+Company.hasMany(Shift, {
+  foreignKey: { name: "companyId", allowNull: false },
+  onDelete: "CASCADE",
+});
+Shift.belongsTo(Company, { foreignKey: "companyId" });
+
 // --- 4. Location <-> Shift (1:M) ---
 Location.hasMany(Shift, {
   foreignKey: { name: "locationId", allowNull: false },
@@ -123,8 +130,8 @@ Transaction.belongsTo(Shift, { foreignKey: "shiftId" });
 const syncDatabase = async () => {
   try {
     // await sequelize.sync({ force: true });
-    // await sequelize.sync({ alter: true });
-    // await seedAll();
+    await sequelize.sync({ alter: true });
+    await seedAll();
     // await seedA();
     console.log("Database synchronized successfully");
   } catch (error) {

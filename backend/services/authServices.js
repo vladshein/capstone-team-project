@@ -4,11 +4,41 @@ import bcrypt from "bcrypt";
 import HttpError from "../helpers/HttpError.js";
 import gravatar from "gravatar";
 import * as fs from "node:fs/promises";
-import path from "node:path"
+import path from "node:path";
 import { createToken } from "../helpers/jwt.js";
 
 const { JWT_SECRET } = process.env;
 const avatarsPath = path.resolve("public", "avatars");
+
+const toDatabaseRole = (role) => {
+  if (role === "business") {
+    return "business_client";
+  }
+
+  return role || "worker";
+};
+
+const toClientRole = (role) => {
+  if (role === "business_client") {
+    return "business";
+  }
+
+  return role;
+};
+
+const buildAuthResponse = (user, token) => ({
+  user: {
+    id: user.id,
+    email: user.email,
+    role: toClientRole(user.role),
+    displayName: user.name || user.email,
+    avatarUrl: user.avatar,
+    balance: 0,
+    phone: user.phone,
+    isVerified: user.isVerified,
+  },
+  accessToken: token,
+});
 
 export const findUser = async (where) => {
   return User.findOne({ where });
@@ -16,6 +46,7 @@ export const findUser = async (where) => {
 
 export const registerUser = async (payload) => {
   const { email, phone, password, role } = payload;
+  const databaseRole = toDatabaseRole(role);
 
   const existingUser = await User.findOne({
     where: {
@@ -42,10 +73,14 @@ export const registerUser = async (payload) => {
     phone,
     passwordHash,
     avatar,
-    role: role || "worker",
+    role: databaseRole,
   });
 
-  return newUser;
+  const accessToken = createToken({ id: newUser.id });
+
+  await newUser.update({ token: accessToken });
+
+  return buildAuthResponse(newUser, accessToken);
 };
 
 export const loginUser = async ({ password, email }) => {
@@ -63,31 +98,17 @@ export const loginUser = async ({ password, email }) => {
     id: user.id,
   };
 
-  const token = createToken(payload);
+  const accessToken = createToken(payload);
 
-  await user.update({ token });
-  return {
-    token,
-    id: user.id,
-    email: user.email,
-    avatar: user.avatar,
-    phone: user.phone,
-    role: user.role,
-  };
+  await user.update({ token: accessToken });
+  return buildAuthResponse(user, accessToken);
 };
 
 export const refreshUser = async (user) => {
-  const token = createToken({ id: user.id });
-  await user.update({ token });
+  const accessToken = createToken({ id: user.id });
+  await user.update({ token: accessToken });
 
-  return {
-    id: user.id,
-    email: user.email,
-    avatar: user.avatar,
-    phone: user.phone,
-    role: user.role,
-    token,
-  };
+  return buildAuthResponse(user, accessToken);
 };
 
 export const logoutUser = async (user) => {

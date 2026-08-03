@@ -67,11 +67,11 @@ export const createShift = async (req, res, next) => {
     } = req.body;
 
     // 1. Перевірка безпеки: чи належить ця локація цьому користувачу?
-    const isOwner = await shiftService.verifyLocationOwnership(
+    const companyId = await shiftService.verifyLocationOwnership(
       locationId,
       userId,
     );
-    if (!isOwner) {
+    if (!companyId) {
       const error = new Error(
         "У вас немає прав створювати зміну на цій локації.",
       );
@@ -81,6 +81,7 @@ export const createShift = async (req, res, next) => {
 
     // 2. Створення зміни
     const newShift = await shiftService.createShift({
+      companyId,
       locationId,
       positionId,
       categoryId,
