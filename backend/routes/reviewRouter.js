@@ -29,6 +29,7 @@ reviewRouter.get(
 
 reviewRouter.post(
   "/:shiftId",
+  validateParams(shiftIdParamsSchema),
   validateBody(createReviewSchema),
   authenticate,
   reviewController.createReview,

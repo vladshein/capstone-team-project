@@ -3,7 +3,7 @@ import * as reviewService from "../services/reviewServices.js";
 export const createReview = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const shiftId = parseInt(req.params.shiftId, 10);
+    const { shiftId } = req.validatedParams;
     const { rating, comment } = req.body;
 
     const newReview = await reviewService.createReview({
