@@ -155,11 +155,6 @@ export const createReview = async ({ userId, shiftId, rating, comment }) => {
 export const updateReview = async (reviewId, userId, updateData) => {
   const review = await getReviewById(reviewId);
   await checkPermissionToModifyReview(reviewId, userId);
-  if (!updateData.rating) {
-    if (updateData.rating < 1 || updateData.rating > 5) {
-      throw HTTPError(400, "Рейтинг зміни має бути від 1 до 5.");
-    }
-  }
   const updatedReview = await review.update(updateData);
   return updatedReview;
 };

@@ -61,7 +61,7 @@ export const deleteReview = async (req, res, next) => {
 
 export const getReviewsByShiftId = async (req, res, next) => {
   try {
-    const shiftId = parseInt(req.params.shiftId, 10);
+    const { shiftId } = req.validatedParams;
     const reviews = await reviewService.getReviewsByShiftId(shiftId);
 
     res.status(200).json({
