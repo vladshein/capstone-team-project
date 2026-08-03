@@ -5,6 +5,7 @@ import {
   createShiftSchema,
   updateShiftSchema,
 } from "../schemas/shiftSchemas.js";
+import checkRole from "../middlewares/checkRole.js";
 import authenticate from "../middlewares/authenticate.js";
 
 const shiftRouter = express.Router();
@@ -29,8 +30,9 @@ shiftRouter.get("/:id", shiftController.getShiftById);
  */
 shiftRouter.post(
   "/",
-  validateBody(createShiftSchema),
   authenticate,
+  checkRole("business_client", "admin"),
+  validateBody(createShiftSchema),
   shiftController.createShift,
 );
 
@@ -40,8 +42,9 @@ shiftRouter.post(
  */
 shiftRouter.patch(
   "/:id",
-  validateBody(updateShiftSchema),
   authenticate,
+  checkRole("business_client", "admin"),
+  validateBody(updateShiftSchema),
   shiftController.updateShift,
 );
 
@@ -49,6 +52,11 @@ shiftRouter.patch(
  * @route PATCH /api/shifts/:id/cancel
  * @desc Скасувати зміну (тільки для власника). Змінює статус на 'cancelled'.
  */
-shiftRouter.patch("/:id/cancel", authenticate, shiftController.cancelShift);
+shiftRouter.patch(
+  "/:id/cancel",
+  authenticate,
+  checkRole("business_client", "admin"),
+  shiftController.cancelShift,
+);
 
 export default shiftRouter;
