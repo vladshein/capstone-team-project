@@ -7,10 +7,18 @@ import {
   reviewIdParamsSchema,
   updateReviewSchema,
   revieweeIdParamsSchema,
+  shiftIdParamsSchema,
 } from "../schemas/reviewSchemas.js";
 import authenticate from "../middlewares/authenticate.js";
 
 const reviewRouter = express.Router();
+
+reviewRouter.get(
+  "/shift/:shiftId",
+  validateParams(shiftIdParamsSchema),
+  authenticate,
+  reviewController.getReviewsByShiftId,
+);
 
 reviewRouter.get(
   "/:revieweeId",
@@ -21,6 +29,7 @@ reviewRouter.get(
 
 reviewRouter.post(
   "/:shiftId",
+  validateParams(shiftIdParamsSchema),
   validateBody(createReviewSchema),
   authenticate,
   reviewController.createReview,

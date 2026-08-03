@@ -1,4 +1,3 @@
-import * as shiftServices from "./shiftServices.js";
 import {
   Review,
   Shift,
@@ -8,11 +7,7 @@ import {
 } from "../db/models/index.js";
 import HTTPError from "../helpers/HttpError.js";
 
-const checkPermissionToModifyReview = async (reviewId, userId) => {
-  const review = await Review.findByPk(reviewId);
-  if (!review) {
-    throw HTTPError(404, "Відгук не знайдено.");
-  }
+const checkPermissionToModifyReview = (review, userId) => {
   if (userId !== review.reviewerId) {
     throw HTTPError(403, "Ви не маєте права редагувати цей відгук.");
   }
@@ -154,19 +149,14 @@ export const createReview = async ({ userId, shiftId, rating, comment }) => {
 
 export const updateReview = async (reviewId, userId, updateData) => {
   const review = await getReviewById(reviewId);
-  await checkPermissionToModifyReview(reviewId, userId);
-  if (!updateData.rating) {
-    if (updateData.rating < 1 || updateData.rating > 5) {
-      throw HTTPError(400, "Рейтинг зміни має бути від 1 до 5.");
-    }
-  }
+  checkPermissionToModifyReview(review, userId);
   const updatedReview = await review.update(updateData);
   return updatedReview;
 };
 
 export const deleteReview = async (reviewId, userId) => {
   const review = await getReviewById(reviewId);
-  await checkPermissionToModifyReview(reviewId, userId);
+  checkPermissionToModifyReview(review, userId);
   await review.destroy();
 };
 

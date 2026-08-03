@@ -19,5 +19,9 @@ export const reviewIdParamsSchema = Joi.object({
 });
 
 export const revieweeIdParamsSchema = Joi.object({
-  revieweeId: Joi.string().required(),
+  revieweeId: Joi.number().integer().positive().required(),
+});
+
+export const shiftIdParamsSchema = Joi.object({
+  shiftId: Joi.number().integer().positive().required(),
 });
