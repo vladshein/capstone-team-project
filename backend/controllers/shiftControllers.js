@@ -52,9 +52,7 @@ export const getShiftById = async (req, res, next) => {
  */
 export const createShift = async (req, res, next) => {
   try {
-    // В реальному додатку userId ми беремо з токена авторизації (наприклад req.user.id)
-    // Для тестування поки захардкодимо ID власника "Сільпо" (id: 1) з наших сідів.
-    const userId = req.user?.id || 1;
+    const userId = req.user.id;
 
     // Всі дані вже провалідовані через Joi у validateBody
     const {
@@ -109,7 +107,7 @@ export const createShift = async (req, res, next) => {
 export const updateShift = async (req, res, next) => {
   try {
     const shiftId = req.params.id;
-    const userId = req.user?.id || 1; // Заглушка авторизації
+    const userId = req.user.id;
 
     // 1. Отримуємо зміну
     const shift = await shiftService.getShiftById(shiftId);
@@ -153,7 +151,7 @@ export const updateShift = async (req, res, next) => {
 export const cancelShift = async (req, res, next) => {
   try {
     const shiftId = req.params.id;
-    const userId = req.user?.id || 1; // Заглушка авторизації
+    const userId = req.user.id;
 
     const shift = await shiftService.getShiftById(shiftId);
     if (!shift) {
