@@ -38,7 +38,9 @@ export function formatPriceLabel(shift: Shift) {
   const hours =
     Number.isFinite(start) && Number.isFinite(end) ? Math.max((end - start) / 3_600_000, 0) : 0;
   const total = hours * shift.hourlyRate + (shift.bonusRate ?? 0);
+  
   return total > 0
     ? `~${PRICE_FORMATTER.format(total)}₴`
     : `${PRICE_FORMATTER.format(shift.hourlyRate)}₴/год`;
+    console.log({ hours, rate: shift.hourlyRate, bonus: shift.bonusRate, total })
 }

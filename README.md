@@ -18,6 +18,7 @@ DB_HOST=postgres
 DB_PORT=5432
 REDIS_HOST=valkey
 REDIS_PORT=6379
+JWT_SECRET=JWT_SECRET
 VITE_API_URL=http://localhost:5000/api
 ```
 

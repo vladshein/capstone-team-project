@@ -4,7 +4,7 @@ import type { SignInPayload } from "../../components/auth/SignInModal";
 import type { SignUpPayload } from "../../components/auth/SignUpModal";
 import type { RootState } from "../store";
 import { authActions } from "./constants";
-import type { ApiError, AuthResponse } from "./types";
+import type { ApiError, AuthResponse } from "./types"
 
 const toApiError = (error: unknown): ApiError => {
   if (typeof error === "object" && error !== null && "response" in error) {

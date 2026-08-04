@@ -12,33 +12,6 @@ interface AuthModalsProps {
   onSignUp: (payload: SignUpPayload) => Promise<void>;
 }
 
-/**
- * Монтується один раз (наприклад у App.tsx поруч з <MainLayout>).
- * Яка модалка відкрита визначається пропом `mode`, яким зазвичай керує
- * App через onOpenSignIn/onOpenSignUp, що передаються в <MainLayout>.
- *
- * Приклад підключення в App.tsx:
- *
- *   const [authModal, setAuthModal] = useState<AuthModalMode>(null);
- *
- *   <MainLayout
- *     isAuthenticated={isAuthenticated}
- *     userBalance={userBalance}
- *     onOpenSignIn={() => setAuthModal("signin")}
- *     onOpenSignUp={() => setAuthModal("signup")}
- *     onLogout={handleLogout}
- *   >
- *     ...
- *   </MainLayout>
- *
- *   <AuthModals
- *     mode={authModal}
- *     onClose={() => setAuthModal(null)}
- *     onSwitchMode={setAuthModal}
- *     onSignIn={handleSignIn}
- *     onSignUp={handleSignUp}
- *   />
- */
 export function AuthModals({
   mode,
   onClose,

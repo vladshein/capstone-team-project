@@ -5,8 +5,6 @@ import { HeaderAuth } from "./HeaderAuth";
 export interface MobileMenuProps {
   isOpen: boolean;
   onClose: () => void;
-  isAuthenticated?: boolean;
-  userBalance?: number;
   onOpenSignIn?: () => void;
   onOpenSignUp?: () => void;
   onLogout?: () => void;
@@ -15,8 +13,6 @@ export interface MobileMenuProps {
 export function MobileMenu({
   isOpen,
   onClose,
-  isAuthenticated = false,
-  userBalance = 0,
   onOpenSignIn,
   onOpenSignUp,
   onLogout,
@@ -24,16 +20,11 @@ export function MobileMenu({
   return (
     <div
       className={`fixed inset-0 z-[60] isolate transition-opacity duration-300 md:hidden ${
-        isOpen
-          ? "pointer-events-auto opacity-100"
-          : "pointer-events-none opacity-0"
+        isOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
       }`}
       aria-hidden={!isOpen}
     >
-      <div
-        className="absolute inset-0 bg-ink/40 backdrop-blur-[2px]"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-ink/40 backdrop-blur-[2px]" onClick={onClose} />
 
       <div
         style={{ backgroundColor: "#ffffff", opacity: 1 }}
@@ -53,12 +44,10 @@ export function MobileMenu({
           </button>
         </div>
 
-        <MobileNav onClose={onClose} />
+        <MobileNav />
 
         <HeaderAuth
           mobile
-          isAuthenticated={isAuthenticated}
-          userBalance={userBalance}
           onLogout={() => {
             onClose();
             onLogout?.();

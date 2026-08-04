@@ -38,6 +38,7 @@ export function useInfiniteShifts(scrollContainerRef: React.RefObject<HTMLElemen
     };
   }, []);
 
+  // 1. Спершу оголошуємо loadNextPage як завжди
   const loadNextPage = useCallback(async () => {
     if (isLoading || isLoadingMore || !hasMore) return;
     setIsLoadingMore(true);
@@ -54,8 +55,14 @@ export function useInfiniteShifts(scrollContainerRef: React.RefObject<HTMLElemen
     }
   }, [page, isLoading, isLoadingMore, hasMore]);
 
-  // root — контейнер із власним скролом (2-3 рядки), а не вʼюпорт сторінки;
-  // менший rootMargin, бо висота контейнера сама по собі невелика
+  // 2. Тепер loadNextPage вже існує — можна покласти її в ref
+  const loadNextPageRef = useRef(loadNextPage);
+  useEffect(() => {
+    loadNextPageRef.current = loadNextPage;
+  }, [loadNextPage]);
+
+  // 3. sentinelRef більше НЕ залежить від loadNextPage — тільки від scrollContainerRef,
+  // тож обсервер не перестворюється на кожну зміну стейту пагінації
   const sentinelRef = useCallback(
     (node: HTMLDivElement | null) => {
       observerRef.current?.disconnect();
@@ -63,13 +70,13 @@ export function useInfiniteShifts(scrollContainerRef: React.RefObject<HTMLElemen
 
       observerRef.current = new IntersectionObserver(
         (entries) => {
-          if (entries[0]?.isIntersecting) loadNextPage();
+          if (entries[0]?.isIntersecting) loadNextPageRef.current();
         },
         { root: scrollContainerRef.current, rootMargin: "120px" },
       );
       observerRef.current.observe(node);
     },
-    [loadNextPage, scrollContainerRef],
+    [scrollContainerRef],
   );
 
   useEffect(() => () => observerRef.current?.disconnect(), []);
