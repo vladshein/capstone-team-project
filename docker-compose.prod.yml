@@ -1,44 +1,17 @@
 services:
-  traefik:
-    image: traefik:v3.1
-    container_name: traefik
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy
     restart: always
-    security_opt:
-      - no-new-privileges:true
-    command:
-      # Docker Provider
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      # Entrypoints 
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.websecure.address=:443"
-      # HTTP -> HTTPS Redirect
-      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
-      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
-      # SSL Let's Encrypt
-      - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
-      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
-      - "--certificatesresolvers.myresolver.acme.email=${ACME_EMAIL}"
-      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+    env_file:
+      - .env
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"
-      - "./letsencrypt:/letsencrypt"
-    networks:
-      - basenet
-
-  postgres:
-    image: postgres:17-alpine
-    container_name: postgres
-    restart: always
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-    volumes:
-      - pgdata:/var/lib/postgresql/data
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
     networks:
       - basenet
 
@@ -49,30 +22,37 @@ services:
     networks:
       - basenet
 
+  postgres:
+    image: postgres:17-alpine
+    container_name: postgres
+    restart: always
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - basenet
+
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile.prod
+      context: .
+      dockerfile: ./backend/Dockerfile.prod
     container_name: backend
     restart: always
+    env_file:
+      - .env
     environment:
       - NODE_ENV=production
-      - PORT=${PORT:-5000}
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_USER=${POSTGRES_USER}
-      - DB_PASSWORD=${POSTGRES_PASSWORD}
-      - DB_NAME=${POSTGRES_DB}
-      - REDIS_HOST=valkey
-      - REDIS_PORT=6379
+      - DATABASE_USERNAME=${POSTGRES_USER}
+      - DATABASE_PASSWORD=${POSTGRES_PASSWORD}
+      - DATABASE_NAME=${POSTGRES_DB}
+      - DATABASE_HOST=${DB_HOST}
+      - DATABASE_PORT=${DB_PORT}
     volumes:
-      - ./backend/public:/app/public 
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.backend.rule=Host(`${API_DOMAIN}`)"
-      - "traefik.http.routers.backend.entrypoints=websecure"
-      - "traefik.http.routers.backend.tls.certresolver=myresolver"
-      - "traefik.http.services.backend.loadbalancer.server.port=${PORT:-5000}"
+      - ./backend/public:/app/public
     depends_on:
       - postgres
       - valkey
@@ -81,20 +61,15 @@ services:
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile.prod
-      target: production 
+      context: .
+      dockerfile: ./frontend/Dockerfile.prod
+      target: production
+      args:
+        - VITE_API_URL=https://${FRONTEND_DOMAIN}/api
     container_name: frontend
     restart: always
     environment:
-      - VITE_API_URL=https://${API_DOMAIN}
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.frontend.rule=Host(`${FRONTEND_DOMAIN}`)"
-      - "traefik.http.routers.frontend.entrypoints=websecure"
-      - "traefik.http.routers.frontend.tls.certresolver=myresolver"
-      # port 80 (Nginx) or 5173 (Node/Vite)
-      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+      - VITE_API_URL=https://${FRONTEND_DOMAIN}/api
     depends_on:
       - backend
     networks:
@@ -102,8 +77,9 @@ services:
 
 volumes:
   pgdata:
+  caddy_data:
+  caddy_config:
 
 networks:
   basenet:
     driver: bridge
-    

@@ -2,6 +2,7 @@
   "name": "@capstone-project-shift",
   "type": "module",
   "scripts": {
+    "build": "echo 'No build step required'",
     "start": "cross-env NODE_ENV=production node app.js",
     "dev": "cross-env NODE_ENV=development nodemon -L app.js",
     "devmon": "cross-env NODE_ENV=production nodemon app.js",
