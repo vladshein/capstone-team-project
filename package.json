@@ -1,10 +1,17 @@
 {
   "name": "capstone-project-root",
   "private": true,
+  "packageManager": "pnpm@10.14.0",
   "scripts": {
     "dev:backend": "pnpm --filter backend dev",
     "dev:frontend": "pnpm --filter frontend dev",
     "dev": "pnpm --parallel --filter \"./*\" dev",
     "build": "pnpm --recursive build"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "bcrypt",
+      "@scarf/scarf"
+    ]
   }
 }
