@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { MapPin, Search, Wallet, ShieldCheck, Zap } from "lucide-react";
 import { ShiftCard } from "../components/cards/ShiftCard";
 import { Ticker } from "../components/ui/Ticker";
-import { TasksBoard } from "./TasksBoard";
+import { TasksBoard } from "./TasksBoard/TasksBoard";
 import { TestimonialsSlider } from "./Testimonials";
 import { FEATURED_SHIFTS, HOW_IT_WORKS } from "../constants/mockData";
 
