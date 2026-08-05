@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Route, Routes } from "react-router-dom";
-import toast from "react-hot-toast";
+import toast, { Toaster } from "react-hot-toast";
 import { AuthModals, type AuthModalMode } from "./components/auth/AuthModals";
 import type { SignInPayload } from "./components/auth/SignInModal";
 import type { SignUpPayload } from "./components/auth/SignUpModal";
@@ -116,6 +116,7 @@ export default function App() {
         onSignIn={handleSignIn}
         onSignUp={handleSignUp}
       />
+      <Toaster position="top-right" reverseOrder={false} />
     </>
   );
 }

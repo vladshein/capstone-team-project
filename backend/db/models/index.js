@@ -35,13 +35,6 @@ Company.hasMany(Location, {
 });
 Location.belongsTo(Company, { foreignKey: "companyId" });
 
-// Додаємо прямий зв'язок: Company <-> Shift (1:M)
-Company.hasMany(Shift, {
-  foreignKey: { name: "companyId", allowNull: false },
-  onDelete: "CASCADE",
-});
-Shift.belongsTo(Company, { foreignKey: "companyId" });
-
 // --- 4. Location <-> Shift (1:M) ---
 Location.hasMany(Shift, {
   foreignKey: { name: "locationId", allowNull: false },

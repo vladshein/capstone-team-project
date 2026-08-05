@@ -2,6 +2,7 @@ import {
   Review,
   Shift,
   Company,
+  Location,
   ShiftApplication,
   User,
 } from "../db/models/index.js";
@@ -32,8 +33,9 @@ const getReviewContext = async ({ userId, shiftId, rating }) => {
     where: { id: shiftId },
     include: [
       {
-        model: Company,
-        attributes: ["ownerId"],
+        model: Location,
+        attributes: [],
+        include: [{ model: Company, attributes: ["ownerId"] }],
       },
       {
         model: ShiftApplication,
@@ -70,10 +72,15 @@ const getReviewContext = async ({ userId, shiftId, rating }) => {
     throw HTTPError(404, "Виконавця, який завершив цю зміну, не знайдено.");
   }
 
+  const companyOwnerId = shift.Location?.Company?.ownerId;
+  if (!companyOwnerId) {
+    throw HTTPError(404, "Власника компанії для цієї зміни не знайдено.");
+  }
+
   return {
     user,
     shift,
-    companyOwnerId: shift.Company.ownerId,
+    companyOwnerId,
     workerId: completedApplication.workerId,
   };
 };
