@@ -1,6 +1,6 @@
 FROM node:24-alpine
 WORKDIR /app
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@10.14.0 --activate
 RUN chown -R node:node /app
 USER node
 COPY --chown=node:node package.json pnpm-lock.yaml ./
