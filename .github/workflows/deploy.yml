@@ -28,5 +28,5 @@ jobs:
             cd /srv/capstone-app
             git pull origin main
             docker compose -f docker-compose.prod.yml up -d --build frontend backend
+            # docker compose -f docker-compose.prod.yml exec -T backend npm run db:migrate
             docker image prune -f
-            sh ./clear.sh
