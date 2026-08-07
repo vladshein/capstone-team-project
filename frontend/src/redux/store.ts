@@ -12,6 +12,7 @@ import {
   type PersistConfig,
 } from "redux-persist";
 import { authReducer } from "./auth/slice";
+import { businessProfileReducer, workerProfileReducer } from "./profile/slice";
 import type { AuthState } from "./auth/types";
 
 const authPersistConfig: PersistConfig<AuthState> = {
@@ -22,6 +23,8 @@ const authPersistConfig: PersistConfig<AuthState> = {
 
 const rootReducer = combineReducers({
   auth: persistReducer(authPersistConfig, authReducer),
+  workerProfile: workerProfileReducer,
+  businessProfile: businessProfileReducer,
 });
 
 export const store = configureStore({

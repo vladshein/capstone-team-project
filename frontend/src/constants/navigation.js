@@ -4,13 +4,6 @@ export const USER_ROLES = {
   BUSINESS: "business_client",
 };
 
-export const navLinks = [
-  { href: "/", label: "Головна" },
-  { href: "/shifts", label: "Біржа змін" },
-  { href: "/my-shifts", label: "Кабінет виконавця" },
-  { href: "/dashboard", label: "Кабінет замовника" },
-];
-
 export const NAV_LINKS = [
   {
     id: "nav-home",

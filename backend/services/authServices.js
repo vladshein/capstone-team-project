@@ -10,27 +10,28 @@ import { createToken } from "../helpers/jwt.js";
 const { JWT_SECRET } = process.env;
 const avatarsPath = path.resolve("public", "avatars");
 
-const toDatabaseRole = (role) => {
-  if (role === "business") {
-    return "business_client";
-  }
+// const toDatabaseRole = (role) => {
+//   if (role === "business") {
+//     return "business_client";
+//   }
 
-  return role || "worker";
-};
+//   return role || "worker";
+// };
 
-const toClientRole = (role) => {
-  if (role === "business_client") {
-    return "business";
-  }
+// const toClientRole = (role) => {
+//   if (role === "business_client") {
+//     return "business_client";
+//   }
 
-  return role;
-};
+//   return role;
+// };
 
 const buildAuthResponse = (user, token) => ({
   user: {
     id: user.id,
     email: user.email,
-    role: toClientRole(user.role),
+    // role: toClientRole(user.role),
+    role: user.role,
     displayName: user.name || user.email,
     avatarUrl: user.avatar,
     balance: 0,
@@ -46,7 +47,8 @@ export const findUser = async (where) => {
 
 export const registerUser = async (payload) => {
   const { email, phone, password, role } = payload;
-  const databaseRole = toDatabaseRole(role);
+  // const databaseRole = toDatabaseRole(role);
+  const databaseRole = role;
 
   const existingUser = await User.findOne({
     where: {

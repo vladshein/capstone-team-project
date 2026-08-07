@@ -1,16 +1,21 @@
 import * as service from "../services/userServices.js";
+import HttpError from "../helpers/HttpError.js";
 
 /**
  * Get information about current user
  *
- * @param {*} req
- * @param {*} res
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
  */
-export const getCurrentUser = async (req, res) => {
-  const { id } = req.user;
-  // const result = await service.getCurrentUser(id);
-  const result = await service.getCurrentUserInfo(id);
-  res.json(result);
+export const getCurrentUser = async (req, res, next) => {
+  try {
+    const { id } = req.user;
+    const result = await req.profileStrategy(id);
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
 };
 
 /**

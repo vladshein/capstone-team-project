@@ -3,8 +3,8 @@ export type UserRole = "worker" | "business_client";
 export interface AuthUser {
   id: number;
   email: string;
+  displayName?: string;
   role: UserRole;
-  balance?: number;
   avatar?: string | null;
   phone?: string;
   isVerified?: boolean;

@@ -14,7 +14,7 @@ export function LogoutButton({
       <button
         type="button"
         onClick={onLogout}
-        className="flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-pill)] border border-border px-5 text-sm font-medium text-danger"
+        className="flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius-pill)] border border-border px-5 text-sm font-medium text-danger"
       >
         <LogOut className="h-4 w-4" />
         Вийти
