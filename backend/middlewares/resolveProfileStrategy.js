@@ -9,6 +9,7 @@ const strategies = {
 
 const resolveProfileStrategy = (req, res, next) => {
   const { role } = req.user;
+  console.log("DEBUG role:", JSON.stringify(role), "strategy exists:", Boolean(strategies[role]));
   const strategy = strategies[role];
 
   if (!strategy) {

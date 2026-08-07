@@ -9,7 +9,7 @@ import HttpError from "../helpers/HttpError.js";
  * @param {number} userId
  * @returns {Promise<object>}
  */
-export const getBusinessProfile = async (userId) => {
+export const getCompanyProfile = async (userId) => {
   const user = await User.findOne({
     where: { id: userId },
     attributes: ["id", "email", "phone", "avatar", "isVerified", "role", "created_at"],
