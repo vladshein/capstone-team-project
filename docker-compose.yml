@@ -1,21 +1,22 @@
 services:
-  # PostgreSQL
+  
+  # PostgreSQL (GIS)
   postgres:
-    image: postgres:17-alpine
+    image: postgis/postgis:17-3.5-alpine
     container_name: postgres
     restart: always
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
+    environment:
+      - POSTGRES_USER=${DB_ROOT_USER}
+      - POSTGRES_PASSWORD=${DB_ROOT_PASSWORD}
+      - POSTGRES_DB=${DB_ROOT_NAME}  
     volumes:
       - pgdata:/var/lib/postgresql/data
     networks:
       - basenet
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -46,14 +47,9 @@ services:
     restart: always
     ports:
       - "5000:5000"
+    env_file:
+      - ./backend/.env  
     environment:
-      - NODE_ENV=${NODE_ENV}
-      - PORT=${PORT}
-      - DB_HOST=${DB_HOST}
-      - DB_PORT=${DB_PORT}
-      - DB_USER=${POSTGRES_USER}
-      - DB_PASSWORD=${POSTGRES_PASSWORD}
-      - DB_NAME=${POSTGRES_DB}
       - REDIS_HOST=${REDIS_HOST}
       - REDIS_PORT=${REDIS_PORT}
     volumes:
@@ -79,8 +75,9 @@ services:
       && pnpm run dev -- --host 0.0.0.0"
     ports:
       - "5173:5173"
+    env_file:
+      - ./frontend/.env  
     environment:
-      - VITE_API_URL=${VITE_API_URL}
       - CHOKIDAR_USEPOLLING=true
     volumes:
       - ./frontend:/app

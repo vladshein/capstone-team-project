@@ -83,6 +83,7 @@ export function Hero({ onOpenSignUp }: HeroProps) {
           </div>
 
           <div className="relative rounded-[var(--radius-card)] border border-border bg-bg p-2.5 shadow-[0_20px_60px_-30px_rgba(18,19,26,0.35)] sm:p-3">
+            maps
             <svg
               viewBox="0 0 400 320"
               className="aspect-[4/3] h-full w-full rounded-[var(--radius-card)] bg-map-bg sm:aspect-auto"
