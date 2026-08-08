@@ -18,6 +18,7 @@ import {
   Transaction,
   Review,
 } from "./index.js";
+import { buildExpandedShiftFixtures } from "./shiftFixtures.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -72,6 +73,7 @@ export default async function seedAll() {
     const shiftApplicationsJson = loadJson("json/shift_applications.json");
     const reviewsJson = loadJson("json/reviews.json");
     const transactionsJson = loadJson("json/transactions.json");
+    const expandedFixtures = buildExpandedShiftFixtures();
 
     // =========================================================================
     // 2. INSERTION ORDER IS CRITICAL (Parent tables first, then child tables)
@@ -90,7 +92,7 @@ export default async function seedAll() {
     }
 
     await safeBulkCreate(Category, categoriesJson);
-    await safeBulkCreate(JobPosition, jobPositionsJson);
+    await safeBulkCreate(JobPosition, [...jobPositionsJson, ...expandedFixtures.jobPositions]);
     await safeBulkCreate(User, usersJson);
 
     // LEVEL 2: Tables dependent on Users
@@ -98,16 +100,16 @@ export default async function seedAll() {
       "Seeding user-dependent tables (Profiles, Companies, Wallets)...",
     );
     await safeBulkCreate(WorkerProfile, workerProfilesJson);
-    await safeBulkCreate(Company, companiesJson);
+    await safeBulkCreate(Company, [...companiesJson, ...expandedFixtures.companies]);
     await safeBulkCreate(Wallet, walletsJson);
 
     // LEVEL 3: Tables dependent on Companies
     console.log("Seeding Locations...");
-    await safeBulkCreate(Location, locationsJson);
+    await safeBulkCreate(Location, [...locationsJson, ...expandedFixtures.locations]);
 
     // LEVEL 4: Tables dependent on Locations, Positions, and Categories
     console.log("Seeding Shifts...");
-    await safeBulkCreate(Shift, shiftsJson);
+    await safeBulkCreate(Shift, [...shiftsJson, ...expandedFixtures.shifts]);
 
     // LEVEL 5: Tables dependent on Shifts and Users
     console.log("Seeding Shift Applications, Reviews, and Transactions...");

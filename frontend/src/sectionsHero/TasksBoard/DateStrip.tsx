@@ -2,23 +2,34 @@ import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   SELECTED_LABEL_FORMATTER,
-  TODAY_LABEL_FORMATTER,
   WEEKDAY_FORMATTER,
   buildWeekStrip,
 } from "./formatters";
 
-export function DateStrip() {
+export type CalendarPeriod = "week" | "month";
+
+interface DateStripProps {
+  selectedDate: Date | null;
+  onSelectDate: (date: Date) => void;
+  period: CalendarPeriod;
+  onPeriodChange: (period: CalendarPeriod) => void;
+}
+
+const isSameDay = (first: Date, second: Date) =>
+  first.getFullYear() === second.getFullYear() &&
+  first.getMonth() === second.getMonth() &&
+  first.getDate() === second.getDate();
+
+export function DateStrip({ selectedDate, onSelectDate, period, onPeriodChange }: DateStripProps) {
   const [weekOffset, setWeekOffset] = useState(0);
-  const [selected, setSelected] = useState(0);
   const today = new Date();
   const days = useMemo(() => buildWeekStrip(weekOffset), [weekOffset]);
-  const selectedDate = days[selected] ?? today;
 
   return (
     <div className="rounded-[var(--radius-card)] border border-border bg-bg p-4">
       <div className="flex items-center justify-between">
         <p className="font-heading text-sm font-semibold capitalize">
-          {SELECTED_LABEL_FORMATTER.format(selectedDate)}
+          {selectedDate ? SELECTED_LABEL_FORMATTER.format(selectedDate) : "Найближчий період"}
         </p>
         <div className="flex items-center gap-1">
           <button
@@ -40,14 +51,31 @@ export function DateStrip() {
         </div>
       </div>
 
+      <div className="mt-3 grid grid-cols-2 rounded-[var(--radius-pill)] bg-bg-muted p-1 text-xs font-medium">
+        <button
+          type="button"
+          onClick={() => onPeriodChange("week")}
+          className={`rounded-[var(--radius-pill)] px-3 py-1.5 transition-colors ${period === "week" ? "bg-bg text-ink shadow-sm" : "text-text-muted"}`}
+        >
+          Тиждень
+        </button>
+        <button
+          type="button"
+          onClick={() => onPeriodChange("month")}
+          className={`rounded-[var(--radius-pill)] px-3 py-1.5 transition-colors ${period === "month" ? "bg-bg text-ink shadow-sm" : "text-text-muted"}`}
+        >
+          Місяць
+        </button>
+      </div>
+
       <div className="mt-3 grid grid-cols-7 gap-1.5">
-        {days.map((d, i) => {
-          const isSelected = i === selected;
+        {days.map((d) => {
+          const isSelected = selectedDate ? isSameDay(d, selectedDate) : false;
           return (
             <button
               key={d.toISOString()}
               type="button"
-              onClick={() => setSelected(i)}
+              onClick={() => onSelectDate(d)}
               className={`flex flex-col items-center rounded-[var(--radius-card)] py-2 text-xs font-medium transition-colors ${
                 isSelected ? "bg-accent text-white" : "text-text-muted hover:bg-bg-muted"
               }`}
@@ -59,7 +87,11 @@ export function DateStrip() {
         })}
       </div>
 
-      <p className="mt-3 text-xs text-text-subtle">Сьогодні {TODAY_LABEL_FORMATTER.format(today)}</p>
+      <p className="mt-3 text-xs text-text-subtle">
+        {period === "week"
+          ? "Показуємо зміни на 7 днів від обраної дати"
+          : "Показуємо зміни на 30 днів від обраної дати"}
+      </p>
     </div>
   );
 }

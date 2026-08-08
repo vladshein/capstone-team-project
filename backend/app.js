@@ -13,6 +13,7 @@ import shiftRouter from "./routes/shiftRouter.js";
 import companyRouter from "./routes/companyRouter.js";
 import workerProfileRouter from "./routes/workerProfileRouter.js";
 import reviewRouter from "./routes/reviewRouter.js";
+import locationRouter from "./routes/locationRouter.js";
 
 // import handlers & DB
 import notFoundHandler from "./middlewares/notFoundHandler.js";
@@ -22,6 +23,10 @@ import { swaggerDocs } from "./middlewares/swaggerDocs.js";
 import { syncDatabase } from "./db/models/index.js";
 
 const app = express();
+
+// Увімкнути на хостингу за reverse proxy (Nginx, Render, Railway тощо),
+// щоб req.ip містив IP відвідувача з X-Forwarded-For.
+if (process.env.TRUST_PROXY === "true") app.set("trust proxy", 1);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, "public");
@@ -46,6 +51,7 @@ app.use("/api", commonRouter);
 app.use("/api/shifts", shiftRouter);
 app.use("/api/companies", companyRouter);
 app.use("/api/worker-profiles", workerProfileRouter);
+app.use("/api/location", locationRouter);
 
 app.use("/api-docs", swaggerDocs());
 

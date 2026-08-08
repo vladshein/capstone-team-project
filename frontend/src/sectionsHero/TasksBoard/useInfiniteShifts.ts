@@ -3,10 +3,15 @@ import { getAllShifts, type Shift } from "../../api/shifts";
 
 const PAGE_LIMIT = 20;
 
-export function useInfiniteShifts(scrollContainerRef: React.RefObject<HTMLElement>) {
+export function useInfiniteShifts(
+  scrollContainerRef: React.RefObject<HTMLElement>,
+  categoryId: string | number | null,
+  isEnabled: boolean,
+) {
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [totalPages, setTotalPages] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -17,13 +22,25 @@ export function useInfiniteShifts(scrollContainerRef: React.RefObject<HTMLElemen
     let cancelled = false;
 
     async function loadFirstPage() {
+      if (!isEnabled) {
+        setShifts([]);
+        setHasMore(false);
+        setIsLoading(false);
+        return;
+      }
+
       setIsLoading(true);
       setError(null);
       try {
-        const response = await getAllShifts({ page: 1, limit: PAGE_LIMIT });
+        const response = await getAllShifts({
+          page: 1,
+          limit: PAGE_LIMIT,
+          ...(categoryId ? { categoryId: Number(categoryId) } : {}),
+        });
         if (cancelled) return;
         setShifts(response.data);
         setPage(1);
+        setTotalPages(response.totalPages);
         setHasMore(response.currentPage < response.totalPages);
       } catch {
         if (!cancelled) setError("Не вдалося завантажити завдання. Спробуйте пізніше.");
@@ -36,15 +53,41 @@ export function useInfiniteShifts(scrollContainerRef: React.RefObject<HTMLElemen
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [categoryId, isEnabled]);
+
+  const goToPage = useCallback(async (targetPage: number) => {
+    if (!isEnabled || targetPage < 1 || targetPage > totalPages || targetPage === page) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await getAllShifts({
+        page: targetPage,
+        limit: PAGE_LIMIT,
+        ...(categoryId ? { categoryId: Number(categoryId) } : {}),
+      });
+      setShifts(response.data);
+      setPage(response.currentPage);
+      setTotalPages(response.totalPages);
+      setHasMore(response.currentPage < response.totalPages);
+      scrollContainerRef.current?.scrollTo({ top: 0 });
+    } catch {
+      setError("Не вдалося завантажити сторінку.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [categoryId, isEnabled, page, scrollContainerRef, totalPages]);
 
   // 1. Спершу оголошуємо loadNextPage як завжди
   const loadNextPage = useCallback(async () => {
-    if (isLoading || isLoadingMore || !hasMore) return;
+    if (!isEnabled || isLoading || isLoadingMore || !hasMore) return;
     setIsLoadingMore(true);
     try {
       const nextPage = page + 1;
-      const response = await getAllShifts({ page: nextPage, limit: PAGE_LIMIT });
+      const response = await getAllShifts({
+        page: nextPage,
+        limit: PAGE_LIMIT,
+        ...(categoryId ? { categoryId: Number(categoryId) } : {}),
+      });
       setShifts((prev) => [...prev, ...response.data]);
       setPage(nextPage);
       setHasMore(response.currentPage < response.totalPages);
@@ -53,7 +96,7 @@ export function useInfiniteShifts(scrollContainerRef: React.RefObject<HTMLElemen
     } finally {
       setIsLoadingMore(false);
     }
-  }, [page, isLoading, isLoadingMore, hasMore]);
+  }, [categoryId, isEnabled, page, isLoading, isLoadingMore, hasMore]);
 
   // 2. Тепер loadNextPage вже існує — можна покласти її в ref
   const loadNextPageRef = useRef(loadNextPage);
@@ -81,5 +124,5 @@ export function useInfiniteShifts(scrollContainerRef: React.RefObject<HTMLElemen
 
   useEffect(() => () => observerRef.current?.disconnect(), []);
 
-  return { shifts, isLoading, isLoadingMore, error, hasMore, sentinelRef };
+  return { shifts, isLoading, isLoadingMore, error, hasMore, sentinelRef, page, totalPages, goToPage };
 }
