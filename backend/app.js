@@ -10,12 +10,11 @@ import authRouter from "./routes/authRouter.js";
 import userRouter from "./routes/userRouter.js";
 import commonRouter from "./routes/commonRouter.js";
 import shiftRouter from "./routes/shiftRouter.js";
+import companyRouter from "./routes/companyRouter.js";
+import workerProfileRouter from "./routes/workerProfileRouter.js";
+import reviewRouter from "./routes/reviewRouter.js";
 
 // import handlers & DB
-import reviewRouter from "./routes/reviewRouter.js";
-// import recipesRouter from "./routes/recipesRouter.js";
-// import followRouter from "./routes/followRouter.js";
-//import handlers
 import notFoundHandler from "./middlewares/notFoundHandler.js";
 import errorHandler from "./middlewares/errorHandler.js";
 import connectDatabase from "./db/connectDatabase.js";
@@ -45,6 +44,8 @@ app.use("/api/auth", authRouter);
 app.use("/api/users", userRouter);
 app.use("/api", commonRouter);
 app.use("/api/shifts", shiftRouter);
+app.use("/api/companies", companyRouter);
+app.use("/api/worker-profiles", workerProfileRouter);
 
 app.use("/api-docs", swaggerDocs());
 
