@@ -1,6 +1,7 @@
 import express from "express";
 import upload from "../middlewares/upload.js";
 import authenticate from "../middlewares/authenticate.js";
+import resolveProfileStrategy from "../middlewares/resolveProfileStrategy.js";
 import {
   getCurrentUser,
   getFollowingController,
@@ -12,6 +13,7 @@ import { updateAvatarController } from "../controllers/authControllers.js";
 const userRouter = express.Router();
 
 userRouter.get("/current", authenticate, getCurrentUser);
+userRouter.get("/me/profile", authenticate, resolveProfileStrategy, getCurrentUser);
 userRouter.patch(
   "/avatars",
   authenticate,

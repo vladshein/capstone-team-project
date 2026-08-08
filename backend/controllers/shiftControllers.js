@@ -103,6 +103,51 @@ export const createShift = async (req, res, next) => {
 };
 
 /**
+ * Створює відгук виконавця на відкриту зміну.
+ */
+export const applyToShift = async (req, res, next) => {
+  try {
+    const shiftId = Number(req.params.id);
+    const workerId = req.user.id;
+    const shift = await shiftService.getShiftById(shiftId);
+
+    if (!shift) {
+      const error = new Error("Зміну не знайдено.");
+      error.status = 404;
+      throw error;
+    }
+
+    if (shift.status !== "open") {
+      const error = new Error("На цю зміну вже не можна відгукнутися.");
+      error.status = 400;
+      throw error;
+    }
+
+    const existingApplication = await shiftService.findShiftApplication(
+      shiftId,
+      workerId,
+    );
+    if (existingApplication) {
+      const error = new Error("Ви вже відгукнулися на цю зміну.");
+      error.status = 409;
+      throw error;
+    }
+
+    const application = await shiftService.createShiftApplication(
+      shiftId,
+      workerId,
+    );
+
+    res.status(201).json({
+      message: "Відгук на зміну надіслано.",
+      data: application,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * Обробляє запит на оновлення зміни (тільки для власника)
  */
 export const updateShift = async (req, res, next) => {

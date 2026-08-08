@@ -5,39 +5,24 @@ import { HeaderAuth } from "./HeaderAuth";
 import { MobileMenu } from "./MobileMenu";
 
 export interface HeaderProps {
-  isAuthenticated?: boolean;
-  userRole?: string;
-  userBalance?: number;
   onOpenSignIn?: () => void;
   onOpenSignUp?: () => void;
   onLogout?: () => void;
 }
 
-export function Header({
-  isAuthenticated = false,
-  userRole,
-  userBalance = 0,
-  onOpenSignIn,
-  onOpenSignUp,
-  onLogout,
-}: HeaderProps) {
+export function Header({ onOpenSignIn, onOpenSignUp, onLogout }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-bg/90 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
-        <a
-          href="/"
-          className="font-heading text-lg font-bold tracking-tight sm:text-xl"
-        >
+        <a href="/" className="font-heading text-lg font-bold tracking-tight sm:text-xl">
           Зміна<span className="text-accent">.ua</span>
         </a>
 
-        <HeaderNav isAuthenticated={isAuthenticated} userRole={userRole} />
+        <HeaderNav />
 
         <HeaderAuth
-          isAuthenticated={isAuthenticated}
-          userBalance={userBalance}
           onOpenSignIn={onOpenSignIn}
           onOpenSignUp={onOpenSignUp}
           onLogout={onLogout}
@@ -56,8 +41,6 @@ export function Header({
       <MobileMenu
         isOpen={menuOpen}
         onClose={() => setMenuOpen(false)}
-        isAuthenticated={isAuthenticated}
-        userBalance={userBalance}
         onOpenSignIn={onOpenSignIn}
         onOpenSignUp={onOpenSignUp}
         onLogout={onLogout}
@@ -65,4 +48,3 @@ export function Header({
     </header>
   );
 }
-

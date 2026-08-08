@@ -1,7 +1,7 @@
 import { SyntheticEvent, useState } from "react";
 import { Modal } from "../ui/Modal";
 import { FormField } from "../ui/FormField";
-import { emailRegExp, phoneRegExp } from "../../constants/authConstants";
+import { emailRegExp, phoneRegExp } from "../../constants//authConstants";
 
 export type UserRole = "worker" | "business_client";
 

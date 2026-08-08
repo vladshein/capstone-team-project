@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Heart, ArrowUpRight, MapPin, Star } from "lucide-react";
+import { Link } from "react-router-dom";
 
 interface Shift {
   id: string | number;
@@ -62,13 +63,13 @@ export function ShiftCard({ shift }: ShiftCardProps) {
         </span>
       </div>
 
-      <button
-        type="button"
+      <Link
+        to={`/shifts/${shift.id}`}
         className="mt-4 flex min-h-[44px] items-center justify-between rounded-[var(--radius-card)] bg-ink px-4 py-2.5 text-sm font-medium text-white transition-colors group-hover:bg-accent"
       >
         Детальніше
         <ArrowUpRight className="h-4 w-4" />
-      </button>
+      </Link>
     </article>
   );
 }

@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { MobileNav } from "./MobileNav";
 import { HeaderAuth } from "./HeaderAuth";
@@ -5,8 +6,6 @@ import { HeaderAuth } from "./HeaderAuth";
 export interface MobileMenuProps {
   isOpen: boolean;
   onClose: () => void;
-  isAuthenticated?: boolean;
-  userBalance?: number;
   onOpenSignIn?: () => void;
   onOpenSignUp?: () => void;
   onLogout?: () => void;
@@ -15,32 +14,31 @@ export interface MobileMenuProps {
 export function MobileMenu({
   isOpen,
   onClose,
-  isAuthenticated = false,
-  userBalance = 0,
   onOpenSignIn,
   onOpenSignUp,
   onLogout,
 }: MobileMenuProps) {
-  return (
+  return createPortal(
     <div
       className={`fixed inset-0 z-[60] isolate transition-opacity duration-300 md:hidden ${
-        isOpen
-          ? "pointer-events-auto opacity-100"
-          : "pointer-events-none opacity-0"
+        isOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
       }`}
       aria-hidden={!isOpen}
     >
+      {/* Overlay */}
       <div
         className="absolute inset-0 bg-ink/40 backdrop-blur-[2px]"
         onClick={onClose}
       />
 
+      {/* Sidebar */}
       <div
         style={{ backgroundColor: "#ffffff", opacity: 1 }}
-        className={`absolute right-0 top-0 flex h-full w-[85%] max-w-xs flex-col border-l border-border bg-bg px-5 py-4 shadow-2xl transition-transform duration-300 sm:px-6 sm:py-5 ${
+        className={`absolute right-0 top-0 flex h-full w-[85%] max-w-xs flex-col overflow-y-auto border-l border-border bg-bg px-5 py-4 shadow-2xl transition-transform duration-300 sm:px-6 sm:py-5 ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
+        {/* Header */}
         <div className="flex items-center justify-between">
           <span className="font-heading text-lg font-bold">Меню</span>
           <button
@@ -53,12 +51,12 @@ export function MobileMenu({
           </button>
         </div>
 
-        <MobileNav onClose={onClose} />
+        {/* Navigation */}
+        <MobileNav />
 
+        {/* Auth actions */}
         <HeaderAuth
           mobile
-          isAuthenticated={isAuthenticated}
-          userBalance={userBalance}
           onLogout={() => {
             onClose();
             onLogout?.();
@@ -73,6 +71,7 @@ export function MobileMenu({
           }}
         />
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

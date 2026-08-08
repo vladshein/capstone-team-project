@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from "react";
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import toast, { Toaster } from "react-hot-toast";
 import { AuthModals, type AuthModalMode } from "./components/auth/AuthModals";
 import type { SignInPayload } from "./components/auth/SignInModal";
@@ -14,9 +14,15 @@ import {
 } from "./redux/auth/selectors";
 import { useAppDispatch, useAppSelector } from "./redux/hooks";
 import type { ApiError } from "./redux/auth/types";
+import { getDashboardPath } from "./redux/auth/helpers";
 
 const HomePage = lazy(() => import("./pages/HomePage"));
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
+const ShiftsDetailPage = lazy(() => import("./pages/ShiftsDetailPage"));
+const WorkerDashboardPage = lazy(() => import("./pages/worker/WorkerDashboardPage"));
+const BusinessDashboardPage = lazy(() => import("./pages/business/BusinessDashboardPage"));
+const WorkerProfilePage = lazy(() => import("./pages/worker/WorkerProfilePage"));
+const BusinessProfilePage = lazy(() => import("./pages/business/BusinessProfilePage"));
 
 const getApiError = (error: unknown): ApiError => {
   if (typeof error === "object" && error !== null && "message" in error) {
@@ -94,9 +100,8 @@ export default function App() {
   return (
     <>
       <MainLayout
-        isAuthenticated={isAuthenticated}
-        userRole={user?.role}
-        userBalance={user?.balance ?? 0}
+        // isAuthenticated={isAuthenticated}
+        // userRole={user?.role}
         onOpenSignIn={() => setAuthModal("signin")}
         onOpenSignUp={() => setAuthModal("signup")}
         onLogout={handleLogout}
@@ -104,6 +109,51 @@ export default function App() {
         <Suspense fallback={<Loader fullScreen />}>
           <Routes>
             <Route path="/" element={<HomePage />} />
+            <Route path="/shifts/:id" element={<ShiftsDetailPage />} />
+
+              <Route
+                path="/profile"
+                element={
+                  !isAuthenticated ? (
+                    <Navigate to="/" replace />
+                  ) : user?.role === "worker" ? (
+                    <WorkerProfilePage />
+                  ) : user?.role === "business_client" ? (
+                    <BusinessProfilePage />
+                  ) : (
+                    <Navigate to="/" replace />
+                  )
+                }
+              />
+
+              <Route
+                path="/my-shifts"
+                element={
+                  !isAuthenticated ? (
+                    <Navigate to="/" replace />
+                  ) : getDashboardPath(user?.role) !== "/my-shifts" ? (
+                    <Navigate to={getDashboardPath(user?.role)} replace />
+                  ) : (
+                    <WorkerDashboardPage />
+                  )
+                }
+              />
+
+              <Route
+                path="/dashboard"
+                element={
+                  !isAuthenticated ? (
+                    <Navigate to="/" replace />
+                  ) : getDashboardPath(user?.role) !== "/dashboard" ? (
+                    <Navigate to={getDashboardPath(user?.role)} replace />
+                  ) : (
+                    <BusinessDashboardPage />
+                  )
+                }
+              />
+
+<Route path="*" element={<NotFoundPage />} />
+
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </Suspense>

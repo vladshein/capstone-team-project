@@ -34,8 +34,9 @@ export interface Shift {
   id: number;
   startTime: string;
   endTime: string;
-  hourlyRate: number;
-  bonusRate: number;
+  // Sequelize може серіалізувати DECIMAL як рядок, тому API допускає обидва формати.
+  hourlyRate: number | string;
+  bonusRate: number | string;
   description: string | null;
   status: ShiftStatus;
   createdAt: string;
@@ -71,6 +72,14 @@ export interface CreateShiftPayload {
   description?: string;
 }
 
+export interface ShiftApplication {
+  id: number;
+  shiftId: number;
+  workerId: number;
+  status: "pending" | "approved" | "rejected" | "completed" | "no_show";
+  appliedAt: string;
+}
+
 /**
  * Отримати список відкритих змін з опційною фільтрацією та пагінацією.
  * Відповідає GET /api/shifts
@@ -103,4 +112,12 @@ export async function createShift(
 ): Promise<Shift> {
   const { data } = await api.post<Shift>("/shifts", payload);
   return data;
+}
+
+/** Відгукнутися на відкриту зміну. */
+export async function applyToShift(shiftId: number): Promise<ShiftApplication> {
+  const { data } = await api.post<{ data: ShiftApplication }>(
+    `/shifts/${shiftId}/applications`,
+  );
+  return data.data;
 }

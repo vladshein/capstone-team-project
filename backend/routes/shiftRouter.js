@@ -37,6 +37,17 @@ shiftRouter.post(
 );
 
 /**
+ * @route POST /api/shifts/:id/applications
+ * @desc Відгукнутися на зміну (доступно виконавцю).
+ */
+shiftRouter.post(
+  "/:id/applications",
+  authenticate,
+  checkRole("worker"),
+  shiftController.applyToShift,
+);
+
+/**
  * @route PATCH /api/shifts/:id
  * @desc Редагувати існуючу зміну (тільки для власника, тільки якщо статус 'open').
  */
