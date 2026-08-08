@@ -6,7 +6,7 @@ import {
   buildWeekStrip,
 } from "./formatters";
 
-export type CalendarPeriod = "week" | "month";
+export type CalendarPeriod = "day" | "week" | "month";
 
 interface DateStripProps {
   selectedDate: Date | null;
@@ -24,6 +24,11 @@ export function DateStrip({ selectedDate, onSelectDate, period, onPeriodChange }
   const [weekOffset, setWeekOffset] = useState(0);
   const today = new Date();
   const days = useMemo(() => buildWeekStrip(weekOffset), [weekOffset]);
+  const selectToday = () => {
+    setWeekOffset(0);
+    onPeriodChange("day");
+    onSelectDate(today);
+  };
 
   return (
     <div className="rounded-[var(--radius-card)] border border-border bg-bg p-4">
@@ -68,6 +73,14 @@ export function DateStrip({ selectedDate, onSelectDate, period, onPeriodChange }
         </button>
       </div>
 
+      <button
+        type="button"
+        onClick={selectToday}
+        className={`mt-3 min-h-[36px] w-full rounded-[var(--radius-pill)] border px-3 text-xs font-medium transition-colors ${period === "day" ? "border-accent bg-accent/10 text-accent-text" : "border-border text-text-muted hover:border-accent hover:text-accent-text"}`}
+      >
+        Сьогодні
+      </button>
+
       <div className="mt-3 grid grid-cols-7 gap-1.5">
         {days.map((d) => {
           const isSelected = selectedDate ? isSameDay(d, selectedDate) : false;
@@ -88,9 +101,11 @@ export function DateStrip({ selectedDate, onSelectDate, period, onPeriodChange }
       </div>
 
       <p className="mt-3 text-xs text-text-subtle">
-        {period === "week"
-          ? "Показуємо зміни на 7 днів від обраної дати"
-          : "Показуємо зміни на 30 днів від обраної дати"}
+        {period === "day"
+          ? "Показуємо зміни лише на обрану дату"
+          : period === "week"
+            ? "Показуємо зміни на 7 днів від обраної дати"
+            : "Показуємо зміни на 30 днів від обраної дати"}
       </p>
     </div>
   );
