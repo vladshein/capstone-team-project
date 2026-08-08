@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { UserRound } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "../../redux/hooks";
 import { selectUserInfo } from "../../redux/auth/selectors";
 import { fetchMyProfile } from "../../redux/profile/actions";
@@ -11,6 +12,17 @@ import {
   CreateWorkerProfileModal,
   type CreateWorkerProfilePayload,
 } from "./CreateWorkerProfileModal";
+
+function ProfileField({ label, value }: { label: string; value?: string }) {
+  return (
+    <div>
+      <p className="text-xs font-medium text-text-muted">{label}</p>
+      <p className={`mt-0.5 text-sm ${value ? "text-ink" : "text-text-subtle italic"}`}>
+        {value || "не вказано"}
+      </p>
+    </div>
+  );
+}
 
 export function WorkerProfilePage() {
   const dispatch = useAppDispatch();
@@ -29,7 +41,7 @@ export function WorkerProfilePage() {
   const handleCreateWorkerProfile = async (payload: CreateWorkerProfilePayload) => {
     setIsSubmitting(true);
     try {
-      // TODO: як і для компанії — ендпоінту немає в поточному ТЗ, уточнити з бекенд-командою.
+      // TODO: ендпоінту немає в поточному ТЗ — уточнити з бекенд-командою.
       console.log("Створення профілю виконавця:", payload);
       await dispatch(fetchMyProfile());
       setIsModalOpen(false);
@@ -55,38 +67,44 @@ export function WorkerProfilePage() {
   }
 
   const workerData = profile.WorkerProfile;
+  const hasProfile = Boolean(workerData);
 
-  if (!workerData) {
-    return (
-      <>
-        <div className="mx-auto max-w-md px-4 py-[var(--space-section)] text-center">
-          <p className="text-sm text-text-subtle">Профіль ще не заповнено.</p>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="mt-4 rounded-[var(--radius-pill)] bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-hover"
-          >
-            Заповнити профіль
-          </button>
-        </div>
-        <CreateWorkerProfileModal
-          isOpen={isModalOpen}
-          isSubmitting={isSubmitting}
-          onClose={() => setIsModalOpen(false)}
-          onSubmit={handleCreateWorkerProfile}
-        />
-      </>
-    );
-  }
-
-  // TODO: повноцінний перегляд/редагування даних (аватар, верифікація) — за UserInfo з Frontend_TZ.
   return (
     <div className="mx-auto max-w-3xl px-4 py-[var(--space-section)] sm:px-6 md:px-8">
-      <h1 className="font-heading text-2xl font-bold">Профіль виконавця</h1>
-      <div className="mt-6 rounded-[var(--radius-card)] border border-border bg-bg p-6 shadow-sm">
-        <p className="font-heading font-semibold">
-          {workerData.firstName} {workerData.lastName}
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
+        <div>
+          <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">
+            Профіль виконавця
+          </h1>
+          <p className="mt-1 text-sm text-text-muted">
+            {hasProfile ? "Ваші особисті дані" : "Дані ще не заповнено"}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center gap-2 rounded-[var(--radius-pill)] bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-hover transition-colors"
+        >
+          <UserRound className="h-4 w-4" />
+          {hasProfile ? "Редагувати профіль" : "Створити профіль"}
+        </button>
       </div>
+
+      <div className="rounded-[var(--radius-card)] border border-border bg-bg p-6 shadow-sm">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <ProfileField label="Ім'я" value={workerData?.firstName} />
+          <ProfileField label="Прізвище" value={workerData?.lastName} />
+          <ProfileField label="Телефон" value={workerData?.phone} />
+          <ProfileField label="Місто" value={workerData?.city} />
+        </div>
+      </div>
+
+      <CreateWorkerProfileModal
+        isOpen={isModalOpen}
+        isSubmitting={isSubmitting}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleCreateWorkerProfile}
+      />
     </div>
   );
 }

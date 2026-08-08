@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Building2, Plus, Users, MapPin, Briefcase, Archive } from "lucide-react";
+import { Plus, Users, Briefcase, Archive } from "lucide-react";
+import { Link } from "react-router-dom";
 import type { AuthUser } from "../../redux/auth/types";
 
 interface BusinessDashboardProps {
@@ -19,7 +20,7 @@ const TABS: { key: TabKey; label: string; icon: typeof Briefcase }[] = [
   { key: "archive", label: "Архів", icon: Archive },
 ];
 
-export function BusinessDashboard({ user, companyProfile }: BusinessDashboardProps) {
+export function BusinessDashboard({ companyProfile }: BusinessDashboardProps) {
   const [activeTab, setActiveTab] = useState<TabKey>("vacancies");
 
   const emptyMessages: Record<TabKey, string> = {
@@ -36,7 +37,10 @@ export function BusinessDashboard({ user, companyProfile }: BusinessDashboardPro
             Кабінет компанії
           </h1>
           <p className="mt-1 text-sm text-text-muted">
-            Керуйте змінами та персоналом
+            {companyProfile.name} ·{" "}
+            <Link to="/profile" className="text-accent-text hover:underline">
+              Профіль компанії
+            </Link>
           </p>
         </div>
         <button className="flex items-center gap-2 rounded-[var(--radius-pill)] bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-hover transition-colors">
@@ -45,56 +49,29 @@ export function BusinessDashboard({ user, companyProfile }: BusinessDashboardPro
         </button>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        {/* Company Info Card */}
-        <div className="md:col-span-1">
-          <div className="rounded-[var(--radius-card)] border border-border bg-bg p-6 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-card)] bg-bg-muted text-text-subtle">
-                <Building2 className="h-5 w-5" />
-              </div>
-              <div>
-                <h3 className="font-heading font-semibold">{companyProfile.name || "Назву не вказано"}</h3>
-                <p className="text-xs text-text-subtle">
-                  ЄДРПОУ: {companyProfile.edrpou || "не вказано"}
-                </p>
-              </div>
-            </div>
-            <div className="mt-4 pt-4 border-t border-border">
-              <p className="flex items-start gap-2 text-sm text-text-muted">
-                <MapPin className="h-4 w-4 shrink-0 mt-0.5" />
-                {companyProfile.legalAddress || "Адресу не вказано"}
-              </p>
-            </div>
-          </div>
+      {/* Tabs: Мої вакансії / Активні робітники / Архів — за Frontend_TZ (TabsList, роль Замовник) */}
+      <div className="rounded-[var(--radius-card)] border border-border bg-bg shadow-sm overflow-hidden">
+        <div className="flex border-b border-border">
+          {TABS.map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              onClick={() => setActiveTab(key)}
+              className={`flex items-center gap-2 px-5 py-4 text-sm font-medium transition-colors ${
+                activeTab === key
+                  ? "text-accent border-b-2 border-accent"
+                  : "text-text-muted hover:text-text"
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              {label}
+            </button>
+          ))}
         </div>
 
-        {/* Tabs: Мої вакансії / Активні робітники / Архів — за Frontend_TZ (TabsList, роль Замовник) */}
-        <div className="md:col-span-2">
-          <div className="rounded-[var(--radius-card)] border border-border bg-bg shadow-sm overflow-hidden">
-            <div className="flex border-b border-border">
-              {TABS.map(({ key, label, icon: Icon }) => (
-                <button
-                  key={key}
-                  onClick={() => setActiveTab(key)}
-                  className={`flex items-center gap-2 px-5 py-4 text-sm font-medium transition-colors ${
-                    activeTab === key
-                      ? "text-accent border-b-2 border-accent"
-                      : "text-text-muted hover:text-text"
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            <div className="p-5">
-              {/* TODO: підключити реальні дані по вкладках, коли буде готовий /shifts?client_id=... на бекенді */}
-              <div className="py-10 text-center text-sm text-text-subtle">
-                {emptyMessages[activeTab]}
-              </div>
-            </div>
+        <div className="p-5">
+          {/* TODO: підключити реальні дані по вкладках, коли буде готовий /shifts?client_id=... на бекенді */}
+          <div className="py-10 text-center text-sm text-text-subtle">
+            {emptyMessages[activeTab]}
           </div>
         </div>
       </div>
