@@ -12,7 +12,7 @@ const getErrorMessage = (error: GeolocationPositionError) => {
     case error.POSITION_UNAVAILABLE:
       return "Не вдалося визначити ваше місцезнаходження.";
     case error.TIMEOUT:
-      return "Час очікування геолокації вичерпано. Спробуйте ще раз.";
+      return "Не вдалося отримати точну локацію. Перевірте, чи увімкнена геолокація в браузері та системі, і спробуйте ще раз.";
     default:
       return "Не вдалося визначити ваше місцезнаходження.";
   }
@@ -45,9 +45,9 @@ export function useGeolocation() {
         setIsLocating(false);
       },
       {
-        enableHighAccuracy: false,
-        timeout: 10_000,
-        maximumAge: 300_000,
+        enableHighAccuracy: true,
+        timeout: 20_000,
+        maximumAge: 60_000,
       },
     );
   }, []);

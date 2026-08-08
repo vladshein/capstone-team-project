@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 
 import type { Shift } from "../../api/shifts";
-import { formatPriceLabel, formatTimeRange } from "./formatters";
+import { formatPriceLabel, formatShiftDate, formatTimeRange } from "./formatters";
 
 export function TaskCard({ shift }: { shift: Shift }) {
   const companyName = shift.Location?.Company?.name ?? "";
@@ -24,7 +24,7 @@ export function TaskCard({ shift }: { shift: Shift }) {
           </span>
         </div>
         <p className="mt-2 text-xs text-text-muted">
-          {formatTimeRange(shift.startTime, shift.endTime)}
+          {formatShiftDate(shift.startTime)} · {formatTimeRange(shift.startTime, shift.endTime)}
         </p>
         <p className="mt-3 text-sm font-medium">{companyName}</p>
         <p className="text-sm text-text-muted">{shift.Location?.address}</p>
