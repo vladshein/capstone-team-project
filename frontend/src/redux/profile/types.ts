@@ -8,13 +8,23 @@ export type WorkerProfileData = {
   taxNumber: string | null;
   rating: number | null;
   avatarUrl: string | null;
+  // TODO: phone/city — поки не підтверджені бекендом (немає в Backend_TZ),
+  // додано під форму CreateWorkerProfileModal. Прибрати "?" і коментар,
+  // коли ендпоінт створення/отримання профілю воркера буде готовий і
+  // підтвердить реальну форму даних.
+  phone?: string;
+  city?: string;
 };
 
 export type BusinessCompanyData = {
   id: number;
-  name: string;
-  edrpou: string;
-  legalAddress: string | null;
+  // TODO: name/edrpou/legalAddress — форма підтверджена лише по CreateCompanyModal
+  // (Frontend-стороні), самого ендпоінту створення компанії в Backend_TZ немає
+  // (див. TODO в handleCreateCompany). Прибрати "?" і цей коментар, коли бекенд
+  // підтвердить реальну форму Company.
+  name?: string;
+  edrpou?: string;
+  legalAddress?: string;
   avatar: string | null;
 };
 

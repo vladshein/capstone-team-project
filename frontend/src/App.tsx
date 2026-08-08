@@ -99,8 +99,8 @@ export default function App() {
   return (
     <>
       <MainLayout
-        isAuthenticated={isAuthenticated}
-        userRole={user?.role}
+        // isAuthenticated={isAuthenticated}
+        // userRole={user?.role}
         onOpenSignIn={() => setAuthModal("signin")}
         onOpenSignUp={() => setAuthModal("signup")}
         onLogout={handleLogout}
