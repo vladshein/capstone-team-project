@@ -11,6 +11,11 @@ export const SELECTED_LABEL_FORMATTER = new Intl.DateTimeFormat("uk-UA", {
   weekday: "long",
 });
 const TIME_FORMATTER = new Intl.DateTimeFormat("uk-UA", { hour: "2-digit", minute: "2-digit" });
+const SHIFT_DATE_FORMATTER = new Intl.DateTimeFormat("uk-UA", {
+  weekday: "short",
+  day: "numeric",
+  month: "long",
+});
 const PRICE_FORMATTER = new Intl.NumberFormat("uk-UA", { maximumFractionDigits: 0 });
 
 export function buildWeekStrip(centerOffset: number) {
@@ -30,6 +35,11 @@ export function formatTimeRange(startTime: string, endTime: string) {
   } catch {
     return "";
   }
+}
+
+export function formatShiftDate(startTime: string) {
+  const date = new Date(startTime);
+  return Number.isNaN(date.getTime()) ? "" : SHIFT_DATE_FORMATTER.format(date);
 }
 
 export function formatPriceLabel(shift: Shift) {

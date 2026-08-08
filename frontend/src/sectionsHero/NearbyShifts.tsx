@@ -6,6 +6,7 @@ import { ShiftCard } from "../components/cards/ShiftCard";
 import { useApproximateLocation } from "./TasksBoard/useApproximateLocation";
 import { useGeolocation } from "./TasksBoard/useGeolocation";
 import { CATEGORY_ICONS } from "./TasksBoard/CategoryPicker";
+import { formatShiftDate, formatTimeRange } from "./TasksBoard/formatters";
 
 const getDistanceInKilometres = (
   latitude: number,
@@ -144,6 +145,7 @@ export function NearbyShifts() {
                 category: <CategoryIcon className="h-5 w-5 text-accent" />,
                 role: shift.description || shift.JobPosition?.title || shift.Category?.name || "Зміна",
                 company: shift.Location?.Company?.name || "Партнер не вказаний",
+                date: `${formatShiftDate(shift.startTime)} · ${formatTimeRange(shift.startTime, shift.endTime)}`,
                 rate: Math.round(Number(shift.hourlyRate) || 0),
                 budget: Math.round(getShiftTotal(shift)),
                 distance: distance === null ? "Відстань уточнюється" : `${distance.toFixed(1)} км`,

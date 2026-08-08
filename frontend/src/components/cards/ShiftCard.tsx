@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { Heart, ArrowUpRight, MapPin, Star } from "lucide-react";
+import { Heart, ArrowUpRight, CalendarDays, MapPin, Star } from "lucide-react";
 import { Link } from "react-router-dom";
 
 interface Shift {
@@ -8,6 +8,7 @@ interface Shift {
   category: ReactNode;
   role: string;
   company: string;
+  date?: string;
   rate: number | string;
   budget: number | string;
   distance: number | string;
@@ -44,6 +45,11 @@ export function ShiftCard({ shift }: ShiftCardProps) {
         {shift.role}
       </h3>
       <p className="text-sm text-text-muted">{shift.company}</p>
+      {shift.date && (
+        <p className="mt-2 flex items-center gap-1.5 text-xs text-text-muted">
+          <CalendarDays className="h-3.5 w-3.5 text-text-subtle" /> {shift.date}
+        </p>
+      )}
 
       <div className="mt-3 flex items-baseline gap-1 sm:mt-4">
         <span className="font-mono text-lg font-medium text-accent">

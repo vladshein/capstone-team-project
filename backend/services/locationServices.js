@@ -15,12 +15,20 @@ const isPrivateIp = (ip) => {
 };
 
 export const getApproximateLocation = async (ip) => {
-  if (isPrivateIp(ip)) return null;
+  // У локальному Docker req.ip — це адреса внутрішньої мережі (172.x.x.x),
+  // тому для dev визначаємо місто за зовнішньою IP-адресою самого хоста.
+  // У production не робимо цього fallback: там важлива IP саме відвідувача.
+  const useServerEgressIp = isPrivateIp(ip) && process.env.NODE_ENV === "development";
+  if (isPrivateIp(ip) && !useServerEgressIp) return null;
 
-  const cached = locationCache.get(ip);
+  const cacheKey = useServerEgressIp ? "development-egress-ip" : ip;
+  const cached = locationCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.location;
 
-  const response = await fetch(`https://ipapi.co/${encodeURIComponent(ip)}/json/`, {
+  const endpoint = useServerEgressIp
+    ? "https://ipapi.co/json/"
+    : `https://ipapi.co/${encodeURIComponent(ip)}/json/`;
+  const response = await fetch(endpoint, {
     headers: { "User-Agent": "Zmina.ua/1.0" },
   });
 
@@ -42,6 +50,6 @@ export const getApproximateLocation = async (ip) => {
     accuracy: "city",
   };
 
-  locationCache.set(ip, { location, expiresAt: Date.now() + CACHE_TTL_MS });
+  locationCache.set(cacheKey, { location, expiresAt: Date.now() + CACHE_TTL_MS });
   return location;
 };
