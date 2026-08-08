@@ -18,6 +18,7 @@ import { getDashboardPath } from "./redux/auth/helpers";
 
 const HomePage = lazy(() => import("./pages/HomePage"));
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
+const ShiftsDetailPage = lazy(() => import("./pages/ShiftsDetailPage"));
 const WorkerDashboardPage = lazy(() => import("./pages/worker/WorkerDashboardPage"));
 const BusinessDashboardPage = lazy(() => import("./pages/business/BusinessDashboardPage"));
 const WorkerProfilePage = lazy(() => import("./pages/worker/WorkerProfilePage"));
@@ -108,6 +109,7 @@ export default function App() {
         <Suspense fallback={<Loader fullScreen />}>
           <Routes>
             <Route path="/" element={<HomePage />} />
+            <Route path="/shifts/:id" element={<ShiftsDetailPage />} />
 
               <Route
                 path="/profile"
