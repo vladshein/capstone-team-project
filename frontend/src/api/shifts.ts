@@ -17,6 +17,8 @@ export interface ShiftLocation {
   title: string;
   address: string;
   city: string;
+  latitude?: number;
+  longitude?: number;
   Company: ShiftCompany;
 }
 

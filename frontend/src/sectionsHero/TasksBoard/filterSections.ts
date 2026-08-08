@@ -1,4 +1,5 @@
 export interface FilterOption {
+  id?: string | number;
   label: string;
   count?: number;
 }
@@ -16,6 +17,8 @@ export const FILTER_SECTIONS: FilterSection[] = [
     label: "Сортування",
     options: [
       { label: "За релевантністю" },
+      { label: "Спочатку найближчі за датою" },
+      { label: "Спочатку пізніші за датою" },
       { label: "Спочатку дорожчі" },
       { label: "Найближчі до мене" },
     ],
@@ -42,16 +45,6 @@ export const FILTER_SECTIONS: FilterSection[] = [
       { label: "АТБ", count: 4 },
       { label: "Glovo", count: 4 },
       { label: "Novus", count: 3 },
-    ],
-  },
-  {
-    id: "start",
-    label: "Початок завдання",
-    options: [
-      { label: "Найближчим часом" },
-      { label: "Сьогодні" },
-      { label: "Завтра" },
-      { label: "Цього тижня" },
     ],
   },
   {

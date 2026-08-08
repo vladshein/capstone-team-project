@@ -46,7 +46,8 @@ export const getAllShifts = async ({
 
   // Фільтрація за категорією
   if (categoryId) {
-    whereCondition.categoryId = categoryId;
+    // categoryId успадковує тип TEXT від Category.id у поточній схемі БД.
+    whereCondition.categoryId = String(categoryId);
   }
 
   // Фільтрація за ціною
@@ -72,7 +73,7 @@ export const getAllShifts = async ({
         { model: JobPosition, attributes: ["id", "title"] },
         {
           model: Location,
-          attributes: ["id", "title", "address", "city"],
+          attributes: ["id", "title", "address", "city", "latitude", "longitude"],
           include: [{ model: Company, attributes: ["id", "name"] }],
         },
       ],

@@ -6,7 +6,11 @@ import {
   fetchShiftById,
   fetchShifts,
 } from "./actions";
-import type { ShiftState } from "./types";
+import type {
+  ShiftDurationFilter,
+  ShiftSort,
+  ShiftState,
+} from "./types";
 
 const initialState: ShiftState = {
   items: [],
@@ -19,6 +23,9 @@ const initialState: ShiftState = {
   error: null,
   applicationError: null,
   application: null,
+  sort: "relevance",
+  selectedPartners: [],
+  selectedDurationFilters: [],
 };
 
 const getErrorMessage = (payload: unknown) =>
@@ -39,6 +46,22 @@ const shiftSlice = createSlice({
     clearApplication: (state) => {
       state.application = null;
       state.applicationError = null;
+    },
+    setShiftSort: (state, { payload }: { payload: ShiftSort }) => {
+      state.sort = payload;
+    },
+    togglePartner: (state, { payload }: { payload: string }) => {
+      state.selectedPartners = state.selectedPartners.includes(payload)
+        ? state.selectedPartners.filter((partner) => partner !== payload)
+        : [...state.selectedPartners, payload];
+    },
+    clearSelectedPartners: (state) => {
+      state.selectedPartners = [];
+    },
+    toggleDurationFilter: (state, { payload }: { payload: ShiftDurationFilter }) => {
+      state.selectedDurationFilters = state.selectedDurationFilters.includes(payload)
+        ? state.selectedDurationFilters.filter((filter) => filter !== payload)
+        : [...state.selectedDurationFilters, payload];
     },
   },
   extraReducers: (builder) =>
@@ -101,5 +124,13 @@ const shiftSlice = createSlice({
       }),
 });
 
-export const { clearApplication, clearSelectedShift, clearShiftError } = shiftSlice.actions;
+export const {
+  clearApplication,
+  clearSelectedPartners,
+  clearSelectedShift,
+  clearShiftError,
+  setShiftSort,
+  toggleDurationFilter,
+  togglePartner,
+} = shiftSlice.actions;
 export const shiftReducer = shiftSlice.reducer;
