@@ -39,19 +39,13 @@ export function BusinessDashboardPage() {
 
   const company = profile.companies[0];
 
-  // Кабінет без профілю компанії не має сенсу — відправляємо на /profile,
-  // де і живе EmptyBusinessState + CreateCompanyModal.
-  if (!company) {
-    return <Navigate to="/profile" replace />;
-  }
-
   return (
     <BusinessDashboard
       user={user}
       companyProfile={{
-        name: company.name ?? "",
-        edrpou: company.edrpou ?? "",
-        legalAddress: company.legalAddress ?? "",
+        name: company?.name ?? "",
+        edrpou: company?.edrpou ?? "",
+        legalAddress: company?.legalAddress ?? "",
       }}
     />
   );
