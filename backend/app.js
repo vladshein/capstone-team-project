@@ -20,7 +20,7 @@ import notFoundHandler from "./middlewares/notFoundHandler.js";
 import errorHandler from "./middlewares/errorHandler.js";
 import connectDatabase from "./db/connectDatabase.js";
 import { swaggerDocs } from "./middlewares/swaggerDocs.js";
-import { syncDatabase } from "./db/models/index.js";
+
 
 const app = express();
 
@@ -63,8 +63,6 @@ const port = Number(process.env.PORT) || 5000;
 const startServer = async () => {
   try {
     await connectDatabase();
-    // uncomment for create db
-    // await syncDatabase();
     app.listen(port, () => {
       console.log(`Server is running. Use our API on port: ${port}`);
     });
