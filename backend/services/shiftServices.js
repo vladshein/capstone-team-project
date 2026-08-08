@@ -5,6 +5,7 @@ import {
   Company,
   JobPosition,
   Category,
+  ShiftApplication,
 } from "../db/models/index.js";
 
 /**
@@ -165,4 +166,16 @@ export const cancelShift = async (shiftId) => {
   const shift = await Shift.findByPk(shiftId);
   if (!shift) return null;
   return await shift.update({ status: "cancelled" });
+};
+
+export const findShiftApplication = async (shiftId, workerId) => {
+  return await ShiftApplication.findOne({ where: { shiftId, workerId } });
+};
+
+export const createShiftApplication = async (shiftId, workerId) => {
+  return await ShiftApplication.create({
+    shiftId,
+    workerId,
+    status: "pending",
+  });
 };
