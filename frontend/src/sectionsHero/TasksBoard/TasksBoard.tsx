@@ -68,7 +68,9 @@ export function TasksBoard() {
       ? new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate())
       : new Date(today.getFullYear(), today.getMonth(), today.getDate());
     const periodEnd = new Date(periodStart);
-    if (calendarPeriod === "week") {
+    if (calendarPeriod === "day") {
+      periodEnd.setDate(periodStart.getDate() + 1);
+    } else if (calendarPeriod === "week") {
       periodEnd.setDate(periodStart.getDate() + 7);
     } else {
       periodEnd.setDate(periodStart.getDate() + 30);
