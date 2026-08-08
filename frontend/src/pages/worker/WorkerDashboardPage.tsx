@@ -18,9 +18,9 @@ import {
 // TODO: замінити на реальні селектори/actions, коли зʼявляться відповідні
 // redux-слайси для цих ендпоінтів (фінансовий блок — баланс/виплати —
 // прибрано з ТЗ, тож сюди навмисно не входить):
-//   GET /api/v1/profile/verification-status
-//   GET /api/v1/shifts/my-calendar
-//   GET /api/v1/engagement/bonuses
+//   GET /api/profile/verification-status
+//   GET /api/shifts/my-calendar
+//   GET /api/engagement/bonuses
 // import { selectVerificationStatus } from "../../redux/verification/selectors";
 // import { selectUpcomingShift } from "../../redux/shifts/selectors";
 // import { selectActiveBonuses } from "../../redux/engagement/selectors";

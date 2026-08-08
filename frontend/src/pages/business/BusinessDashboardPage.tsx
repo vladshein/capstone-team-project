@@ -1,5 +1,5 @@
-import { useState } from "react";
 import { useEffect } from "react";
+import { Navigate } from "react-router-dom"; // TODO: підтвердити, що роутинг саме react-router-dom
 import { useAppDispatch, useAppSelector } from "../../redux/hooks";
 import { selectUserInfo } from "../../redux/auth/selectors";
 import { fetchMyProfile } from "../../redux/profile/actions";
@@ -8,10 +8,7 @@ import {
   selectBusinessProfileError,
   selectBusinessProfileLoading,
 } from "../../redux/profile/selectors";
-// import { Loader } from "../../components/ui/Loader"; // TODO: підключити, коли буде відомий реальний API компонента
 import { BusinessDashboard } from "./BusinessDashboard";
-import { EmptyBusinessState } from "./EmptyBusinessState";
-import { CreateCompanyModal, type CreateCompanyPayload } from "./CreateCompanyModal";
 
 export function BusinessDashboardPage() {
   const dispatch = useAppDispatch();
@@ -20,30 +17,12 @@ export function BusinessDashboardPage() {
   const isLoading = useAppSelector(selectBusinessProfileLoading);
   const error = useAppSelector(selectBusinessProfileError);
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
   useEffect(() => {
     void dispatch(fetchMyProfile());
   }, [dispatch]);
 
-  const handleCreateCompany = async (payload: CreateCompanyPayload) => {
-    setIsSubmitting(true);
-    try {
-      // TODO: у ТЗ немає окремого ендпоінту створення компанії — уточнити з бекенд-командою,
-      // чи це PATCH /users/current, чи новий POST /companies. Заглушка нижче:
-      // await dispatch(createCompanyProfile(payload)).unwrap();
-      console.log("Створення компанії:", payload);
-      await dispatch(fetchMyProfile());
-      setIsModalOpen(false);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   if (isLoading && !profile) {
     return (
-      // <Loader />
       <div className="flex items-center justify-center py-[var(--space-section)] text-sm text-text-subtle">
         Завантаження...
       </div>
@@ -59,20 +38,11 @@ export function BusinessDashboardPage() {
   }
 
   const company = profile.companies[0];
-  const hasCompany = Boolean(company);
 
-  if (!hasCompany) {
-    return (
-      <>
-        <EmptyBusinessState onCreateCompany={() => setIsModalOpen(true)} />
-        <CreateCompanyModal
-          isOpen={isModalOpen}
-          isSubmitting={isSubmitting}
-          onClose={() => setIsModalOpen(false)}
-          onSubmit={handleCreateCompany}
-        />
-      </>
-    );
+  // Кабінет без профілю компанії не має сенсу — відправляємо на /profile,
+  // де і живе EmptyBusinessState + CreateCompanyModal.
+  if (!company) {
+    return <Navigate to="/profile" replace />;
   }
 
   return (

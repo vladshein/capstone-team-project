@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { ChevronDown } from "lucide-react";
 import toast from "react-hot-toast";
 import { LogoutButton } from "../../ui/LogoutButton";
@@ -57,9 +58,12 @@ export function HeaderAuth({ onOpenSignIn, onOpenSignUp, mobile = false }: Heade
       <div className="mt-auto flex flex-col gap-3">
         {isAuthenticated && user ? (
           <>
-            <a href={profileLink} className="flex min-h-[44px] items-center justify-center rounded-[var(--radius-pill)] border border-border px-5 text-sm font-medium">
+            <Link to="/profile" className="flex min-h-[44px] items-center justify-center rounded-[var(--radius-pill)] border border-border px-5 text-sm font-medium">
               Профіль
-            </a>
+            </Link>
+            <Link to={profileLink} className="flex min-h-[44px] items-center justify-center rounded-[var(--radius-pill)] border border-border px-5 text-sm font-medium">
+              Кабінет
+            </Link>
             <LogoutButton onLogout={handleLogout} variant="mobile" />
           </>
         ) : (
@@ -99,9 +103,12 @@ export function HeaderAuth({ onOpenSignIn, onOpenSignUp, mobile = false }: Heade
 
           {isMenuOpen && (
             <div role="menu" className="absolute right-0 top-[calc(100%+0.5rem)] w-48 rounded-[var(--radius-card)] border border-border bg-bg p-1.5 shadow-lg">
-              <a href={profileLink} role="menuitem" className="block rounded-[var(--radius-card)] px-3 py-2.5 text-sm hover:bg-bg-muted">
+              <Link to="/profile" role="menuitem" className="block rounded-[var(--radius-card)] px-3 py-2.5 text-sm hover:bg-bg-muted">
                 Профіль
-              </a>
+              </Link>
+              <Link to={profileLink} role="menuitem" className="block rounded-[var(--radius-card)] px-3 py-2.5 text-sm hover:bg-bg-muted">
+                Кабінет
+              </Link>
               <LogoutButton onLogout={handleLogout} />
             </div>
           )}
