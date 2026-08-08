@@ -33,6 +33,13 @@ export const NAV_LINKS = [
     authRequired: true,
     roles: [USER_ROLES.BUSINESS],
   },
+  {
+    id: "nav-profile",
+    href: "/profile",
+    label: "Профіль",
+    authRequired: true,
+    roles: [USER_ROLES.WORKER, USER_ROLES.BUSINESS],
+  },
 ];
 
 export const FOOTER_LINKS = [

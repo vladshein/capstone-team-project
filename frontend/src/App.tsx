@@ -20,6 +20,8 @@ const HomePage = lazy(() => import("./pages/HomePage"));
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 const WorkerDashboardPage = lazy(() => import("./pages/worker/WorkerDashboardPage"));
 const BusinessDashboardPage = lazy(() => import("./pages/business/BusinessDashboardPage"));
+const WorkerProfilePage = lazy(() => import("./pages/worker/WorkerProfilePage"));
+const BusinessProfilePage = lazy(() => import("./pages/business/BusinessProfilePage"));
 
 const getApiError = (error: unknown): ApiError => {
   if (typeof error === "object" && error !== null && "message" in error) {
@@ -107,31 +109,48 @@ export default function App() {
           <Routes>
             <Route path="/" element={<HomePage />} />
 
-            <Route
-              path="/my-shifts"
-              element={
-                !isAuthenticated ? (
-                  <Navigate to="/" replace />
-                ) : getDashboardPath(user?.role) !== "/my-shifts" ? (
-                  <Navigate to={getDashboardPath(user?.role)} replace />
-                ) : (
-                  <WorkerDashboardPage />
-                )
-              }
-            />
+              <Route
+                path="/profile"
+                element={
+                  !isAuthenticated ? (
+                    <Navigate to="/" replace />
+                  ) : user?.role === "worker" ? (
+                    <WorkerProfilePage />
+                  ) : user?.role === "business_client" ? (
+                    <BusinessProfilePage />
+                  ) : (
+                    <Navigate to="/" replace />
+                  )
+                }
+              />
 
-            <Route
-              path="/dashboard"
-              element={
-                !isAuthenticated ? (
-                  <Navigate to="/" replace />
-                ) : getDashboardPath(user?.role) !== "/dashboard" ? (
-                  <Navigate to={getDashboardPath(user?.role)} replace />
-                ) : (
-                  <BusinessDashboardPage />
-                )
-              }
-            />
+              <Route
+                path="/my-shifts"
+                element={
+                  !isAuthenticated ? (
+                    <Navigate to="/" replace />
+                  ) : getDashboardPath(user?.role) !== "/my-shifts" ? (
+                    <Navigate to={getDashboardPath(user?.role)} replace />
+                  ) : (
+                    <WorkerDashboardPage />
+                  )
+                }
+              />
+
+              <Route
+                path="/dashboard"
+                element={
+                  !isAuthenticated ? (
+                    <Navigate to="/" replace />
+                  ) : getDashboardPath(user?.role) !== "/dashboard" ? (
+                    <Navigate to={getDashboardPath(user?.role)} replace />
+                  ) : (
+                    <BusinessDashboardPage />
+                  )
+                }
+              />
+
+<Route path="*" element={<NotFoundPage />} />
 
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
