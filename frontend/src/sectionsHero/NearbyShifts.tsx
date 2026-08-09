@@ -82,7 +82,8 @@ export function NearbyShifts() {
       .filter((shift) => new Date(shift.startTime) >= now)
       .map((shift) => ({
         shift,
-        CategoryIcon: CATEGORY_ICONS[shift.Category?.name ?? ""] ?? LayoutGrid,
+        CategoryIcon:
+          CATEGORY_ICONS[shift.Category?.name ?? shift.category?.name ?? ""] ?? LayoutGrid,
         distance: origin
           ? getDistanceInKilometres(
               origin.latitude,

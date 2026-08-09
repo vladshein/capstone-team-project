@@ -68,7 +68,7 @@ export function FavoriteShiftsTab() {
         const payment = duration * (Number(shift.hourlyRate) || 0) + (Number(shift.bonusRate) || 0);
 
         return (
-          <article key={shift.id} className="flex flex-col rounded-[var(--radius-card)] border border-border bg-bg-muted p-4">
+          <article key={shift.id} className="flex flex-col rounded-[var(--radius-card)] border border-border bg-bg p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="font-heading font-semibold text-ink">{title}</p>

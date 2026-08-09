@@ -43,7 +43,10 @@ export interface Shift {
   status: ShiftStatus;
   createdAt: string;
 
+  // Назва залежить від alias Sequelize: в окремих відповідях бекенд повертає
+  // `category`, тому підтримуємо обидва варіанти під час поступової міграції.
   Category: ShiftCategory;
+  category?: ShiftCategory;
   JobPosition: ShiftJobPosition;
   Location: ShiftLocation;
 }
