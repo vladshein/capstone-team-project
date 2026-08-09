@@ -73,7 +73,14 @@ export const getAllShifts = async ({
         { model: JobPosition, attributes: ["id", "title"] },
         {
           model: Location,
-          attributes: ["id", "title", "address", "city", "latitude", "longitude"],
+          attributes: [
+            "id",
+            "title",
+            "address",
+            "city",
+            "latitude",
+            "longitude",
+          ],
           include: [{ model: Company, attributes: ["id", "name"] }],
         },
       ],
@@ -179,4 +186,51 @@ export const createShiftApplication = async (shiftId, workerId) => {
     workerId,
     status: "pending",
   });
+};
+
+/**
+ * Отримує історію робіт (змін) для конкретного робітника.
+ */
+export const getWorkerShiftHistory = async (
+  workerId,
+  { page = 1, limit = 10, status },
+) => {
+  const offset = (page - 1) * limit;
+  const whereCondition = { workerId };
+
+  // Якщо передано статус заявки (наприклад, 'approved' - актуальні, 'completed' - завершені)
+  if (status) {
+    whereCondition.status = status;
+  }
+
+  const { count, rows } = await ShiftApplication.findAndCountAll({
+    where: whereCondition,
+    limit: limit,
+    offset: offset,
+    include: [
+      {
+        model: Shift,
+        attributes: ["id", "startTime", "endTime", "hourlyRate", "status"],
+        include: [
+          { model: JobPosition, attributes: ["id", "title"] },
+          {
+            model: Location,
+            attributes: ["id", "title", "address", "city"],
+            include: [{ model: Company, attributes: ["id", "name"] }],
+          },
+        ],
+      },
+    ],
+    order: [
+      // Сортуємо за часом початку зміни, щоб найновіші (або найближчі) були зверху
+      [Shift, "startTime", "DESC"],
+    ],
+  });
+
+  return {
+    totalItems: count,
+    totalPages: Math.ceil(count / limit),
+    currentPage: page,
+    data: rows,
+  };
 };

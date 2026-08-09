@@ -17,6 +17,17 @@ const shiftRouter = express.Router();
 shiftRouter.get("/", shiftController.getAllShifts);
 
 /**
+ * @route GET /api/shifts/worker/my-jobs
+ * @desc Отримати історію взятих робіт робітником (актуальні та завершені).
+ * Важливо: має стояти ПЕРЕД /:id, щоб 'worker' не сприйнялось як параметр ID
+ */
+shiftRouter.get(
+  "/worker/my-jobs",
+  authenticate,
+  shiftController.getWorkerShifts,
+);
+
+/**
  * @route GET /api/shifts/:id
  * @desc Отримати детальну інформацію про конкретну зміну за її ID.
  */

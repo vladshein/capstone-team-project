@@ -235,3 +235,26 @@ export const cancelShift = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * Обробляє запит на отримання історії взятих робіт для робітника.
+ */
+export const getWorkerShifts = async (req, res, next) => {
+  try {
+    const workerId = req.user.id;
+    const { page, limit, status } = req.query;
+
+    const result = await shiftService.getWorkerShiftHistory(workerId, {
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 10,
+      status, // Можна передавати '?status=approved' для актуальних або '?status=completed' для завершених
+    });
+
+    res.status(200).json({
+      message: "Історію робіт успішно отримано",
+      ...result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
