@@ -10,6 +10,7 @@ export type { CreateShiftPayload, GetShiftsParams, Shift, ShiftApplication };
 
 export type ShiftSort = "relevance" | "price_desc" | "date_asc" | "date_desc" | "nearest";
 export type ShiftDurationFilter = "До 4 год" | "4–8 год" | "Понад 8 год";
+export type PartnerSelectionMode = "all" | "selected" | "none";
 
 export interface ShiftState {
   items: Shift[];
@@ -24,5 +25,7 @@ export interface ShiftState {
   application: ShiftApplication | null;
   sort: ShiftSort;
   selectedPartners: string[];
+  partnerSelectionMode: PartnerSelectionMode;
+  selectedCategories: string[];
   selectedDurationFilters: ShiftDurationFilter[];
 }

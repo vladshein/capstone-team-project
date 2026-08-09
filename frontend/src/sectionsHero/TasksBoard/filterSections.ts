@@ -24,6 +24,11 @@ export const FILTER_SECTIONS: FilterSection[] = [
     ],
   },
   {
+    id: "category",
+    label: "Категорія",
+    options: [],
+  },
+  {
     id: "service",
     label: "Послуга",
     count: 14,

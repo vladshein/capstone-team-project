@@ -22,7 +22,7 @@ export function FilterAccordion({
   const [open, setOpen] = useState(false);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
 
-  const toggleOption = (label: string) => {
+  const toggleOption = (label: string, value = label) => {
     const isNextChecked = !checked[label];
 
     if (section.id === "sort" && onSelectOption) {
@@ -32,7 +32,7 @@ export function FilterAccordion({
     }
 
     if (onToggleOption) {
-      onToggleOption(label);
+      onToggleOption(value);
       return;
     }
 
@@ -41,6 +41,7 @@ export function FilterAccordion({
     if (section.id === "sort" && label === "Найближчі до мене" && isNextChecked) {
       onRequestPreciseLocation?.();
     }
+
   };
 
   return (
@@ -70,8 +71,8 @@ export function FilterAccordion({
               <span className="flex items-center gap-2">
                 <input
                   type="checkbox"
-                  checked={section.id === "sort" && selectedOption !== undefined ? selectedOption === opt.label : selectedOptions !== undefined ? selectedOptions.includes(opt.label) : !!checked[opt.label]}
-                  onChange={() => toggleOption(opt.label)}
+                  checked={section.id === "sort" && selectedOption !== undefined ? selectedOption === opt.label : selectedOptions !== undefined ? selectedOptions.includes(String(opt.id ?? opt.label)) : !!checked[opt.label]}
+                  onChange={() => toggleOption(opt.label, String(opt.id ?? opt.label))}
                   className="h-4 w-4 rounded border-border text-accent accent-accent"
                 />
                 {opt.label}

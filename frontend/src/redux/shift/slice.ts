@@ -8,6 +8,7 @@ import {
 } from "./actions";
 import type {
   ShiftDurationFilter,
+  PartnerSelectionMode,
   ShiftSort,
   ShiftState,
 } from "./types";
@@ -25,6 +26,8 @@ const initialState: ShiftState = {
   application: null,
   sort: "relevance",
   selectedPartners: [],
+  partnerSelectionMode: "all",
+  selectedCategories: [],
   selectedDurationFilters: [],
 };
 
@@ -54,9 +57,30 @@ const shiftSlice = createSlice({
       state.selectedPartners = state.selectedPartners.includes(payload)
         ? state.selectedPartners.filter((partner) => partner !== payload)
         : [...state.selectedPartners, payload];
+      state.partnerSelectionMode = state.selectedPartners.length ? "selected" : "none";
     },
     clearSelectedPartners: (state) => {
       state.selectedPartners = [];
+      state.partnerSelectionMode = "none";
+    },
+    setSelectedPartners: (state, { payload }: { payload: string[] }) => {
+      state.selectedPartners = payload;
+      state.partnerSelectionMode = payload.length ? "selected" : "none";
+    },
+    setPartnerSelectionMode: (state, { payload }: { payload: PartnerSelectionMode }) => {
+      state.partnerSelectionMode = payload;
+      if (payload !== "selected") state.selectedPartners = [];
+    },
+    toggleCategory: (state, { payload }: { payload: string }) => {
+      state.selectedCategories = state.selectedCategories.includes(payload)
+        ? state.selectedCategories.filter((categoryId) => categoryId !== payload)
+        : [...state.selectedCategories, payload];
+    },
+    clearSelectedCategories: (state) => {
+      state.selectedCategories = [];
+    },
+    setSelectedCategories: (state, { payload }: { payload: string[] }) => {
+      state.selectedCategories = payload;
     },
     toggleDurationFilter: (state, { payload }: { payload: ShiftDurationFilter }) => {
       state.selectedDurationFilters = state.selectedDurationFilters.includes(payload)
@@ -126,11 +150,16 @@ const shiftSlice = createSlice({
 
 export const {
   clearApplication,
+  clearSelectedCategories,
   clearSelectedPartners,
   clearSelectedShift,
   clearShiftError,
   setShiftSort,
+  setSelectedCategories,
+  setSelectedPartners,
+  setPartnerSelectionMode,
   toggleDurationFilter,
+  toggleCategory,
   togglePartner,
 } = shiftSlice.actions;
 export const shiftReducer = shiftSlice.reducer;

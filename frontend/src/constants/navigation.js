@@ -14,7 +14,7 @@ export const NAV_LINKS = [
   },
   {
     id: "nav-shifts",
-    href: "/shifts",
+    href: "/#zavdannia",
     label: "Біржа змін",
     authRequired: false,
     roles: [USER_ROLES.GUEST, USER_ROLES.WORKER, USER_ROLES.BUSINESS],

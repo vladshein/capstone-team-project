@@ -6,6 +6,7 @@ import {
   CalendarDays,
   CheckCircle2,
   Clock3,
+  Heart,
   MapPin,
   Moon,
   Navigation,
@@ -28,6 +29,7 @@ import {
 } from "../redux/shift/selectors";
 import { useAppDispatch, useAppSelector } from "../redux/hooks";
 import type { Shift } from "../redux/shift/types";
+import { useFavoriteShifts } from "../hooks/useFavoriteShifts";
 
 const moneyFormatter = new Intl.NumberFormat("uk-UA", {
   maximumFractionDigits: 0,
@@ -83,8 +85,10 @@ export default function ShiftsDetailPage() {
   const isApplying = useAppSelector(selectIsApplyingToShift);
   const application = useAppSelector(selectShiftApplication);
   const applicationError = useAppSelector(selectShiftApplicationError);
+  const { isFavorite, toggleFavorite } = useFavoriteShifts();
   const shiftId = Number(id);
   const isInvalidId = !Number.isInteger(shiftId) || shiftId <= 0;
+  const favorite = shift ? isFavorite(shift.id) : false;
 
   useEffect(() => {
     if (!isInvalidId) void dispatch(fetchShiftById(shiftId));
@@ -170,9 +174,24 @@ export default function ShiftsDetailPage() {
                   </span>
                 </div>
               </div>
-              <span className={`inline-flex w-fit items-center gap-1.5 text-sm ${status.className}`}>
-                <BriefcaseBusiness className="h-4 w-4" /> {status.label}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className={`inline-flex w-fit items-center gap-1.5 text-sm ${status.className}`}>
+                  <BriefcaseBusiness className="h-4 w-4" /> {status.label}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => toggleFavorite(shift.id)}
+                  aria-pressed={favorite}
+                  aria-label={favorite ? "Прибрати зміну з обраного" : "Додати зміну в обране"}
+                  className={`inline-flex h-11 w-11 items-center justify-center rounded-[var(--radius-pill)] border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                    favorite
+                      ? "border-accent bg-accent/10 text-accent"
+                      : "border-border bg-bg text-text-subtle hover:border-accent hover:text-accent"
+                  }`}
+                >
+                  <Heart className={`h-5 w-5 ${favorite ? "fill-current" : "fill-none"}`} />
+                </button>
+              </div>
             </div>
 
             <div className="grid gap-3 py-6 sm:grid-cols-2">
