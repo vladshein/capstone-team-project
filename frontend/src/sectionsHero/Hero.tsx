@@ -1,12 +1,12 @@
 import React, { useState, useMemo } from "react";
 import { MapPin, Search, Wallet, ShieldCheck, Zap } from "lucide-react";
-import { ShiftCard } from "../components/cards/ShiftCard";
 import { Ticker } from "../components/ui/Ticker";
 import { TasksBoard } from "./TasksBoard/TasksBoard";
+import { NearbyShifts } from "./NearbyShifts";
 import { TestimonialsSlider } from "./Testimonials";
+
 import { FEATURED_SHIFTS, HOW_IT_WORKS } from "../constants/mockData";
 import Map, {MapMarkerData} from '../components/map/Map';
-
 
 interface HeroProps {
   onOpenSignUp?: () => void;
@@ -127,7 +127,6 @@ export function Hero({ onOpenSignUp }: HeroProps) {
         </div>
       </section>
 
-      <Ticker />
       <TasksBoard />
 
       {/* Стандартні секції контенту — 3-тіерний ритм відносно --space-section */}
@@ -191,23 +190,7 @@ export function Hero({ onOpenSignUp }: HeroProps) {
         </div>
       </section>
 
-      <section className="bg-bg-muted py-[calc(var(--space-section)-1.5rem)] sm:py-[calc(var(--space-section)-1rem)] md:py-[var(--space-section)]">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
-          <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
-            <h2 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">
-              Доступно поруч із тобою
-            </h2>
-            <a href="/shifts" className="text-sm font-medium text-accent">
-              Усі зміни →
-            </a>
-          </div>
-          <div className="mt-6 grid grid-cols-1 gap-4 sm:mt-8 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
-            {FEATURED_SHIFTS.map((shift) => (
-              <ShiftCard key={shift.id} shift={shift} />
-            ))}
-          </div>
-        </div>
-      </section>
+      <NearbyShifts />
 
       <section className="mx-auto max-w-7xl px-4 py-[calc(var(--space-section)-1.5rem)] sm:px-6 sm:py-[calc(var(--space-section)-1rem)] md:px-8 md:py-[var(--space-section)]">
         <TestimonialsSlider />

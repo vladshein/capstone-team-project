@@ -1,4 +1,4 @@
-import { Op } from "sequelize";
+import { Op, col, fn, literal, where } from "sequelize";
 import {
   Shift,
   Location,
@@ -18,6 +18,15 @@ export const getAllShifts = async ({
   minPrice,
   maxPrice,
   categoryId,
+  categoryIds,
+  partners,
+  city,
+  dateFrom,
+  dateTo,
+  durationFilters,
+  sort = "relevance",
+  latitude,
+  longitude,
 }) => {
   console.log("[shiftsService] getAllShifts called with params:", {
     page,
@@ -25,6 +34,13 @@ export const getAllShifts = async ({
     minPrice,
     maxPrice,
     categoryId,
+    categoryIds,
+    partners,
+    city,
+    dateFrom,
+    dateTo,
+    durationFilters,
+    sort,
   });
 
   // Приводимо page/limit до чисел і підстраховуємось дефолтами,
@@ -45,8 +61,11 @@ export const getAllShifts = async ({
   };
 
   // Фільтрація за категорією
-  if (categoryId) {
-    whereCondition.categoryId = categoryId;
+  if (categoryIds?.length) {
+    whereCondition.categoryId = { [Op.in]: categoryIds.map(String) };
+  } else if (categoryId) {
+    // categoryId успадковує тип TEXT від Category.id у поточній схемі БД.
+    whereCondition.categoryId = String(categoryId);
   }
 
   // Фільтрація за ціною
@@ -58,25 +77,98 @@ export const getAllShifts = async ({
     whereCondition.hourlyRate = { [Op.lte]: maxPrice };
   }
 
+  if (dateFrom || dateTo) {
+    whereCondition.startTime = {};
+    if (dateFrom) whereCondition.startTime[Op.gte] = dateFrom;
+    if (dateTo) whereCondition.startTime[Op.lt] = dateTo;
+  }
+
+  const durationHours = 'EXTRACT(EPOCH FROM ("Shift"."endTime" - "Shift"."startTime")) / 3600';
+  const durationConditions = [];
+  if (durationFilters?.includes("До 4 год")) {
+    durationConditions.push(where(literal(durationHours), { [Op.lte]: 4 }));
+  }
+  if (durationFilters?.includes("4–8 год")) {
+    durationConditions.push(
+      where(literal(durationHours), { [Op.gt]: 4, [Op.lte]: 8 }),
+    );
+  }
+  if (durationFilters?.includes("Понад 8 год")) {
+    durationConditions.push(where(literal(durationHours), { [Op.gt]: 8 }));
+  }
+  if (durationConditions.length) whereCondition[Op.or] = durationConditions;
+
+  const companyInclude = {
+    model: Company,
+    attributes: ["id", "name"],
+  };
+  if (partners?.length) {
+    companyInclude.where = { name: { [Op.in]: partners } };
+    companyInclude.required = true;
+  }
+
+  const locationInclude = {
+    model: Location,
+    attributes: ["id", "title", "address", "city", "latitude", "longitude"],
+    include: [companyInclude],
+  };
+  if (city) {
+    locationInclude.where = { city: { [Op.iLike]: city } };
+    locationInclude.required = true;
+  }
+
+  const earnings = `(${durationHours} * "Shift"."hourlyRate" + "Shift"."bonusRate")`;
+  let order = [["startTime", "ASC"]];
+  if (sort === "date_desc") order = [["startTime", "DESC"]];
+  if (sort === "price_desc") order = [[literal(earnings), "DESC"], ["startTime", "ASC"]];
+  if (sort === "nearest" && Number.isFinite(latitude) && Number.isFinite(longitude)) {
+    const distance = `6371 * acos(least(1, greatest(-1, cos(radians(${latitude})) * cos(radians("Location"."latitude")) * cos(radians("Location"."longitude") - radians(${longitude})) + sin(radians(${latitude})) * sin(radians("Location"."latitude")))))`;
+    order = [[literal(distance), "ASC"], ["startTime", "ASC"]];
+  }
+
   console.log("[shiftsService] whereCondition:", whereCondition);
 
   try {
     // Виконання запиту з підключенням зв'язаних таблиць (Eager Loading)
-    const { count, rows } = await Shift.findAndCountAll({
+    const listOptions = {
       where: whereCondition,
       limit: parsedLimit,
       offset: offset,
-      order: [["startTime", "ASC"]],
+      order,
       include: [
         { model: Category, attributes: ["id", "name"] },
         { model: JobPosition, attributes: ["id", "title"] },
-        {
-          model: Location,
-          attributes: ["id", "title", "address", "city"],
-          include: [{ model: Company, attributes: ["id", "name"] }],
-        },
+        locationInclude,
       ],
-    });
+    };
+    const partnerFacetLocation = {
+      model: Location,
+      attributes: [],
+      include: [{ model: Company, attributes: ["id", "name"], required: true }],
+    };
+    if (city) {
+      partnerFacetLocation.where = { city: { [Op.iLike]: city } };
+      partnerFacetLocation.required = true;
+    }
+
+    const [listResult, partnerRows] = await Promise.all([
+      Shift.findAndCountAll(listOptions),
+      Shift.findAll({
+        attributes: [[fn("COUNT", col("Shift.id")), "count"]],
+        where: whereCondition,
+        include: [partnerFacetLocation],
+        group: ["Location.Company.id", "Location.Company.name"],
+        order: [[literal('COUNT("Shift"."id")'), "DESC"], [literal('"Location->Company"."name"'), "ASC"]],
+        raw: true,
+      }),
+    ]);
+    const { count, rows } = listResult;
+    const partnerOptions = partnerRows
+      .map((row) => ({
+        label: row["Location.Company.name"],
+        count: Number(row.count),
+      }))
+      .filter((partner) => partner.label);
 
     console.log(
       `[shiftsService] found ${count} shift(s), returning page ${parsedPage} (${rows.length} row(s))`,
@@ -88,6 +180,7 @@ export const getAllShifts = async ({
       totalPages: Math.ceil(count / parsedLimit),
       currentPage: parsedPage,
       data: rows,
+      partnerOptions,
     };
   } catch (error) {
     console.error("[shiftsService] Failed to fetch shifts:", {
@@ -178,4 +271,51 @@ export const createShiftApplication = async (shiftId, workerId) => {
     workerId,
     status: "pending",
   });
+};
+
+/**
+ * Отримує історію робіт (змін) для конкретного робітника.
+ */
+export const getWorkerShiftHistory = async (
+  workerId,
+  { page = 1, limit = 10, status },
+) => {
+  const offset = (page - 1) * limit;
+  const whereCondition = { workerId };
+
+  // Якщо передано статус заявки (наприклад, 'approved' - актуальні, 'completed' - завершені)
+  if (status) {
+    whereCondition.status = status;
+  }
+
+  const { count, rows } = await ShiftApplication.findAndCountAll({
+    where: whereCondition,
+    limit: limit,
+    offset: offset,
+    include: [
+      {
+        model: Shift,
+        attributes: ["id", "startTime", "endTime", "hourlyRate", "status"],
+        include: [
+          { model: JobPosition, attributes: ["id", "title"] },
+          {
+            model: Location,
+            attributes: ["id", "title", "address", "city"],
+            include: [{ model: Company, attributes: ["id", "name"] }],
+          },
+        ],
+      },
+    ],
+    order: [
+      // Сортуємо за часом початку зміни, щоб найновіші (або найближчі) були зверху
+      [Shift, "startTime", "DESC"],
+    ],
+  });
+
+  return {
+    totalItems: count,
+    totalPages: Math.ceil(count / limit),
+    currentPage: page,
+    data: rows,
+  };
 };

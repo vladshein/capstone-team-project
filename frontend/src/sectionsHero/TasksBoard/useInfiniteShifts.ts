@@ -1,85 +1,65 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { getAllShifts, type Shift } from "../../api/shifts";
+import { useEffect, useMemo, useState } from "react";
 
-const PAGE_LIMIT = 20;
+import { getAllShifts, type GetShiftsParams, type Shift } from "../../api/shifts";
 
-export function useInfiniteShifts(scrollContainerRef: React.RefObject<HTMLElement>) {
+export function useInfiniteShifts(
+  params: GetShiftsParams,
+  isEnabled: boolean,
+  hasEmptyPartnerSelection = false,
+) {
   const [shifts, setShifts] = useState<Shift[]>([]);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalItems, setTotalItems] = useState(0);
+  const [partnerOptions, setPartnerOptions] = useState<{ label: string; count: number }[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const observerRef = useRef<IntersectionObserver | null>(null);
+  // Обидва мультиселекти нормалізуємо, щоб порядок кліків не змінював запит.
+  const requestParams = useMemo(
+    () => ({
+      ...params,
+      categoryIds: params.categoryIds?.split(",").filter(Boolean).sort().join(","),
+      partners: params.partners?.split(",").filter(Boolean).sort().join(","),
+    }),
+    [params],
+  );
+  const requestKey = JSON.stringify(requestParams);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadFirstPage() {
-      setIsLoading(true);
+    if (!isEnabled || hasEmptyPartnerSelection) {
+      setShifts([]);
+      setTotalPages(0);
+      setTotalItems(0);
+      if (!isEnabled) setPartnerOptions([]);
       setError(null);
-      try {
-        const response = await getAllShifts({ page: 1, limit: PAGE_LIMIT });
-        if (cancelled) return;
-        setShifts(response.data);
-        setPage(1);
-        setHasMore(response.currentPage < response.totalPages);
-      } catch {
-        if (!cancelled) setError("Не вдалося завантажити завдання. Спробуйте пізніше.");
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
+      setIsLoading(false);
+      return undefined;
     }
 
-    loadFirstPage();
+    setIsLoading(true);
+    setError(null);
+
+    void getAllShifts(requestParams)
+      .then((response) => {
+        if (cancelled) return;
+        setShifts(response.data);
+        setTotalPages(response.totalPages);
+        setTotalItems(response.totalItems);
+        setPartnerOptions(response.partnerOptions ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setError("Не вдалося завантажити завдання. Спробуйте пізніше.");
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [hasEmptyPartnerSelection, isEnabled, requestKey]);
 
-  // 1. Спершу оголошуємо loadNextPage як завжди
-  const loadNextPage = useCallback(async () => {
-    if (isLoading || isLoadingMore || !hasMore) return;
-    setIsLoadingMore(true);
-    try {
-      const nextPage = page + 1;
-      const response = await getAllShifts({ page: nextPage, limit: PAGE_LIMIT });
-      setShifts((prev) => [...prev, ...response.data]);
-      setPage(nextPage);
-      setHasMore(response.currentPage < response.totalPages);
-    } catch {
-      setError("Не вдалося завантажити наступну сторінку.");
-    } finally {
-      setIsLoadingMore(false);
-    }
-  }, [page, isLoading, isLoadingMore, hasMore]);
-
-  // 2. Тепер loadNextPage вже існує — можна покласти її в ref
-  const loadNextPageRef = useRef(loadNextPage);
-  useEffect(() => {
-    loadNextPageRef.current = loadNextPage;
-  }, [loadNextPage]);
-
-  // 3. sentinelRef більше НЕ залежить від loadNextPage — тільки від scrollContainerRef,
-  // тож обсервер не перестворюється на кожну зміну стейту пагінації
-  const sentinelRef = useCallback(
-    (node: HTMLDivElement | null) => {
-      observerRef.current?.disconnect();
-      if (!node) return;
-
-      observerRef.current = new IntersectionObserver(
-        (entries) => {
-          if (entries[0]?.isIntersecting) loadNextPageRef.current();
-        },
-        { root: scrollContainerRef.current, rootMargin: "120px" },
-      );
-      observerRef.current.observe(node);
-    },
-    [scrollContainerRef],
-  );
-
-  useEffect(() => () => observerRef.current?.disconnect(), []);
-
-  return { shifts, isLoading, isLoadingMore, error, hasMore, sentinelRef };
+  return { shifts, totalPages, totalItems, partnerOptions, isLoading, error };
 }

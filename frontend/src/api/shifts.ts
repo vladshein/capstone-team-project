@@ -17,6 +17,8 @@ export interface ShiftLocation {
   title: string;
   address: string;
   city: string;
+  latitude?: number;
+  longitude?: number;
   Company: ShiftCompany;
 }
 
@@ -41,7 +43,10 @@ export interface Shift {
   status: ShiftStatus;
   createdAt: string;
 
+  // Назва залежить від alias Sequelize: в окремих відповідях бекенд повертає
+  // `category`, тому підтримуємо обидва варіанти під час поступової міграції.
   Category: ShiftCategory;
+  category?: ShiftCategory;
   JobPosition: ShiftJobPosition;
   Location: ShiftLocation;
 }
@@ -52,6 +57,15 @@ export interface GetShiftsParams {
   minPrice?: number;
   maxPrice?: number;
   categoryId?: number;
+  categoryIds?: string;
+  partners?: string;
+  city?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  durationFilters?: string;
+  sort?: "relevance" | "price_desc" | "date_asc" | "date_desc" | "nearest";
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface PaginatedShiftsResponse {
@@ -59,6 +73,7 @@ export interface PaginatedShiftsResponse {
   totalPages: number;
   currentPage: number;
   data: Shift[];
+  partnerOptions?: { label: string; count: number }[];
 }
 
 export interface CreateShiftPayload {

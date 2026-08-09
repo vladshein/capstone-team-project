@@ -7,15 +7,48 @@ import * as shiftService from "../services/shiftServices.js";
 export const getAllShifts = async (req, res, next) => {
   try {
     // 1. Отримуємо параметри з Query рядка
-    const { page = 1, limit = 10, minPrice, maxPrice, categoryId } = req.query;
+    const {
+      page = 1,
+      limit = 10,
+      minPrice,
+      maxPrice,
+      categoryId,
+      categoryIds,
+      partners,
+      city,
+      dateFrom,
+      dateTo,
+      durationFilters,
+      sort,
+      latitude,
+      longitude,
+    } = req.query;
+
+    const parseList = (value) =>
+      typeof value === "string"
+        ? value.split(",").map((item) => item.trim()).filter(Boolean)
+        : Array.isArray(value)
+          ? value.map(String).map((item) => item.trim()).filter(Boolean)
+          : undefined;
 
     // 2. Передаємо параметри в Service layer
     const result = await shiftService.getAllShifts({
       page: parseInt(page, 10),
-      limit: parseInt(limit, 10),
+      limit: Math.min(Math.max(parseInt(limit, 10) || 10, 1), 100),
       minPrice: minPrice ? parseFloat(minPrice) : undefined,
       maxPrice: maxPrice ? parseFloat(maxPrice) : undefined,
       categoryId: categoryId ? parseInt(categoryId, 10) : undefined,
+      categoryIds: parseList(categoryIds),
+      partners: parseList(partners),
+      city: typeof city === "string" ? city.trim() || undefined : undefined,
+      dateFrom: typeof dateFrom === "string" && !Number.isNaN(Date.parse(dateFrom)) ? dateFrom : undefined,
+      dateTo: typeof dateTo === "string" && !Number.isNaN(Date.parse(dateTo)) ? dateTo : undefined,
+      durationFilters: parseList(durationFilters),
+      sort: ["relevance", "price_desc", "date_asc", "date_desc", "nearest"].includes(sort)
+        ? sort
+        : "relevance",
+      latitude: Number.isFinite(Number(latitude)) ? Number(latitude) : undefined,
+      longitude: Number.isFinite(Number(longitude)) ? Number(longitude) : undefined,
     });
 
     // 3. Відправляємо успішну відповідь
@@ -230,6 +263,29 @@ export const cancelShift = async (req, res, next) => {
     res.status(200).json({
       message: "Зміну успішно скасовано",
       data: cancelledShift,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Обробляє запит на отримання історії взятих робіт для робітника.
+ */
+export const getWorkerShifts = async (req, res, next) => {
+  try {
+    const workerId = req.user.id;
+    const { page, limit, status } = req.query;
+
+    const result = await shiftService.getWorkerShiftHistory(workerId, {
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 10,
+      status, // Можна передавати '?status=approved' для актуальних або '?status=completed' для завершених
+    });
+
+    res.status(200).json({
+      message: "Історію робіт успішно отримано",
+      ...result,
     });
   } catch (error) {
     next(error);

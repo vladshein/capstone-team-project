@@ -11,6 +11,7 @@ import {
   BellRing,
 } from "lucide-react";
 import type { AuthUser } from "../../redux/auth/types";
+import { FavoriteShiftsTab } from "./FavoriteShiftsTab";
 
 /* ---------------------------------------------------------------------- */
 /*  Types — узгоджені з Backend_TZ (GET /verification-status,             */
@@ -66,11 +67,12 @@ interface WorkerDashboardProps {
   onConfirmAttendance?: (shiftId: string) => void;
 }
 
-type TabKey = "search" | "bookings";
+type TabKey = "search" | "bookings" | "favorites";
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "search", label: "Пошук змін" },
   { key: "bookings", label: "Мої бронювання" },
+  { key: "favorites", label: "Збережені зміни" },
 ];
 
 /* ---------------------------------------------------------------------- */
@@ -301,6 +303,7 @@ export function WorkerDashboard({
               {activeTab === "bookings" && (
                 <BookingsTab upcomingShift={upcomingShift} />
               )}
+              {activeTab === "favorites" && <FavoriteShiftsTab />}
             </div>
           </section>
         </main>
