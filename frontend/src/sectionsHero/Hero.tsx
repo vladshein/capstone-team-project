@@ -142,7 +142,6 @@ export function Hero({ onOpenSignUp }: HeroProps) {
         </div>
       </section>
 
-      <Ticker />
       <TasksBoard />
 
       {/* Стандартні секції контенту — 3-тіерний ритм відносно --space-section */}
