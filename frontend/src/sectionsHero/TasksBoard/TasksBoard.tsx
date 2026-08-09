@@ -12,6 +12,7 @@ import {
   selectSelectedCategories,
   selectSelectedDurationFilters,
   selectSelectedPartners,
+  selectPartnerSelectionMode,
   selectShiftSort,
 } from "../../redux/shift/selectors";
 import { toggleCategory } from "../../redux/shift/slice";
@@ -48,6 +49,7 @@ export function TasksBoard() {
   const sort = useAppSelector(selectShiftSort);
   const selectedCategories = useAppSelector(selectSelectedCategories);
   const selectedPartners = useAppSelector(selectSelectedPartners);
+  const partnerSelectionMode = useAppSelector(selectPartnerSelectionMode);
   const selectedDurationFilters = useAppSelector(selectSelectedDurationFilters);
   const approximateCoordinates =
     typeof approximateLocation?.latitude === "number" &&
@@ -70,7 +72,7 @@ export function TasksBoard() {
       page: currentPage,
       limit: CARDS_PER_PAGE,
       categoryIds: [...selectedCategories].sort().join(","),
-      partners: [...selectedPartners].sort().join(",") || undefined,
+      partners: partnerSelectionMode === "selected" ? [...selectedPartners].sort().join(",") : undefined,
       durationFilters: [...selectedDurationFilters].sort().join(",") || undefined,
       city: manualCity || undefined,
       dateFrom: periodStart.toISOString(),
@@ -79,10 +81,11 @@ export function TasksBoard() {
       latitude: locationOrigin?.latitude,
       longitude: locationOrigin?.longitude,
     };
-  }, [approximateCoordinates, calendarPeriod, coordinates, currentPage, manualCity, selectedCategories, selectedDurationFilters, selectedPartners, selectedDate, sort]);
+  }, [approximateCoordinates, calendarPeriod, coordinates, currentPage, manualCity, partnerSelectionMode, selectedCategories, selectedDurationFilters, selectedPartners, selectedDate, sort]);
   const { shifts, totalPages, partnerOptions, isLoading, error } = useInfiniteShifts(
     shiftRequestParams,
     selectedCategories.length > 0,
+    partnerSelectionMode === "none",
   );
   const toggleCategoryFromCard = (categoryId: string) => {
     dispatch(toggleCategory(categoryId));
@@ -110,7 +113,7 @@ export function TasksBoard() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [calendarPeriod, manualCity, selectedCategories, selectedDate, selectedDurationFilters, selectedPartners, sort]);
+  }, [calendarPeriod, manualCity, partnerSelectionMode, selectedCategories, selectedDate, selectedDurationFilters, selectedPartners, sort]);
 
   const changePage = (nextPage: number) => {
     if (nextPage < 1 || nextPage > totalPages || nextPage === activePage) return;

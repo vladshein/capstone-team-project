@@ -2,7 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 
 import { getAllShifts, type GetShiftsParams, type Shift } from "../../api/shifts";
 
-export function useInfiniteShifts(params: GetShiftsParams, isEnabled: boolean) {
+export function useInfiniteShifts(
+  params: GetShiftsParams,
+  isEnabled: boolean,
+  hasEmptyPartnerSelection = false,
+) {
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [totalPages, setTotalPages] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
@@ -24,11 +28,11 @@ export function useInfiniteShifts(params: GetShiftsParams, isEnabled: boolean) {
   useEffect(() => {
     let cancelled = false;
 
-    if (!isEnabled) {
+    if (!isEnabled || hasEmptyPartnerSelection) {
       setShifts([]);
       setTotalPages(0);
       setTotalItems(0);
-      setPartnerOptions([]);
+      if (!isEnabled) setPartnerOptions([]);
       setError(null);
       setIsLoading(false);
       return undefined;
@@ -55,7 +59,7 @@ export function useInfiniteShifts(params: GetShiftsParams, isEnabled: boolean) {
     return () => {
       cancelled = true;
     };
-  }, [isEnabled, requestKey]);
+  }, [hasEmptyPartnerSelection, isEnabled, requestKey]);
 
   return { shifts, totalPages, totalItems, partnerOptions, isLoading, error };
 }

@@ -5,10 +5,13 @@ import { Link } from "react-router-dom";
 import { getShiftById, type Shift } from "../../api/shifts";
 import { useFavoriteShifts } from "../../hooks/useFavoriteShifts";
 
+const CARDS_PER_PAGE = 8;
+
 export function FavoriteShiftsTab() {
   const { favoriteIds, toggleFavorite } = useFavoriteShifts();
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     let isCurrent = true;
@@ -38,6 +41,17 @@ export function FavoriteShiftsTab() {
     };
   }, [favoriteIds]);
 
+  const totalPages = Math.ceil(shifts.length / CARDS_PER_PAGE);
+  const activePage = Math.min(currentPage, Math.max(totalPages, 1));
+  const pageShifts = shifts.slice(
+    (activePage - 1) * CARDS_PER_PAGE,
+    activePage * CARDS_PER_PAGE,
+  );
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, Math.max(totalPages, 1)));
+  }, [totalPages]);
+
   if (isLoading) {
     return <p className="p-8 text-center text-sm text-text-subtle">Завантажуємо збережені зміни…</p>;
   }
@@ -58,8 +72,9 @@ export function FavoriteShiftsTab() {
   }
 
   return (
-    <div className="grid gap-4 p-4 sm:grid-cols-2">
-      {shifts.map((shift) => {
+    <div className="p-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+      {pageShifts.map((shift) => {
         const companyName = shift.Location?.Company?.name ?? "Компанія";
         const title = shift.JobPosition?.title ?? shift.Category?.name ?? "Зміна";
         const startTime = new Date(shift.startTime);
@@ -104,6 +119,38 @@ export function FavoriteShiftsTab() {
           </article>
         );
       })}
+      </div>
+      {totalPages > 1 && (
+        <nav className="mt-6 flex items-center justify-center gap-1.5" aria-label="Пагінація збережених змін">
+          <button
+            type="button"
+            onClick={() => setCurrentPage((page) => page - 1)}
+            disabled={activePage === 1}
+            className="min-h-[40px] rounded-[var(--radius-pill)] border border-border px-3 text-sm text-text-muted disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Назад
+          </button>
+          {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+            <button
+              key={pageNumber}
+              type="button"
+              onClick={() => setCurrentPage(pageNumber)}
+              aria-current={pageNumber === activePage ? "page" : undefined}
+              className={`flex h-10 w-10 items-center justify-center rounded-[var(--radius-pill)] text-sm font-medium transition-colors ${pageNumber === activePage ? "bg-accent text-white" : "border border-border text-text hover:border-accent"}`}
+            >
+              {pageNumber}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setCurrentPage((page) => page + 1)}
+            disabled={activePage === totalPages}
+            className="min-h-[40px] rounded-[var(--radius-pill)] border border-border px-3 text-sm text-text-muted disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Далі
+          </button>
+        </nav>
+      )}
     </div>
   );
 }

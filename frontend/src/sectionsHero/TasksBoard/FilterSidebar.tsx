@@ -7,6 +7,7 @@ import { FILTER_SECTIONS } from "./filterSections";
 import { useAppDispatch, useAppSelector } from "../../redux/hooks";
 import {
   clearSelectedCategories,
+  setPartnerSelectionMode,
   setShiftSort,
   setSelectedCategories,
   setSelectedPartners,
@@ -18,6 +19,7 @@ import {
   selectSelectedCategories,
   selectSelectedDurationFilters,
   selectSelectedPartners,
+  selectPartnerSelectionMode,
   selectShiftSort,
 } from "../../redux/shift/selectors";
 import type { ShiftDurationFilter } from "../../redux/shift/types";
@@ -64,6 +66,7 @@ export function FilterSidebar({
   const dispatch = useAppDispatch();
   const sort = useAppSelector(selectShiftSort);
   const selectedPartners = useAppSelector(selectSelectedPartners);
+  const partnerSelectionMode = useAppSelector(selectPartnerSelectionMode);
   const selectedCategories = useAppSelector(selectSelectedCategories);
   const selectedDurationFilters = useAppSelector(selectSelectedDurationFilters);
   const sections = FILTER_SECTIONS.filter((section) => section.id !== "service").map((section) => {
@@ -101,14 +104,14 @@ export function FilterSidebar({
   };
   const togglePartnerFilter = (partner: string) => {
     if (partner === "all") {
-      dispatch(
-        selectedPartners.length === partnerOptions.length
-          ? setSelectedPartners([])
-          : setSelectedPartners(partnerOptions.map((option) => option.label)),
-      );
+      dispatch(setPartnerSelectionMode(partnerSelectionMode === "all" ? "none" : "all"));
       return;
     }
 
+    if (partnerSelectionMode === "all") {
+      dispatch(setSelectedPartners(partnerOptions.map((option) => option.label).filter((label) => label !== partner)));
+      return;
+    }
     dispatch(togglePartner(partner));
   };
 
@@ -201,8 +204,8 @@ export function FilterSidebar({
               }
               selectedOptions={
                 section.id === "partner"
-                  ? selectedPartners.length === partnerOptions.length
-                    ? ["all", ...selectedPartners]
+                  ? partnerSelectionMode === "all"
+                    ? ["all", ...partnerOptions.map((option) => option.label)]
                     : selectedPartners
                   : section.id === "category"
                     ? selectedCategories.length === categories.length
