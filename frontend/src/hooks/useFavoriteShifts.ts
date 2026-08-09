@@ -42,6 +42,7 @@ export function useFavoriteShifts() {
   }, []);
 
   return {
+    favoriteIds,
     isFavorite: (shiftId: string | number) => favoriteIds.includes(String(shiftId)),
     toggleFavorite,
   };
