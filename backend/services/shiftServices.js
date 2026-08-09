@@ -18,6 +18,7 @@ export const getAllShifts = async ({
   minPrice,
   maxPrice,
   categoryId,
+  categoryIds,
 }) => {
   console.log("[shiftsService] getAllShifts called with params:", {
     page,
@@ -25,6 +26,7 @@ export const getAllShifts = async ({
     minPrice,
     maxPrice,
     categoryId,
+    categoryIds,
   });
 
   // Приводимо page/limit до чисел і підстраховуємось дефолтами,
@@ -45,7 +47,9 @@ export const getAllShifts = async ({
   };
 
   // Фільтрація за категорією
-  if (categoryId) {
+  if (categoryIds?.length) {
+    whereCondition.categoryId = { [Op.in]: categoryIds.map(String) };
+  } else if (categoryId) {
     // categoryId успадковує тип TEXT від Category.id у поточній схемі БД.
     whereCondition.categoryId = String(categoryId);
   }

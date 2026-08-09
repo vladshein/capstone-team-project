@@ -5,8 +5,7 @@ const PAGE_LIMIT = 20;
 
 export function useInfiniteShifts(
   scrollContainerRef: React.RefObject<HTMLElement>,
-  categoryId: string | number | null,
-  isEnabled: boolean,
+  categoryIds: string[],
 ) {
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [page, setPage] = useState(1);
@@ -22,20 +21,13 @@ export function useInfiniteShifts(
     let cancelled = false;
 
     async function loadFirstPage() {
-      if (!isEnabled) {
-        setShifts([]);
-        setHasMore(false);
-        setIsLoading(false);
-        return;
-      }
-
       setIsLoading(true);
       setError(null);
       try {
         const response = await getAllShifts({
           page: 1,
           limit: PAGE_LIMIT,
-          ...(categoryId ? { categoryId: Number(categoryId) } : {}),
+          ...(categoryIds.length ? { categoryIds: categoryIds.join(",") } : {}),
         });
         if (cancelled) return;
         setShifts(response.data);
@@ -53,17 +45,17 @@ export function useInfiniteShifts(
     return () => {
       cancelled = true;
     };
-  }, [categoryId, isEnabled]);
+  }, [categoryIds]);
 
   const goToPage = useCallback(async (targetPage: number) => {
-    if (!isEnabled || targetPage < 1 || targetPage > totalPages || targetPage === page) return;
+    if (targetPage < 1 || targetPage > totalPages || targetPage === page) return;
     setIsLoading(true);
     setError(null);
     try {
       const response = await getAllShifts({
         page: targetPage,
         limit: PAGE_LIMIT,
-        ...(categoryId ? { categoryId: Number(categoryId) } : {}),
+        ...(categoryIds.length ? { categoryIds: categoryIds.join(",") } : {}),
       });
       setShifts(response.data);
       setPage(response.currentPage);
@@ -75,18 +67,18 @@ export function useInfiniteShifts(
     } finally {
       setIsLoading(false);
     }
-  }, [categoryId, isEnabled, page, scrollContainerRef, totalPages]);
+  }, [categoryIds, page, scrollContainerRef, totalPages]);
 
   // 1. Спершу оголошуємо loadNextPage як завжди
   const loadNextPage = useCallback(async () => {
-    if (!isEnabled || isLoading || isLoadingMore || !hasMore) return;
+    if (isLoading || isLoadingMore || !hasMore) return;
     setIsLoadingMore(true);
     try {
       const nextPage = page + 1;
       const response = await getAllShifts({
         page: nextPage,
         limit: PAGE_LIMIT,
-        ...(categoryId ? { categoryId: Number(categoryId) } : {}),
+        ...(categoryIds.length ? { categoryIds: categoryIds.join(",") } : {}),
       });
       setShifts((prev) => [...prev, ...response.data]);
       setPage(nextPage);
@@ -96,7 +88,7 @@ export function useInfiniteShifts(
     } finally {
       setIsLoadingMore(false);
     }
-  }, [categoryId, isEnabled, page, isLoading, isLoadingMore, hasMore]);
+  }, [categoryIds, page, isLoading, isLoadingMore, hasMore]);
 
   // 2. Тепер loadNextPage вже існує — можна покласти її в ref
   const loadNextPageRef = useRef(loadNextPage);

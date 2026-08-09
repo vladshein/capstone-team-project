@@ -24,5 +24,6 @@ export interface ShiftState {
   application: ShiftApplication | null;
   sort: ShiftSort;
   selectedPartners: string[];
+  selectedCategories: string[];
   selectedDurationFilters: ShiftDurationFilter[];
 }

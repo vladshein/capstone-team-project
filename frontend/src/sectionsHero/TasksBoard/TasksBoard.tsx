@@ -1,20 +1,18 @@
-import { ArrowLeft } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { CategoryPicker } from "./CategoryPicker";
+import { useMemo, useRef, useState } from "react";
 import type { CalendarPeriod } from "./DateStrip";
 import { FilterSidebar } from "./FilterSidebar";
 import { TaskCard } from "./TaskCard";
-import { useGeolocation } from "./useGeolocation";
 import { useApproximateLocation } from "./useApproximateLocation";
 import { useInfiniteShifts } from "./useInfiniteShifts";
 import { useCategories } from "./useCategories";
-import { useAppDispatch, useAppSelector } from "../../redux/hooks";
+import { useGeolocation } from "./useGeolocation";
+import { useAppSelector } from "../../redux/hooks";
 import {
+  selectSelectedCategories,
   selectSelectedDurationFilters,
   selectSelectedPartners,
   selectShiftSort,
 } from "../../redux/shift/selectors";
-import { clearSelectedPartners } from "../../redux/shift/slice";
 
 const getShiftTotal = (shift: { startTime: string; endTime: string; hourlyRate: number | string; bonusRate: number | string }) => {
   const hours = Math.max((new Date(shift.endTime).getTime() - new Date(shift.startTime).getTime()) / 3_600_000, 0);
@@ -30,30 +28,48 @@ const getDistance = (latitude: number, longitude: number, targetLatitude?: numbe
   return 6371 * 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
 };
 
+const normalizeCity = (city: string) => city.trim().toLocaleLowerCase("uk-UA");
+
 export function TasksBoard() {
-  const dispatch = useAppDispatch();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<
-    string | number | null
-  >(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [calendarPeriod, setCalendarPeriod] = useState<CalendarPeriod>("week");
-  const { shifts, isLoading, error, page, totalPages, goToPage } =
-    useInfiniteShifts(scrollContainerRef, selectedCategoryId, Boolean(selectedCategoryId));
-  const { coordinates, error: locationError, isLocating, requestLocation } =
-    useGeolocation();
+  const [manualCity, setManualCity] = useState(() => {
+    try {
+      return window.localStorage.getItem("zmina.manual-city") ?? "";
+    } catch {
+      return "";
+    }
+  });
+  const { coordinates, error: locationError, isLocating, requestLocation } = useGeolocation();
   const { location: approximateLocation, isLoading: isLoadingApproximateLocation } =
     useApproximateLocation();
   const { categories, error: categoriesError, isLoading: isLoadingCategories } =
     useCategories();
-  const selectedCategory = categories.find((category) => category.id === selectedCategoryId);
   const sort = useAppSelector(selectShiftSort);
+  const selectedCategories = useAppSelector(selectSelectedCategories);
+  const { shifts, isLoading, error, page, totalPages, goToPage } =
+    useInfiniteShifts(scrollContainerRef, selectedCategories);
   const selectedPartners = useAppSelector(selectSelectedPartners);
   const selectedDurationFilters = useAppSelector(selectSelectedDurationFilters);
+  const approximateCoordinates =
+    typeof approximateLocation?.latitude === "number" &&
+    typeof approximateLocation.longitude === "number"
+      ? {
+          latitude: approximateLocation.latitude,
+          longitude: approximateLocation.longitude,
+        }
+      : null;
+  const saveManualCity = (city: string) => {
+    const normalizedCity = city.trim();
+    setManualCity(normalizedCity);
+    try {
+      window.localStorage.setItem("zmina.manual-city", normalizedCity);
+    } catch {
+      // Збереження в браузері — лише зручність, форма має працювати й без нього.
+    }
+  };
 
-  useEffect(() => {
-    dispatch(clearSelectedPartners());
-  }, [dispatch, selectedCategoryId]);
   const partnerOptions = useMemo(() => {
     const counts = new Map<string, number>();
     shifts.forEach((shift) => {
@@ -79,22 +95,24 @@ export function TasksBoard() {
       const shiftDate = new Date(shift.startTime);
       const matchesDate = shiftDate >= periodStart && shiftDate < periodEnd;
       const matchesPartner = selectedPartners.length === 0 || selectedPartners.includes(shift.Location?.Company?.name ?? "");
+      const matchesManualCity = !manualCity || normalizeCity(shift.Location?.city ?? "") === normalizeCity(manualCity);
       const durationInHours = Math.max((new Date(shift.endTime).getTime() - shiftDate.getTime()) / 3_600_000, 0);
       const matchesDuration = selectedDurationFilters.length === 0 || selectedDurationFilters.some((filter) => {
         if (filter === "До 4 год") return durationInHours <= 4;
         if (filter === "4–8 год") return durationInHours > 4 && durationInHours <= 8;
         return durationInHours > 8;
       });
-      return matchesDate && matchesPartner && matchesDuration;
+      return matchesDate && matchesPartner && matchesManualCity && matchesDuration;
     });
     if (sort === "price_desc") return sorted.sort((first, second) => getShiftTotal(second) - getShiftTotal(first));
     if (sort === "date_asc") return sorted.sort((first, second) => new Date(first.startTime).getTime() - new Date(second.startTime).getTime());
     if (sort === "date_desc") return sorted.sort((first, second) => new Date(second.startTime).getTime() - new Date(first.startTime).getTime());
-    if (sort === "nearest" && coordinates) {
-      return sorted.sort((first, second) => getDistance(coordinates.latitude, coordinates.longitude, first.Location?.latitude, first.Location?.longitude) - getDistance(coordinates.latitude, coordinates.longitude, second.Location?.latitude, second.Location?.longitude));
+    const locationOrigin = coordinates ?? approximateCoordinates;
+    if (sort === "nearest" && locationOrigin) {
+      return sorted.sort((first, second) => getDistance(locationOrigin.latitude, locationOrigin.longitude, first.Location?.latitude, first.Location?.longitude) - getDistance(locationOrigin.latitude, locationOrigin.longitude, second.Location?.latitude, second.Location?.longitude));
     }
     return sorted;
-  }, [calendarPeriod, coordinates, selectedDate, selectedDurationFilters, selectedPartners, shifts, sort]);
+  }, [approximateCoordinates, calendarPeriod, coordinates, manualCity, selectedDate, selectedDurationFilters, selectedPartners, shifts, sort]);
 
   return (
     <section id="zavdannia" className="mx-auto max-w-7xl px-4 py-[calc(var(--space-section)-1.5rem)] sm:px-6 sm:py-[calc(var(--space-section)-1rem)] md:px-8 md:py-[var(--space-section)]">
@@ -109,45 +127,28 @@ export function TasksBoard() {
           locationError={locationError}
           onRequestLocation={requestLocation}
           approximateLocation={approximateLocation}
+          manualCity={manualCity}
+          onSaveManualCity={saveManualCity}
           isLoadingApproximateLocation={isLoadingApproximateLocation}
-          hasSelectedCategory={Boolean(selectedCategoryId)}
           selectedDate={selectedDate}
           onSelectDate={setSelectedDate}
           calendarPeriod={calendarPeriod}
           onCalendarPeriodChange={setCalendarPeriod}
           partnerOptions={partnerOptions}
+          categories={categories}
         />
 
         <div
           ref={scrollContainerRef}
           className="min-w-0"
         >
-          {!selectedCategoryId && isLoadingCategories && (
+          {isLoadingCategories && (
             <p className="text-sm text-text-muted">Завантажуємо категорії…</p>
           )}
-          {!selectedCategoryId && categoriesError && (
+          {categoriesError && (
             <p className="text-sm text-danger">{categoriesError}</p>
           )}
-          {!selectedCategoryId && !isLoadingCategories && !categoriesError && (
-            <CategoryPicker categories={categories} onSelect={setSelectedCategoryId} />
-          )}
-
-          {selectedCategoryId && (
-            <>
-              <button
-                type="button"
-                onClick={() => setSelectedCategoryId(null)}
-                className="mb-5 inline-flex min-h-[44px] items-center gap-2 text-sm font-medium text-text-muted transition-colors hover:text-accent-text"
-              >
-                <ArrowLeft className="h-4 w-4" /> Усі категорії
-              </button>
-              <h3 className="mb-5 font-heading text-2xl font-bold text-ink">
-                {selectedCategory?.name ?? "Зміни"}
-              </h3>
-            </>
-          )}
-
-          {selectedCategoryId && (
+          {!isLoadingCategories && !categoriesError && (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
               {isLoading && (
                 <p className="text-sm text-text-muted sm:col-span-2">Завантаження завдань…</p>
@@ -161,7 +162,7 @@ export function TasksBoard() {
 
             </div>
           )}
-          {selectedCategoryId && totalPages > 0 && (
+          {!isLoadingCategories && !categoriesError && totalPages > 0 && (
             <nav className="mt-6 flex items-center justify-center gap-1.5" aria-label="Пагінація змін">
               <button type="button" onClick={() => goToPage(page - 1)} disabled={page === 1} className="min-h-[40px] rounded-[var(--radius-pill)] border border-border px-3 text-sm text-text-muted disabled:cursor-not-allowed disabled:opacity-40">Назад</button>
               {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (

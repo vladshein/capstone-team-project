@@ -7,7 +7,7 @@ import * as shiftService from "../services/shiftServices.js";
 export const getAllShifts = async (req, res, next) => {
   try {
     // 1. Отримуємо параметри з Query рядка
-    const { page = 1, limit = 10, minPrice, maxPrice, categoryId } = req.query;
+    const { page = 1, limit = 10, minPrice, maxPrice, categoryId, categoryIds } = req.query;
 
     // 2. Передаємо параметри в Service layer
     const result = await shiftService.getAllShifts({
@@ -16,6 +16,11 @@ export const getAllShifts = async (req, res, next) => {
       minPrice: minPrice ? parseFloat(minPrice) : undefined,
       maxPrice: maxPrice ? parseFloat(maxPrice) : undefined,
       categoryId: categoryId ? parseInt(categoryId, 10) : undefined,
+      categoryIds: typeof categoryIds === "string"
+        ? categoryIds.split(",").filter(Boolean)
+        : Array.isArray(categoryIds)
+          ? categoryIds.filter(Boolean)
+          : undefined,
     });
 
     // 3. Відправляємо успішну відповідь

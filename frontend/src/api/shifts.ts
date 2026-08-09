@@ -54,6 +54,7 @@ export interface GetShiftsParams {
   minPrice?: number;
   maxPrice?: number;
   categoryId?: number;
+  categoryIds?: string;
 }
 
 export interface PaginatedShiftsResponse {

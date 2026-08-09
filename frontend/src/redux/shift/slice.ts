@@ -25,6 +25,7 @@ const initialState: ShiftState = {
   application: null,
   sort: "relevance",
   selectedPartners: [],
+  selectedCategories: [],
   selectedDurationFilters: [],
 };
 
@@ -57,6 +58,14 @@ const shiftSlice = createSlice({
     },
     clearSelectedPartners: (state) => {
       state.selectedPartners = [];
+    },
+    toggleCategory: (state, { payload }: { payload: string }) => {
+      state.selectedCategories = state.selectedCategories.includes(payload)
+        ? state.selectedCategories.filter((categoryId) => categoryId !== payload)
+        : [...state.selectedCategories, payload];
+    },
+    clearSelectedCategories: (state) => {
+      state.selectedCategories = [];
     },
     toggleDurationFilter: (state, { payload }: { payload: ShiftDurationFilter }) => {
       state.selectedDurationFilters = state.selectedDurationFilters.includes(payload)
@@ -126,11 +135,13 @@ const shiftSlice = createSlice({
 
 export const {
   clearApplication,
+  clearSelectedCategories,
   clearSelectedPartners,
   clearSelectedShift,
   clearShiftError,
   setShiftSort,
   toggleDurationFilter,
+  toggleCategory,
   togglePartner,
 } = shiftSlice.actions;
 export const shiftReducer = shiftSlice.reducer;

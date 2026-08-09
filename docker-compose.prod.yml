@@ -77,6 +77,8 @@ services:
       - DATABASE_NAME=${POSTGRES_DB}
       - DATABASE_HOST=${DB_HOST}
       - DATABASE_PORT=${DB_PORT}
+      # Caddy передає IP відвідувача через X-Forwarded-For.
+      - TRUST_PROXY=true
     volumes:
       - ./backend/public:/app/public
     depends_on:
