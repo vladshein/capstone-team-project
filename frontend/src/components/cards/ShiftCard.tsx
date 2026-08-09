@@ -1,7 +1,7 @@
-import { useState } from "react";
 import type { ReactNode } from "react";
 import { Heart, ArrowUpRight, CalendarDays, MapPin, Star } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useFavoriteShifts } from "../../hooks/useFavoriteShifts";
 
 interface Shift {
   id: string | number;
@@ -20,7 +20,8 @@ interface ShiftCardProps {
 }
 
 export function ShiftCard({ shift }: ShiftCardProps) {
-  const [favorite, setFavorite] = useState(false);
+  const { isFavorite, toggleFavorite } = useFavoriteShifts();
+  const favorite = isFavorite(shift.id);
 
   return (
     <article className="group relative flex h-full flex-col rounded-[var(--radius-card)] border border-border bg-bg p-4 transition-shadow hover:shadow-[0_8px_30px_-12px_rgba(18,19,26,0.25)] sm:p-5">
@@ -30,13 +31,13 @@ export function ShiftCard({ shift }: ShiftCardProps) {
         </div>
         <button
           type="button"
-          onClick={() => setFavorite((v) => !v)}
+          onClick={() => toggleFavorite(shift.id)}
           aria-pressed={favorite}
-          aria-label="Додати до обраного"
-          className="-m-2 p-2 text-text-subtle transition-colors hover:text-highlight"
+          aria-label={favorite ? "Прибрати з обраного" : "Додати в обране"}
+          className="-m-2 p-2 text-text-subtle transition-colors hover:text-accent"
         >
           <Heart
-            className={`h-5 w-5 ${favorite ? "fill-highlight text-highlight" : "fill-none text-current"}`}
+            className={`h-5 w-5 ${favorite ? "fill-current text-accent" : "fill-none text-current"}`}
           />
         </button>
       </div>

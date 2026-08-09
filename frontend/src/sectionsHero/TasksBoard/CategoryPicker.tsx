@@ -58,10 +58,11 @@ const categoryTextures: Record<string, string> = {
 
 interface CategoryPickerProps {
   categories: Category[];
-  onSelect: (categoryId: string | number) => void;
+  selectedCategoryIds: string[];
+  onToggle: (categoryId: string) => void;
 }
 
-export function CategoryPicker({ categories, onSelect }: CategoryPickerProps) {
+export function CategoryPicker({ categories, selectedCategoryIds, onToggle }: CategoryPickerProps) {
   return (
     <div>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -78,16 +79,18 @@ export function CategoryPicker({ categories, onSelect }: CategoryPickerProps) {
         {categories.map((category) => {
           const Icon = CATEGORY_ICONS[category.name] ?? LayoutGrid;
           const texture = categoryTextures[category.name] ?? categoryTextures["Ритейл та Торгівля"];
+          const isSelected = selectedCategoryIds.includes(String(category.id));
 
           return (
             <button
               key={category.id}
               type="button"
-              onClick={() => onSelect(category.id)}
-              className="group relative flex min-h-32 flex-col items-center overflow-hidden rounded-[var(--radius-card)] border border-border bg-[linear-gradient(145deg,var(--color-bg)_0%,var(--color-bg-muted)_100%)] p-4 text-center transition-all hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-md"
+              onClick={() => onToggle(String(category.id))}
+              aria-pressed={isSelected}
+              className={`group relative flex min-h-32 flex-col items-center overflow-hidden rounded-[var(--radius-card)] border bg-[linear-gradient(145deg,var(--color-bg)_0%,var(--color-bg-muted)_100%)] p-4 text-center transition-all hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-md ${isSelected ? "border-accent/60 ring-2 ring-accent/15" : "border-border"}`}
             >
               <span className={`pointer-events-none absolute inset-0 opacity-[0.07] ${texture}`} />
-              <span className="relative flex h-10 w-10 items-center justify-center rounded-[var(--radius-card)] bg-accent/10 text-accent transition-colors group-hover:bg-accent group-hover:text-white">
+              <span className={`relative flex h-10 w-10 items-center justify-center rounded-[var(--radius-card)] transition-colors group-hover:bg-accent group-hover:text-white ${isSelected ? "bg-accent text-white" : "bg-accent/10 text-accent"}`}>
                 <Icon className="h-5 w-5" />
               </span>
               <span className="relative mt-4 text-sm font-semibold leading-5 text-ink">{category.name}</span>

@@ -1,4 +1,5 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { CategoryPicker } from "./CategoryPicker";
 import type { CalendarPeriod } from "./DateStrip";
 import { FilterSidebar } from "./FilterSidebar";
 import { TaskCard } from "./TaskCard";
@@ -6,13 +7,14 @@ import { useApproximateLocation } from "./useApproximateLocation";
 import { useInfiniteShifts } from "./useInfiniteShifts";
 import { useCategories } from "./useCategories";
 import { useGeolocation } from "./useGeolocation";
-import { useAppSelector } from "../../redux/hooks";
+import { useAppDispatch, useAppSelector } from "../../redux/hooks";
 import {
   selectSelectedCategories,
   selectSelectedDurationFilters,
   selectSelectedPartners,
   selectShiftSort,
 } from "../../redux/shift/selectors";
+import { toggleCategory } from "../../redux/shift/slice";
 
 const getShiftTotal = (shift: { startTime: string; endTime: string; hourlyRate: number | string; bonusRate: number | string }) => {
   const hours = Math.max((new Date(shift.endTime).getTime() - new Date(shift.startTime).getTime()) / 3_600_000, 0);
@@ -29,9 +31,21 @@ const getDistance = (latitude: number, longitude: number, targetLatitude?: numbe
 };
 
 const normalizeCity = (city: string) => city.trim().toLocaleLowerCase("uk-UA");
+const CARDS_PER_PAGE = 8;
+
+const getPaginationPages = (totalPages: number, currentPage: number) => {
+  if (totalPages <= 5) return Array.from({ length: totalPages }, (_, index) => index + 1);
+
+  const pages = new Set([1, totalPages, currentPage - 1, currentPage, currentPage + 1]);
+  return [...pages]
+    .filter((page) => page >= 1 && page <= totalPages)
+    .sort((first, second) => first - second);
+};
 
 export function TasksBoard() {
+  const dispatch = useAppDispatch();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [calendarPeriod, setCalendarPeriod] = useState<CalendarPeriod>("week");
   const [manualCity, setManualCity] = useState(() => {
@@ -48,8 +62,8 @@ export function TasksBoard() {
     useCategories();
   const sort = useAppSelector(selectShiftSort);
   const selectedCategories = useAppSelector(selectSelectedCategories);
-  const { shifts, isLoading, error, page, totalPages, goToPage } =
-    useInfiniteShifts(scrollContainerRef, selectedCategories);
+  const { shifts, isLoading, error } =
+    useInfiniteShifts(selectedCategories, selectedCategories.length > 0);
   const selectedPartners = useAppSelector(selectSelectedPartners);
   const selectedDurationFilters = useAppSelector(selectSelectedDurationFilters);
   const approximateCoordinates =
@@ -60,6 +74,9 @@ export function TasksBoard() {
           longitude: approximateLocation.longitude,
         }
       : null;
+  const toggleCategoryFromCard = (categoryId: string) => {
+    dispatch(toggleCategory(categoryId));
+  };
   const saveManualCity = (city: string) => {
     const normalizedCity = city.trim();
     setManualCity(normalizedCity);
@@ -113,6 +130,31 @@ export function TasksBoard() {
     }
     return sorted;
   }, [approximateCoordinates, calendarPeriod, coordinates, manualCity, selectedDate, selectedDurationFilters, selectedPartners, shifts, sort]);
+  const totalPages = Math.ceil(visibleShifts.length / CARDS_PER_PAGE);
+  const activePage = Math.min(currentPage, Math.max(totalPages, 1));
+  const pageShifts = visibleShifts.slice(
+    (activePage - 1) * CARDS_PER_PAGE,
+    activePage * CARDS_PER_PAGE,
+  );
+  const paginationPages = getPaginationPages(totalPages, activePage);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [calendarPeriod, manualCity, selectedCategories, selectedDate, selectedDurationFilters, selectedPartners, sort]);
+
+  const changePage = (nextPage: number) => {
+    if (nextPage < 1 || nextPage > totalPages || nextPage === activePage) return;
+    setCurrentPage(nextPage);
+    const listTop = scrollContainerRef.current?.getBoundingClientRect().top;
+    const headerHeight = document.querySelector("header")?.getBoundingClientRect().height ?? 0;
+
+    if (listTop !== undefined) {
+      window.scrollTo({
+        top: Math.max(window.scrollY + listTop - headerHeight - 16, 0),
+        behavior: "smooth",
+      });
+    }
+  };
 
   return (
     <section id="zavdannia" className="mx-auto max-w-7xl px-4 py-[calc(var(--space-section)-1.5rem)] sm:px-6 sm:py-[calc(var(--space-section)-1rem)] md:px-8 md:py-[var(--space-section)]">
@@ -130,6 +172,7 @@ export function TasksBoard() {
           manualCity={manualCity}
           onSaveManualCity={saveManualCity}
           isLoadingApproximateLocation={isLoadingApproximateLocation}
+          hasSelectedCategory={selectedCategories.length > 0}
           selectedDate={selectedDate}
           onSelectDate={setSelectedDate}
           calendarPeriod={calendarPeriod}
@@ -149,26 +192,38 @@ export function TasksBoard() {
             <p className="text-sm text-danger">{categoriesError}</p>
           )}
           {!isLoadingCategories && !categoriesError && (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
-              {isLoading && (
-                <p className="text-sm text-text-muted sm:col-span-2">Завантаження завдань…</p>
-              )}
-              {error && <p className="text-sm text-red-600 sm:col-span-2">{error}</p>}
-              {!isLoading && !error && visibleShifts.length === 0 && (
-                <p className="text-sm text-text-muted sm:col-span-2">Наразі немає доступних завдань.</p>
-              )}
+            <>
+              {selectedCategories.length === 0 ? (
+                <CategoryPicker
+                  categories={categories}
+                  selectedCategoryIds={selectedCategories}
+                  onToggle={toggleCategoryFromCard}
+                />
+              ) : (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
+                {isLoading && (
+                  <p className="text-sm text-text-muted sm:col-span-2">Завантаження завдань…</p>
+                )}
+                {error && <p className="text-sm text-red-600 sm:col-span-2">{error}</p>}
+                {!isLoading && !error && visibleShifts.length === 0 && (
+                  <p className="text-sm text-text-muted sm:col-span-2">Наразі немає доступних завдань.</p>
+                )}
 
-              {!isLoading && visibleShifts.map((shift) => <TaskCard key={shift.id} shift={shift} />)}
-
-            </div>
+                {!isLoading && pageShifts.map((shift) => <TaskCard key={shift.id} shift={shift} />)}
+                </div>
+              )}
+            </>
           )}
-          {!isLoadingCategories && !categoriesError && totalPages > 0 && (
+          {!isLoadingCategories && !categoriesError && selectedCategories.length > 0 && totalPages > 1 && (
             <nav className="mt-6 flex items-center justify-center gap-1.5" aria-label="Пагінація змін">
-              <button type="button" onClick={() => goToPage(page - 1)} disabled={page === 1} className="min-h-[40px] rounded-[var(--radius-pill)] border border-border px-3 text-sm text-text-muted disabled:cursor-not-allowed disabled:opacity-40">Назад</button>
-              {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
-                <button key={pageNumber} type="button" onClick={() => goToPage(pageNumber)} aria-current={pageNumber === page ? "page" : undefined} className={`flex h-10 w-10 items-center justify-center rounded-[var(--radius-pill)] text-sm font-medium transition-colors ${pageNumber === page ? "bg-accent text-white" : "border border-border text-text hover:border-accent"}`}>{pageNumber}</button>
+              <button type="button" onClick={() => changePage(activePage - 1)} disabled={activePage === 1} className="min-h-[40px] rounded-[var(--radius-pill)] border border-border px-3 text-sm text-text-muted disabled:cursor-not-allowed disabled:opacity-40">Назад</button>
+              {paginationPages.map((pageNumber, index) => (
+                <span key={pageNumber} className="contents">
+                  {index > 0 && pageNumber - paginationPages[index - 1] > 1 && <span className="px-1 text-text-subtle">…</span>}
+                  <button type="button" onClick={() => changePage(pageNumber)} aria-current={pageNumber === activePage ? "page" : undefined} className={`flex h-10 w-10 items-center justify-center rounded-[var(--radius-pill)] text-sm font-medium transition-colors ${pageNumber === activePage ? "bg-accent text-white" : "border border-border text-text hover:border-accent"}`}>{pageNumber}</button>
+                </span>
               ))}
-              <button type="button" onClick={() => goToPage(page + 1)} disabled={page === totalPages} className="min-h-[40px] rounded-[var(--radius-pill)] border border-border px-3 text-sm text-text-muted disabled:cursor-not-allowed disabled:opacity-40">Далі</button>
+              <button type="button" onClick={() => changePage(activePage + 1)} disabled={activePage === totalPages} className="min-h-[40px] rounded-[var(--radius-pill)] border border-border px-3 text-sm text-text-muted disabled:cursor-not-allowed disabled:opacity-40">Далі</button>
             </nav>
           )}
         </div>

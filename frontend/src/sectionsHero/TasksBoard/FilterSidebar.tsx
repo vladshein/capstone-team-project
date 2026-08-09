@@ -8,6 +8,8 @@ import { useAppDispatch, useAppSelector } from "../../redux/hooks";
 import {
   clearSelectedCategories,
   setShiftSort,
+  setSelectedCategories,
+  setSelectedPartners,
   toggleCategory,
   toggleDurationFilter,
   togglePartner,
@@ -32,6 +34,7 @@ interface FilterSidebarProps {
   manualCity: string;
   onSaveManualCity: (city: string) => void;
   isLoadingApproximateLocation: boolean;
+  hasSelectedCategory: boolean;
   selectedDate: Date | null;
   onSelectDate: (date: Date) => void;
   calendarPeriod: CalendarPeriod;
@@ -49,6 +52,7 @@ export function FilterSidebar({
   manualCity,
   onSaveManualCity,
   isLoadingApproximateLocation,
+  hasSelectedCategory,
   selectedDate,
   onSelectDate,
   calendarPeriod,
@@ -63,7 +67,13 @@ export function FilterSidebar({
   const selectedCategories = useAppSelector(selectSelectedCategories);
   const selectedDurationFilters = useAppSelector(selectSelectedDurationFilters);
   const sections = FILTER_SECTIONS.filter((section) => section.id !== "service").map((section) => {
-    if (section.id === "partner") return { ...section, count: partnerOptions.length, options: partnerOptions };
+    if (section.id === "partner") {
+      return {
+        ...section,
+        count: partnerOptions.length,
+        options: [{ id: "all", label: "Усі партнери" }, ...partnerOptions],
+      };
+    }
     if (section.id === "category") {
       return {
         ...section,
@@ -78,6 +88,29 @@ export function FilterSidebar({
   });
   const sortLabels = { relevance: "За релевантністю", date_asc: "Спочатку найближчі за датою", date_desc: "Спочатку пізніші за датою", price_desc: "Спочатку дорожчі", nearest: "Найближчі до мене" } as const;
   const sortByLabel = Object.fromEntries(Object.entries(sortLabels).map(([key, label]) => [label, key])) as Record<string, "relevance" | "date_asc" | "date_desc" | "price_desc" | "nearest">;
+  const toggleCategoryFilter = (categoryId: string) => {
+    if (categoryId === "all") {
+      dispatch(
+        selectedCategories.length === categories.length
+          ? clearSelectedCategories()
+          : setSelectedCategories(categories.map((category) => String(category.id))),
+      );
+      return;
+    }
+    dispatch(toggleCategory(categoryId));
+  };
+  const togglePartnerFilter = (partner: string) => {
+    if (partner === "all") {
+      dispatch(
+        selectedPartners.length === partnerOptions.length
+          ? setSelectedPartners([])
+          : setSelectedPartners(partnerOptions.map((option) => option.label)),
+      );
+      return;
+    }
+
+    dispatch(togglePartner(partner));
+  };
 
   return (
     <aside className="flex flex-col gap-4">
@@ -142,7 +175,15 @@ export function FilterSidebar({
             </div>
           </form>
         )}
-        {sections.map((section) => (
+        {!hasSelectedCategory && (
+          <div className="rounded-[var(--radius-card)] border border-dashed border-border bg-bg-muted px-4 py-5 text-center">
+            <p className="text-sm font-semibold text-ink">Оберіть категорію</p>
+            <p className="mt-2 text-xs leading-5 text-text-muted">
+              Після цього з’являться доступні зміни та додаткові фільтри.
+            </p>
+          </div>
+        )}
+        {hasSelectedCategory && sections.map((section) => (
           <div key={section.id}>
             <FilterAccordion
               section={section}
@@ -151,23 +192,21 @@ export function FilterSidebar({
               onSelectOption={section.id === "sort" ? (label) => dispatch(setShiftSort(label ? sortByLabel[label] : "relevance")) : undefined}
               onToggleOption={
                 section.id === "partner"
-                  ? (partner) => dispatch(togglePartner(partner))
+                  ? togglePartnerFilter
                   : section.id === "category"
-                    ? (categoryId) => dispatch(
-                        categoryId === "all"
-                          ? clearSelectedCategories()
-                          : toggleCategory(categoryId),
-                      )
+                    ? toggleCategoryFilter
                     : section.id === "duration"
                       ? (filter) => dispatch(toggleDurationFilter(filter as ShiftDurationFilter))
                       : undefined
               }
               selectedOptions={
                 section.id === "partner"
-                  ? selectedPartners
+                  ? selectedPartners.length === partnerOptions.length
+                    ? ["all", ...selectedPartners]
+                    : selectedPartners
                   : section.id === "category"
-                    ? selectedCategories.length === 0 || selectedCategories.length === categories.length
-                      ? ["all", ...selectedCategories]
+                    ? selectedCategories.length === categories.length
+                        ? ["all", ...selectedCategories]
                       : selectedCategories
                     : section.id === "duration"
                       ? selectedDurationFilters

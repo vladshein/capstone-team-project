@@ -59,6 +59,9 @@ const shiftSlice = createSlice({
     clearSelectedPartners: (state) => {
       state.selectedPartners = [];
     },
+    setSelectedPartners: (state, { payload }: { payload: string[] }) => {
+      state.selectedPartners = payload;
+    },
     toggleCategory: (state, { payload }: { payload: string }) => {
       state.selectedCategories = state.selectedCategories.includes(payload)
         ? state.selectedCategories.filter((categoryId) => categoryId !== payload)
@@ -66,6 +69,9 @@ const shiftSlice = createSlice({
     },
     clearSelectedCategories: (state) => {
       state.selectedCategories = [];
+    },
+    setSelectedCategories: (state, { payload }: { payload: string[] }) => {
+      state.selectedCategories = payload;
     },
     toggleDurationFilter: (state, { payload }: { payload: ShiftDurationFilter }) => {
       state.selectedDurationFilters = state.selectedDurationFilters.includes(payload)
@@ -140,6 +146,8 @@ export const {
   clearSelectedShift,
   clearShiftError,
   setShiftSort,
+  setSelectedCategories,
+  setSelectedPartners,
   toggleDurationFilter,
   toggleCategory,
   togglePartner,
