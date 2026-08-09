@@ -58,6 +58,14 @@ export interface GetShiftsParams {
   maxPrice?: number;
   categoryId?: number;
   categoryIds?: string;
+  partners?: string;
+  city?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  durationFilters?: string;
+  sort?: "relevance" | "price_desc" | "date_asc" | "date_desc" | "nearest";
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface PaginatedShiftsResponse {
@@ -65,6 +73,7 @@ export interface PaginatedShiftsResponse {
   totalPages: number;
   currentPage: number;
   data: Shift[];
+  partnerOptions?: { label: string; count: number }[];
 }
 
 export interface CreateShiftPayload {

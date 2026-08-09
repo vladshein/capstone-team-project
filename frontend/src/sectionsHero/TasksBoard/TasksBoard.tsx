@@ -16,21 +16,6 @@ import {
 } from "../../redux/shift/selectors";
 import { toggleCategory } from "../../redux/shift/slice";
 
-const getShiftTotal = (shift: { startTime: string; endTime: string; hourlyRate: number | string; bonusRate: number | string }) => {
-  const hours = Math.max((new Date(shift.endTime).getTime() - new Date(shift.startTime).getTime()) / 3_600_000, 0);
-  return hours * (Number(shift.hourlyRate) || 0) + (Number(shift.bonusRate) || 0);
-};
-
-const getDistance = (latitude: number, longitude: number, targetLatitude?: number, targetLongitude?: number) => {
-  if (targetLatitude === undefined || targetLongitude === undefined) return Number.POSITIVE_INFINITY;
-  const toRadians = (value: number) => (value * Math.PI) / 180;
-  const latitudeDelta = toRadians(targetLatitude - latitude);
-  const longitudeDelta = toRadians(targetLongitude - longitude);
-  const value = Math.sin(latitudeDelta / 2) ** 2 + Math.cos(toRadians(latitude)) * Math.cos(toRadians(targetLatitude)) * Math.sin(longitudeDelta / 2) ** 2;
-  return 6371 * 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
-};
-
-const normalizeCity = (city: string) => city.trim().toLocaleLowerCase("uk-UA");
 const CARDS_PER_PAGE = 8;
 
 const getPaginationPages = (totalPages: number, currentPage: number) => {
@@ -62,8 +47,6 @@ export function TasksBoard() {
     useCategories();
   const sort = useAppSelector(selectShiftSort);
   const selectedCategories = useAppSelector(selectSelectedCategories);
-  const { shifts, isLoading, error } =
-    useInfiniteShifts(selectedCategories, selectedCategories.length > 0);
   const selectedPartners = useAppSelector(selectSelectedPartners);
   const selectedDurationFilters = useAppSelector(selectSelectedDurationFilters);
   const approximateCoordinates =
@@ -74,6 +57,33 @@ export function TasksBoard() {
           longitude: approximateLocation.longitude,
         }
       : null;
+  const shiftRequestParams = useMemo(() => {
+    const now = new Date();
+    const periodStart = selectedDate
+      ? new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate())
+      : new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const periodEnd = new Date(periodStart);
+    periodEnd.setDate(periodStart.getDate() + (calendarPeriod === "day" ? 1 : calendarPeriod === "week" ? 7 : 30));
+    const locationOrigin = coordinates ?? approximateCoordinates;
+
+    return {
+      page: currentPage,
+      limit: CARDS_PER_PAGE,
+      categoryIds: [...selectedCategories].sort().join(","),
+      partners: [...selectedPartners].sort().join(",") || undefined,
+      durationFilters: [...selectedDurationFilters].sort().join(",") || undefined,
+      city: manualCity || undefined,
+      dateFrom: periodStart.toISOString(),
+      dateTo: periodEnd.toISOString(),
+      sort,
+      latitude: locationOrigin?.latitude,
+      longitude: locationOrigin?.longitude,
+    };
+  }, [approximateCoordinates, calendarPeriod, coordinates, currentPage, manualCity, selectedCategories, selectedDurationFilters, selectedPartners, selectedDate, sort]);
+  const { shifts, totalPages, partnerOptions, isLoading, error } = useInfiniteShifts(
+    shiftRequestParams,
+    selectedCategories.length > 0,
+  );
   const toggleCategoryFromCard = (categoryId: string) => {
     dispatch(toggleCategory(categoryId));
   };
@@ -87,7 +97,7 @@ export function TasksBoard() {
     }
   };
 
-  const partnerOptions = useMemo(() => {
+  const fallbackPartnerOptions = useMemo(() => {
     const counts = new Map<string, number>();
     shifts.forEach((shift) => {
       const name = shift.Location?.Company?.name;
@@ -95,47 +105,7 @@ export function TasksBoard() {
     });
     return [...counts].map(([label, count]) => ({ label, count })).sort((first, second) => second.count - first.count || first.label.localeCompare(second.label, "uk"));
   }, [shifts]);
-  const visibleShifts = useMemo(() => {
-    const today = new Date();
-    const periodStart = selectedDate
-      ? new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate())
-      : new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const periodEnd = new Date(periodStart);
-    if (calendarPeriod === "day") {
-      periodEnd.setDate(periodStart.getDate() + 1);
-    } else if (calendarPeriod === "week") {
-      periodEnd.setDate(periodStart.getDate() + 7);
-    } else {
-      periodEnd.setDate(periodStart.getDate() + 30);
-    }
-    const sorted = shifts.filter((shift) => {
-      const shiftDate = new Date(shift.startTime);
-      const matchesDate = shiftDate >= periodStart && shiftDate < periodEnd;
-      const matchesPartner = selectedPartners.length === 0 || selectedPartners.includes(shift.Location?.Company?.name ?? "");
-      const matchesManualCity = !manualCity || normalizeCity(shift.Location?.city ?? "") === normalizeCity(manualCity);
-      const durationInHours = Math.max((new Date(shift.endTime).getTime() - shiftDate.getTime()) / 3_600_000, 0);
-      const matchesDuration = selectedDurationFilters.length === 0 || selectedDurationFilters.some((filter) => {
-        if (filter === "До 4 год") return durationInHours <= 4;
-        if (filter === "4–8 год") return durationInHours > 4 && durationInHours <= 8;
-        return durationInHours > 8;
-      });
-      return matchesDate && matchesPartner && matchesManualCity && matchesDuration;
-    });
-    if (sort === "price_desc") return sorted.sort((first, second) => getShiftTotal(second) - getShiftTotal(first));
-    if (sort === "date_asc") return sorted.sort((first, second) => new Date(first.startTime).getTime() - new Date(second.startTime).getTime());
-    if (sort === "date_desc") return sorted.sort((first, second) => new Date(second.startTime).getTime() - new Date(first.startTime).getTime());
-    const locationOrigin = coordinates ?? approximateCoordinates;
-    if (sort === "nearest" && locationOrigin) {
-      return sorted.sort((first, second) => getDistance(locationOrigin.latitude, locationOrigin.longitude, first.Location?.latitude, first.Location?.longitude) - getDistance(locationOrigin.latitude, locationOrigin.longitude, second.Location?.latitude, second.Location?.longitude));
-    }
-    return sorted;
-  }, [approximateCoordinates, calendarPeriod, coordinates, manualCity, selectedDate, selectedDurationFilters, selectedPartners, shifts, sort]);
-  const totalPages = Math.ceil(visibleShifts.length / CARDS_PER_PAGE);
   const activePage = Math.min(currentPage, Math.max(totalPages, 1));
-  const pageShifts = visibleShifts.slice(
-    (activePage - 1) * CARDS_PER_PAGE,
-    activePage * CARDS_PER_PAGE,
-  );
   const paginationPages = getPaginationPages(totalPages, activePage);
 
   useEffect(() => {
@@ -177,7 +147,7 @@ export function TasksBoard() {
           onSelectDate={setSelectedDate}
           calendarPeriod={calendarPeriod}
           onCalendarPeriodChange={setCalendarPeriod}
-          partnerOptions={partnerOptions}
+          partnerOptions={partnerOptions.length > 0 ? partnerOptions : fallbackPartnerOptions}
           categories={categories}
         />
 
@@ -205,11 +175,11 @@ export function TasksBoard() {
                   <p className="text-sm text-text-muted sm:col-span-2">Завантаження завдань…</p>
                 )}
                 {error && <p className="text-sm text-red-600 sm:col-span-2">{error}</p>}
-                {!isLoading && !error && visibleShifts.length === 0 && (
+                {!isLoading && !error && shifts.length === 0 && (
                   <p className="text-sm text-text-muted sm:col-span-2">Наразі немає доступних завдань.</p>
                 )}
 
-                {!isLoading && pageShifts.map((shift) => <TaskCard key={shift.id} shift={shift} />)}
+                {!isLoading && shifts.map((shift) => <TaskCard key={shift.id} shift={shift} />)}
                 </div>
               )}
             </>

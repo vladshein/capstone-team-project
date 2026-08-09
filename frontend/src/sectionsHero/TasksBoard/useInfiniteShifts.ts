@@ -1,22 +1,34 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import { getAllShifts, type Shift } from "../../api/shifts";
+import { getAllShifts, type GetShiftsParams, type Shift } from "../../api/shifts";
 
-// Для дошки потрібен повний набір змін: фільтри дати, партнера й тривалості
-// застосовуються на клієнті до побудови локальної пагінації.
-const FETCH_LIMIT = 1_000;
-
-export function useInfiniteShifts(categoryIds: string[], isEnabled: boolean) {
+export function useInfiniteShifts(params: GetShiftsParams, isEnabled: boolean) {
   const [shifts, setShifts] = useState<Shift[]>([]);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalItems, setTotalItems] = useState(0);
+  const [partnerOptions, setPartnerOptions] = useState<{ label: string; count: number }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const categoryKey = categoryIds.join(",");
+
+  // Обидва мультиселекти нормалізуємо, щоб порядок кліків не змінював запит.
+  const requestParams = useMemo(
+    () => ({
+      ...params,
+      categoryIds: params.categoryIds?.split(",").filter(Boolean).sort().join(","),
+      partners: params.partners?.split(",").filter(Boolean).sort().join(","),
+    }),
+    [params],
+  );
+  const requestKey = JSON.stringify(requestParams);
 
   useEffect(() => {
     let cancelled = false;
 
     if (!isEnabled) {
       setShifts([]);
+      setTotalPages(0);
+      setTotalItems(0);
+      setPartnerOptions([]);
       setError(null);
       setIsLoading(false);
       return undefined;
@@ -25,13 +37,13 @@ export function useInfiniteShifts(categoryIds: string[], isEnabled: boolean) {
     setIsLoading(true);
     setError(null);
 
-    void getAllShifts({
-      page: 1,
-      limit: FETCH_LIMIT,
-      categoryIds: categoryKey,
-    })
+    void getAllShifts(requestParams)
       .then((response) => {
-        if (!cancelled) setShifts(response.data);
+        if (cancelled) return;
+        setShifts(response.data);
+        setTotalPages(response.totalPages);
+        setTotalItems(response.totalItems);
+        setPartnerOptions(response.partnerOptions ?? []);
       })
       .catch(() => {
         if (!cancelled) setError("Не вдалося завантажити завдання. Спробуйте пізніше.");
@@ -43,7 +55,7 @@ export function useInfiniteShifts(categoryIds: string[], isEnabled: boolean) {
     return () => {
       cancelled = true;
     };
-  }, [categoryKey, isEnabled]);
+  }, [isEnabled, requestKey]);
 
-  return { shifts, isLoading, error };
+  return { shifts, totalPages, totalItems, partnerOptions, isLoading, error };
 }
