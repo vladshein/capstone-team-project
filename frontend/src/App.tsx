@@ -5,6 +5,7 @@ import { AuthModals, type AuthModalMode } from "./components/auth/AuthModals";
 import type { SignInPayload } from "./components/auth/SignInModal";
 import type { SignUpPayload } from "./components/auth/SignUpModal";
 import Loader from "./components/ui/Loader";
+import { HashScroll } from "./components/ui/HashScroll";
 import { MainLayout } from "./layouts/MainLayout";
 import { login, logout, refreshUser, register } from "./redux/auth/actions";
 import {
@@ -20,6 +21,9 @@ const HomePage = lazy(() => import("./pages/HomePage"));
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 const ShiftsDetailPage = lazy(() => import("./pages/ShiftsDetailPage"));
 const WorkerDashboardPage = lazy(() => import("./pages/worker/WorkerDashboardPage"));
+const NearbyWorkerShiftsTab = lazy(() => import("./pages/worker/NearbyWorkerShiftsTab"));
+const BookingsTab = lazy(() => import("./pages/worker/BookingsTab"));
+const FavoriteShiftsTab = lazy(() => import("./pages/worker/FavoriteShiftsTab"));
 const BusinessDashboardPage = lazy(() => import("./pages/business/BusinessDashboardPage"));
 const WorkerProfilePage = lazy(() => import("./pages/worker/WorkerProfilePage"));
 const BusinessProfilePage = lazy(() => import("./pages/business/BusinessProfilePage"));
@@ -76,7 +80,7 @@ export default function App() {
       const { status, message } = getApiError(error);
       toast.error(
         status === 409
-          ? "Цей email уже використовується"
+          ? message
           : `Помилка реєстрації: ${message}`,
       );
       throw new Error(message);
@@ -93,6 +97,14 @@ export default function App() {
     }
   };
 
+  const renderWorkerDashboard = () => {
+    if (!isAuthenticated) return <Navigate to="/" replace />;
+    if (getDashboardPath(user?.role) !== "/cabinet") {
+      return <Navigate to={getDashboardPath(user?.role)} replace />;
+    }
+    return <WorkerDashboardPage />;
+  };
+
   if (isRefreshing || isReduxLoading) {
     return <Loader fullScreen />;
   }
@@ -107,6 +119,7 @@ export default function App() {
         onLogout={handleLogout}
       >
         <Suspense fallback={<Loader fullScreen />}>
+          <HashScroll />
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/shifts/:id" element={<ShiftsDetailPage />} />
@@ -126,18 +139,12 @@ export default function App() {
                 }
               />
 
-              <Route
-                path="/my-shifts"
-                element={
-                  !isAuthenticated ? (
-                    <Navigate to="/" replace />
-                  ) : getDashboardPath(user?.role) !== "/my-shifts" ? (
-                    <Navigate to={getDashboardPath(user?.role)} replace />
-                  ) : (
-                    <WorkerDashboardPage />
-                  )
-                }
-              />
+              <Route path="/cabinet" element={renderWorkerDashboard()}>
+                <Route index element={<BookingsTab />} />
+                <Route path="search" element={<NearbyWorkerShiftsTab />} />
+                <Route path="bookings" element={<BookingsTab />} />
+                <Route path="favorites" element={<FavoriteShiftsTab />} />
+              </Route>
 
               <Route
                 path="/dashboard"
@@ -151,8 +158,6 @@ export default function App() {
                   )
                 }
               />
-
-<Route path="*" element={<NotFoundPage />} />
 
             <Route path="*" element={<NotFoundPage />} />
           </Routes>

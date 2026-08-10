@@ -19,7 +19,7 @@ export function Footer() {
               </a>
             </li>
             <li>
-              <a href="/my-shifts" className="hover:text-accent">
+              <a href="/cabinet/bookings" className="hover:text-accent">
                 Мої бронювання
               </a>
             </li>

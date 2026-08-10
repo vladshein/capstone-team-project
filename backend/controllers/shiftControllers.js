@@ -156,6 +156,12 @@ export const applyToShift = async (req, res, next) => {
       throw error;
     }
 
+    if (new Date(shift.startTime) <= new Date()) {
+      const error = new Error("Відгукнутися можна лише до початку зміни.");
+      error.status = 400;
+      throw error;
+    }
+
     const existingApplication = await shiftService.findShiftApplication(
       shiftId,
       workerId,
@@ -175,6 +181,39 @@ export const applyToShift = async (req, res, next) => {
       message: "Відгук на зміну надіслано.",
       data: application,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** Відкликати власну заявку на зміну до її початку. */
+export const cancelWorkerApplication = async (req, res, next) => {
+  try {
+    const applicationId = Number(req.params.applicationId);
+    if (!Number.isInteger(applicationId) || applicationId <= 0) {
+      const error = new Error("Некоректний ідентифікатор заявки.");
+      error.status = 400;
+      throw error;
+    }
+
+    const result = await shiftService.cancelWorkerShiftApplication(applicationId, req.user.id);
+    if (result.reason === "not_found") {
+      const error = new Error("Заявку не знайдено.");
+      error.status = 404;
+      throw error;
+    }
+    if (result.reason === "status") {
+      const error = new Error("Цю заявку вже не можна скасувати.");
+      error.status = 400;
+      throw error;
+    }
+    if (result.reason === "started") {
+      const error = new Error("Не можна скасувати заявку після початку зміни.");
+      error.status = 400;
+      throw error;
+    }
+
+    res.status(200).json({ message: "Заявку скасовано." });
   } catch (error) {
     next(error);
   }
@@ -275,12 +314,14 @@ export const cancelShift = async (req, res, next) => {
 export const getWorkerShifts = async (req, res, next) => {
   try {
     const workerId = req.user.id;
-    const { page, limit, status } = req.query;
+    const { page, limit, status, shiftId, scope } = req.query;
 
     const result = await shiftService.getWorkerShiftHistory(workerId, {
       page: page ? parseInt(page, 10) : 1,
       limit: limit ? parseInt(limit, 10) : 10,
       status, // Можна передавати '?status=approved' для актуальних або '?status=completed' для завершених
+      shiftId: shiftId ? parseInt(shiftId, 10) : undefined,
+      scope: scope === "archive" ? "archive" : "active",
     });
 
     res.status(200).json({

@@ -155,6 +155,8 @@ export function FavoriteShiftsTab() {
   );
 }
 
+export default FavoriteShiftsTab;
+
 function EmptyFavoritesState() {
   return (
     <div className="flex flex-col items-center gap-2 p-8 text-center text-sm text-text-subtle">

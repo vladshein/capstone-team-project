@@ -59,6 +59,7 @@ export function TasksBoard() {
           longitude: approximateLocation.longitude,
         }
       : null;
+  const selectedCity = manualCity || approximateLocation?.city || undefined;
   const shiftRequestParams = useMemo(() => {
     const now = new Date();
     const periodStart = selectedDate
@@ -74,18 +75,19 @@ export function TasksBoard() {
       categoryIds: [...selectedCategories].sort().join(","),
       partners: partnerSelectionMode === "selected" ? [...selectedPartners].sort().join(",") : undefined,
       durationFilters: [...selectedDurationFilters].sort().join(",") || undefined,
-      city: manualCity || undefined,
+      city: selectedCity,
       dateFrom: periodStart.toISOString(),
       dateTo: periodEnd.toISOString(),
       sort,
       latitude: locationOrigin?.latitude,
       longitude: locationOrigin?.longitude,
     };
-  }, [approximateCoordinates, calendarPeriod, coordinates, currentPage, manualCity, partnerSelectionMode, selectedCategories, selectedDurationFilters, selectedPartners, selectedDate, sort]);
-  const { shifts, totalPages, partnerOptions, isLoading, error } = useInfiniteShifts(
+  }, [approximateCoordinates, calendarPeriod, coordinates, currentPage, partnerSelectionMode, selectedCategories, selectedCity, selectedDurationFilters, selectedPartners, selectedDate, sort]);
+  const { shifts, totalPages, partnerOptions, isLoading, error, isFallback } = useInfiniteShifts(
     shiftRequestParams,
     selectedCategories.length > 0,
     partnerSelectionMode === "none",
+    true,
   );
   const toggleCategoryFromCard = (categoryId: string) => {
     dispatch(toggleCategory(categoryId));
@@ -113,7 +115,7 @@ export function TasksBoard() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [calendarPeriod, manualCity, partnerSelectionMode, selectedCategories, selectedDate, selectedDurationFilters, selectedPartners, sort]);
+  }, [calendarPeriod, selectedCity, partnerSelectionMode, selectedCategories, selectedDate, selectedDurationFilters, selectedPartners, sort]);
 
   const changePage = (nextPage: number) => {
     if (nextPage < 1 || nextPage > totalPages || nextPage === activePage) return;
@@ -173,6 +175,12 @@ export function TasksBoard() {
                   onToggle={toggleCategoryFromCard}
                 />
               ) : (
+                <>
+                {isFallback && selectedCity && !isLoading && (
+                  <p className="mb-4 rounded-[var(--radius-card)] border border-accent/20 bg-accent/10 px-4 py-3 text-sm text-accent-text">
+                    У {selectedCity} за обраними фільтрами поки немає змін — показуємо найближчі доступні.
+                  </p>
+                )}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
                 {isLoading && (
                   <p className="text-sm text-text-muted sm:col-span-2">Завантаження завдань…</p>
@@ -184,6 +192,7 @@ export function TasksBoard() {
 
                 {!isLoading && shifts.map((shift) => <TaskCard key={shift.id} shift={shift} />)}
                 </div>
+                </>
               )}
             </>
           )}

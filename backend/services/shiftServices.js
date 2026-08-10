@@ -58,6 +58,9 @@ export const getAllShifts = async ({
   // Базова умова: показувати тільки відкриті зміни
   const whereCondition = {
     status: "open",
+    // Відкритою для відгуку може бути лише зміна, яка ще не почалася.
+    // Це прибирає прострочені записи з біржі, карток «поруч» і фасетів фільтрів.
+    startTime: { [Op.gt]: new Date() },
   };
 
   // Фільтрація за категорією
@@ -78,7 +81,7 @@ export const getAllShifts = async ({
   }
 
   if (dateFrom || dateTo) {
-    whereCondition.startTime = {};
+    // Базове обмеження startTime > now зберігаємо й додаємо межі календаря.
     if (dateFrom) whereCondition.startTime[Op.gte] = dateFrom;
     if (dateTo) whereCondition.startTime[Op.lt] = dateTo;
   }
@@ -273,19 +276,51 @@ export const createShiftApplication = async (shiftId, workerId) => {
   });
 };
 
+export const cancelWorkerShiftApplication = async (applicationId, workerId) => {
+  const application = await ShiftApplication.findOne({
+    where: { id: applicationId, workerId },
+    include: [{ model: Shift, attributes: ["id", "startTime"] }],
+  });
+
+  if (!application) return { application: null, reason: "not_found" };
+  if (!["pending", "approved"].includes(application.status)) {
+    return { application: null, reason: "status" };
+  }
+  if (new Date(application.Shift.startTime) <= new Date()) {
+    return { application: null, reason: "started" };
+  }
+
+  await application.destroy();
+  return { application, reason: null };
+};
+
 /**
  * Отримує історію робіт (змін) для конкретного робітника.
  */
 export const getWorkerShiftHistory = async (
   workerId,
-  { page = 1, limit = 10, status },
+  { page = 1, limit = 10, status, shiftId, scope = "active" },
 ) => {
   const offset = (page - 1) * limit;
   const whereCondition = { workerId };
+  const now = new Date();
+  const isArchive = scope === "archive";
+
+  if (isArchive) {
+    whereCondition[Op.or] = [
+      { status: { [Op.in]: ["rejected", "completed", "no_show"] } },
+      where(col("Shift.endTime"), { [Op.lt]: now }),
+    ];
+  } else {
+    whereCondition.status = { [Op.in]: ["pending", "approved"] };
+  }
 
   // Якщо передано статус заявки (наприклад, 'approved' - актуальні, 'completed' - завершені)
   if (status) {
     whereCondition.status = status;
+  }
+  if (Number.isInteger(shiftId) && shiftId > 0) {
+    whereCondition.shiftId = shiftId;
   }
 
   const { count, rows } = await ShiftApplication.findAndCountAll({
@@ -295,7 +330,8 @@ export const getWorkerShiftHistory = async (
     include: [
       {
         model: Shift,
-        attributes: ["id", "startTime", "endTime", "hourlyRate", "status"],
+        attributes: ["id", "startTime", "endTime", "hourlyRate", "bonusRate", "description", "status"],
+        ...(isArchive ? {} : { where: { endTime: { [Op.gte]: now } }, required: true }),
         include: [
           { model: JobPosition, attributes: ["id", "title"] },
           {
@@ -307,8 +343,7 @@ export const getWorkerShiftHistory = async (
       },
     ],
     order: [
-      // Сортуємо за часом початку зміни, щоб найновіші (або найближчі) були зверху
-      [Shift, "startTime", "DESC"],
+      [Shift, "startTime", isArchive ? "DESC" : "ASC"],
     ],
   });
 
