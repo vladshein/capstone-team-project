@@ -7,14 +7,14 @@ import type { SignUpPayload, UserRole } from "./components/auth/SignUpModal";
 import Loader from "./components/ui/Loader";
 import { HashScroll } from "./components/ui/HashScroll";
 import { MainLayout } from "./layouts/MainLayout";
-import { login, logout, refreshUser, register } from "./redux/auth/actions";
+import { fetchMyProfile, login, logout, refreshUser, register } from "./redux/auth/actions";
 import {
   selectIsLoggedIn,
   selectIsRefreshing,
   selectUserInfo,
 } from "./redux/auth/selectors";
 import { useAppDispatch, useAppSelector } from "./redux/hooks";
-import type { ApiError } from "./redux/auth/types";
+import type { ApiError } from "./redux/types";
 import { getDashboardPath } from "./redux/auth/helpers";
 
 const HomePage = lazy(() => import("./pages/HomePage"));
@@ -61,16 +61,20 @@ export default function App() {
   const hasStartedInitialRefresh = useRef(false);
 
   useEffect(() => {
-    if (hasStartedInitialRefresh.current) return;
-    hasStartedInitialRefresh.current = true;
+  if (hasStartedInitialRefresh.current) return;
+  hasStartedInitialRefresh.current = true;
 
-    if (!authToken) {
-      setIsAuthInitialized(true);
-      return;
-    }
+  if (!authToken) {
+    setIsAuthInitialized(true);
+    return;
+  }
 
-    void dispatch(refreshUser()).finally(() => setIsAuthInitialized(true));
-  }, [authToken, dispatch]);
+  dispatch(refreshUser())
+    .unwrap()
+    .then(() => dispatch(fetchMyProfile()))
+    .catch(() => {})
+    .finally(() => setIsAuthInitialized(true));
+}, [authToken, dispatch]);
 
   const handleSignIn = async (payload: SignInPayload) => {
     try {

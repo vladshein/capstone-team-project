@@ -6,4 +6,5 @@ export const authService = {
   login: (payload: unknown) => api.post("/auth/login", payload),
   refreshUser: () => api.get("/auth/refresh"),
   logout: () => api.get("/auth/logout"),
+  getMyProfile: () => api.get("/users/me/profile"),
 };

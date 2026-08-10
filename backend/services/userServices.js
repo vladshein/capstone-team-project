@@ -33,47 +33,7 @@ export const getCurrentUserInfo = async (userId) => {
       "avatar",
       "name",
       "email",
-      // [fn("COUNT", fn("DISTINCT", col("recipesHas.id"))), "count_user_recipes"],
-      // [
-      //   fn("COUNT", fn("DISTINCT", col("favoriteRecipesHas.recipeId"))),
-      //   "count_favorite_recipes",
-      // ],
-      // [
-      //   fn("COUNT", fn("DISTINCT", col("followersHas.followerId"))),
-      //   "count_followers",
-      // ],
-      // [
-      //   fn("COUNT", fn("DISTINCT", col("followingHas.followingId"))),
-      //   "count_following",
-      // ],
     ],
-
-    // include: [
-    //   {
-    //     model: Recipe,
-    //     as: "recipesHas",
-    //     attributes: [],
-    //     required: false, // LEFT JOIN
-    //   },
-    //   {
-    //     model: FavoriteRecipe,
-    //     as: "favoriteRecipesHas",
-    //     attributes: [],
-    //     required: false,
-    //   },
-    //   {
-    //     model: UserFollowers,
-    //     as: "followersHas", // uf1 — users who follow this user
-    //     attributes: [],
-    //     required: false,
-    //   },
-    //   {
-    //     model: UserFollowers,
-    //     as: "followingHas", // uf2 — users this user follows
-    //     attributes: [],
-    //     required: false,
-    //   },
-    // ],
 
     group: ["user.id", "user.avatar", "user.name", "user.email"],
   });

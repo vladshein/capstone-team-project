@@ -12,8 +12,10 @@ import { updateAvatarController } from "../controllers/authControllers.js";
 
 const userRouter = express.Router();
 
-userRouter.get("/current", authenticate, getCurrentUser);
+// Профіль поточного воркер юзера або компанії зі списку поточного бізнес юзера
 userRouter.get("/me/profile", authenticate, resolveProfileStrategy, getCurrentUser);
+
+userRouter.get("/current", authenticate, getCurrentUser);
 userRouter.patch(
   "/avatars",
   authenticate,

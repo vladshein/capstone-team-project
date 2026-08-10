@@ -2,16 +2,26 @@ import { useEffect, useState } from "react";
 import { UserRound } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "../../redux/hooks";
 import { selectUserInfo } from "../../redux/auth/selectors";
-import { fetchMyProfile } from "../../redux/profile/actions";
+import { fetchMyProfile } from "../../redux/auth/actions";
+import {
+  fetchMyWorkerProfile,
+  createWorkerProfile,
+  updateWorkerProfile,
+} from "../../redux/worker-profile/actions";
 import {
   selectWorkerProfile,
   selectWorkerProfileError,
-  selectWorkerProfileLoading,
-} from "../../redux/profile/selectors";
+  selectWorkerProfileStatus,
+  selectHasWorkerProfile,
+} from "../../redux/worker-profile/selectors";
 import {
   CreateWorkerProfileModal,
   type CreateWorkerProfilePayload,
 } from "./CreateWorkerProfileModal";
+import {
+  UpdateWorkerProfileModal,
+  type UpdateWorkerProfilePayload,
+} from "./UpdateWorkerProfileModal";
 import { Loader } from "../../components/ui/Loader";
 
 function ProfileField({ label, value }: { label: string; value?: string }) {
@@ -29,53 +39,57 @@ export function WorkerProfilePage() {
   const dispatch = useAppDispatch();
   const user = useAppSelector(selectUserInfo);
   const profile = useAppSelector(selectWorkerProfile);
-  const isLoading = useAppSelector(selectWorkerProfileLoading);
+  const status = useAppSelector(selectWorkerProfileStatus);
   const error = useAppSelector(selectWorkerProfileError);
+  const hasProfile = useAppSelector(selectHasWorkerProfile);
+
+  // "loading" тільки поки ще немає жодних даних — щоб при повторних
+  // fetch/update не перекривати сторінку повноекранним лоадером
+  const isInitialLoading = status === "loading" && profile === undefined;
+  const isSubmitting = status === "loading";
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     void dispatch(fetchMyProfile());
+    void dispatch(fetchMyWorkerProfile());
   }, [dispatch]);
 
-  const handleCreateWorkerProfile = async (payload: CreateWorkerProfilePayload) => {
-    setIsSubmitting(true);
-    try {
-      // TODO: ендпоінту немає в поточному ТЗ — уточнити з бекенд-командою.
-      console.log("Створення профілю виконавця:", payload);
-      await dispatch(fetchMyProfile());
+  const handleSubmitWorkerProfile = async (payload: CreateWorkerProfilePayload) => {
+    const action = hasProfile ? updateWorkerProfile(payload) : createWorkerProfile(payload);
+    const result = await dispatch(action);
+    if (createWorkerProfile.fulfilled.match(result) || updateWorkerProfile.fulfilled.match(result)) {
       setIsModalOpen(false);
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
-  if (isLoading && !profile) {
+  if (isInitialLoading) {
     return <Loader label="Завантажуємо профіль…" size="lg" fullScreen />;
   }
 
-  if (error) {
-    return <p className="p-8 text-center text-sm text-danger">{error}</p>;
-  }
-
-  if (!user || !profile) {
+  if (!user) {
     return null;
   }
-
-  const workerData = profile.WorkerProfile;
-  const hasProfile = Boolean(workerData);
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-[var(--space-section)] sm:px-6 md:px-8">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
-        <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">
-            Профіль виконавця
-          </h1>
-          <p className="mt-1 text-sm text-text-muted">
-            {hasProfile ? "Ваші особисті дані" : "Дані ще не заповнено"}
-          </p>
+        <div className="flex items-center gap-4">
+          {profile?.avatarUrl && (
+            <img
+              src={profile.avatarUrl}
+              alt=""
+              className="h-14 w-14 rounded-full object-cover"
+            />
+          )}
+          <div>
+            <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">
+              Профіль виконавця
+            </h1>
+            <p className="mt-1 text-sm text-text-muted">
+              {hasProfile ? "Ваші особисті дані" : "Дані ще не заповнено"}
+            </p>
+          </div>
         </div>
         <button
           type="button"
@@ -89,19 +103,37 @@ export function WorkerProfilePage() {
 
       <div className="rounded-[var(--radius-card)] border border-border bg-bg p-6 shadow-sm">
         <div className="grid gap-4 sm:grid-cols-2">
-          <ProfileField label="Ім'я" value={workerData?.firstName} />
-          <ProfileField label="Прізвище" value={workerData?.lastName} />
-          <ProfileField label="Телефон" value={workerData?.phone} />
-          <ProfileField label="Місто" value={workerData?.city} />
+          <ProfileField label="Ім'я" value={profile?.firstName} />
+          <ProfileField label="Прізвище" value={profile?.lastName} />
+          <ProfileField label="Телефон" value={user?.phone} />
+          <ProfileField label="ІПН" value={profile?.taxNumber} />
+          <ProfileField
+            label="Рейтинг"
+            value={profile?.rating !== undefined ? String(profile.rating) : undefined}
+          />
         </div>
       </div>
 
-      <CreateWorkerProfileModal
-        isOpen={isModalOpen}
-        isSubmitting={isSubmitting}
-        onClose={() => setIsModalOpen(false)}
-        onSubmit={handleCreateWorkerProfile}
-      />
+      {hasProfile ? (
+        <UpdateWorkerProfileModal
+          isOpen={isModalOpen}
+          isSubmitting={isSubmitting}
+          phone={user?.phone ?? ""}
+          profile={profile ?? null}
+          onClose={() => setIsModalOpen(false)}
+          onSubmit={handleSubmitWorkerProfile}
+          serverError={error?.message}
+        />
+      ) : (
+        <CreateWorkerProfileModal
+          isOpen={isModalOpen}
+          isSubmitting={isSubmitting}
+          phone={user?.phone ?? ""}
+          onClose={() => setIsModalOpen(false)}
+          onSubmit={handleSubmitWorkerProfile}
+          serverError={error?.message}
+        />
+      )}
     </div>
   );
 }

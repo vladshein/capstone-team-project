@@ -15,6 +15,11 @@ export interface AuthResponse {
   accessToken: string;
 }
 
+export interface MyProfileData {
+  hasWorkerProfile?: boolean;
+  companiesCount?: number;
+}
+
 export interface AuthState {
   user: AuthUser | null;
   token: string | null;
@@ -22,9 +27,9 @@ export interface AuthState {
   isRefreshing: boolean;
   isLoading: boolean;
   error: string | null;
-}
-
-export interface ApiError {
-  status?: number;
-  message: string;
+  // --- bootstrap GET /users/me/profile, окремий lifecycle ---
+  hasWorkerProfile: boolean | null; // null = ще не запитували
+  companiesCount: number;
+  isProfileLoading: boolean;
+  profileError: string | null;
 }

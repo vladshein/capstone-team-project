@@ -1,78 +1,67 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { fetchMyProfile } from "./actions";
-import type {
-  ApiError,
-  BusinessProfileState,
-  WorkerProfileState,
-} from "./types";
+import {
+  fetchMyWorkerProfile,
+  createWorkerProfile,
+  updateWorkerProfile,
+} from "./actions";
+import type { WorkerProfileState } from "./types";
 
-const getErrorMessage = (payload: unknown) =>
-  typeof payload === "object" && payload !== null && "message" in payload
-    ? (payload as ApiError).message
-    : "Сталася помилка. Спробуйте ще раз.";
-
-const workerInitialState: WorkerProfileState = {
+const initialState: WorkerProfileState = {
   data: null,
-  isLoading: false,
+  status: "idle",
   error: null,
 };
 
 const workerProfileSlice = createSlice({
   name: "workerProfile",
-  initialState: workerInitialState,
+  initialState,
   reducers: {
-    clearWorkerProfile: () => workerInitialState,
+    resetWorkerProfileError(state) {
+      state.error = null;
+    },
   },
-  extraReducers: (builder) =>
+  extraReducers: (builder) => {
     builder
-      .addCase(fetchMyProfile.pending, (state) => {
-        state.isLoading = true;
+      // --- отримати свій профіль ---
+      .addCase(fetchMyWorkerProfile.pending, (state) => {
+        state.status = "loading";
         state.error = null;
       })
-      .addCase(fetchMyProfile.fulfilled, (state, { payload }) => {
-        state.isLoading = false;
-        if (payload.role === "worker") {
-          state.data = payload;
-        }
+      .addCase(fetchMyWorkerProfile.fulfilled, (state, action) => {
+        state.status = "succeeded";
+        state.data = action.payload;
       })
-      .addCase(fetchMyProfile.rejected, (state, { payload }) => {
-        state.isLoading = false;
-        state.error = getErrorMessage(payload);
-      }),
-});
-
-const businessInitialState: BusinessProfileState = {
-  data: null,
-  isLoading: false,
-  error: null,
-};
-
-const businessProfileSlice = createSlice({
-  name: "businessProfile",
-  initialState: businessInitialState,
-  reducers: {
-    clearBusinessProfile: () => businessInitialState,
-  },
-  extraReducers: (builder) =>
-    builder
-      .addCase(fetchMyProfile.pending, (state) => {
-        state.isLoading = true;
+      .addCase(fetchMyWorkerProfile.rejected, (state, action) => {
+        state.status = "failed";
+        state.error = action.payload ?? null;
+      })
+      // --- create ---
+      .addCase(createWorkerProfile.pending, (state) => {
+        state.status = "loading";
         state.error = null;
       })
-      .addCase(fetchMyProfile.fulfilled, (state, { payload }) => {
-        state.isLoading = false;
-        if (payload.role === "business_client") {
-          state.data = payload;
-        }
+      .addCase(createWorkerProfile.fulfilled, (state, action) => {
+        state.status = "succeeded";
+        state.data = action.payload;
       })
-      .addCase(fetchMyProfile.rejected, (state, { payload }) => {
-        state.isLoading = false;
-        state.error = getErrorMessage(payload);
-      }),
+      .addCase(createWorkerProfile.rejected, (state, action) => {
+        state.status = "failed";
+        state.error = action.payload ?? null;
+      })
+      // --- update ---
+      .addCase(updateWorkerProfile.pending, (state) => {
+        state.status = "loading";
+      })
+      .addCase(updateWorkerProfile.fulfilled, (state, action) => {
+        state.status = "succeeded";
+        state.data = action.payload;
+      })
+      .addCase(updateWorkerProfile.rejected, (state, action) => {
+        state.status = "failed";
+        state.error = action.payload ?? null;
+      });
+  },
 });
 
-export const { clearWorkerProfile } = workerProfileSlice.actions;
-export const { clearBusinessProfile } = businessProfileSlice.actions;
-
-export const workerProfileReducer = workerProfileSlice.reducer;
-export const businessProfileReducer = businessProfileSlice.reducer;
+export const { resetWorkerProfileError } = workerProfileSlice.actions;
+export default workerProfileSlice.reducer;

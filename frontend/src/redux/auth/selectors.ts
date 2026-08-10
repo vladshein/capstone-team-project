@@ -8,3 +8,5 @@ export const selectUserAvatar = (state: RootState) => state.auth.user?.avatar;
 export const selectIsLoading = (state: RootState) => state.auth.isLoading;
 export const selectIsRefreshing = (state: RootState) => state.auth.isRefreshing;
 export const selectAuthError = (state: RootState) => state.auth.error;
+export const selectHasWorkerProfile = (state: RootState) => state.auth.hasWorkerProfile;
+export const selectAuthCompaniesCount = (state: RootState) => state.auth.companiesCount;

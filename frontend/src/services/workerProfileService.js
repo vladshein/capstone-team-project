@@ -1,6 +1,7 @@
-import api from "./api";
+import api from "../api/client";
 
-export const profileService = {
-  createMyWorkerProfile: () => api.post("/worker-profiles/createMyProfile"),
-  updateMyWorkerProfile: () => api.post("/worker-profiles/updateMyProfile"),
+export const workerProfileService = {
+  getMyProfile: () => api.get("/worker-profiles/me"),
+  createProfile: (data) => api.post("/worker-profiles", data),
+  updateProfile: (data) => api.patch("/worker-profiles/me", data),
 };

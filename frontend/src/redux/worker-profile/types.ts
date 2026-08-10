@@ -1,65 +1,34 @@
-import type { ApiError } from "../auth/types";
+import type { ApiError } from "../types";
 
-export type WorkerProfileData = {
+export interface WorkerProfileUser {
+  phone: string;
+  email: string;
+  isVerified: boolean;
+}
+
+export interface WorkerProfile {
   id: number;
+  userId: number;
   firstName: string;
   lastName: string;
-  birthDate: string | null;
+  birthDate: string; // DATEONLY з бекенду прилітає як "YYYY-MM-DD"
   taxNumber: string | null;
-  rating: number | null;
+  rating: number;
   avatarUrl: string | null;
-  // TODO: phone/city — поки не підтверджені бекендом (немає в Backend_TZ),
-  // додано під форму CreateWorkerProfileModal. Прибрати "?" і коментар,
-  // коли ендпоінт створення/отримання профілю воркера буде готовий і
-  // підтвердить реальну форму даних.
-  phone?: string;
-  city?: string;
+  User?: WorkerProfileUser;
+}
+
+export type CreateWorkerProfilePayload = Omit<
+  WorkerProfile,
+  "id" | "userId" | "rating" | "User" | "avatarUrl"
+> & {
+  avatarUrl?: string;
 };
 
-export type BusinessCompanyData = {
-  id: number;
-  // TODO: name/edrpou/legalAddress — форма підтверджена лише по CreateCompanyModal
-  // (Frontend-стороні), самого ендпоінту створення компанії в Backend_TZ немає
-  // (див. TODO в handleCreateCompany). Прибрати "?" і цей коментар, коли бекенд
-  // підтвердить реальну форму Company.
-  name?: string;
-  edrpou?: string;
-  legalAddress?: string;
-  avatar: string | null;
-};
-
-interface BaseProfileResponse {
-  id: number;
-  email: string;
-  phone: string;
-  avatar: string | null;
-  isVerified: boolean;
-  created_at: string;
-  profileCompleted: boolean;
-}
-
-export interface WorkerProfileResponse extends BaseProfileResponse {
-  role: "worker";
-  WorkerProfile: WorkerProfileData | null;
-}
-
-export interface BusinessProfileResponse extends BaseProfileResponse {
-  role: "business_client";
-  companies: BusinessCompanyData[];
-}
-
-export type MyProfileResponse = WorkerProfileResponse | BusinessProfileResponse;
+export type UpdateWorkerProfilePayload = Partial<CreateWorkerProfilePayload>;
 
 export interface WorkerProfileState {
-  data: WorkerProfileResponse | null;
-  isLoading: boolean;
-  error: string | null;
+  data: WorkerProfile | null;
+  status: "idle" | "loading" | "succeeded" | "failed";
+  error: ApiError | null;
 }
-
-export interface BusinessProfileState {
-  data: BusinessProfileResponse | null;
-  isLoading: boolean;
-  error: string | null;
-}
-
-export type { ApiError };

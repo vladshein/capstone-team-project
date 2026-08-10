@@ -4,24 +4,10 @@ import type { SignInPayload } from "../../components/auth/SignInModal";
 import type { SignUpPayload } from "../../components/auth/SignUpModal";
 import type { RootState } from "../store";
 import { authActions } from "./constants";
-import type { ApiError, AuthResponse } from "./types"
-
-const toApiError = (error: unknown): ApiError => {
-  if (typeof error === "object" && error !== null && "response" in error) {
-    const response = (error as {
-      response?: { status?: number; data?: { message?: string } };
-    }).response;
-
-    return {
-      status: response?.status,
-      message: response?.data?.message ?? "Сталася помилка. Спробуйте ще раз.",
-    };
-  }
-
-  return {
-    message: error instanceof Error ? error.message : "Сталася помилка.",
-  };
-};
+import type { AuthResponse } from "./types"
+import type { ApiError } from "../types"
+import { toApiError } from "../utils"
+import type { MyProfileData } from "./types";
 
 export const register = createAsyncThunk<
   AuthResponse,
@@ -81,3 +67,16 @@ export const refreshUser = createAsyncThunk<
     },
   },
 );
+
+export const fetchMyProfile = createAsyncThunk<
+  MyProfileData,
+  void,
+  { rejectValue: ApiError }
+>("auth/fetchMyProfile", async (_, { rejectWithValue }) => {
+  try {
+    const { data } = await authService.getMyProfile(); // GET /users/me/profile
+    return data;
+  } catch (error) {
+    return rejectWithValue(toApiError(error));
+  }
+});

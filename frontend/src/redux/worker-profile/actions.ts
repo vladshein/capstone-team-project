@@ -1,33 +1,52 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { profileService } from "../../services/profileService";
-import { profileActions } from "./constants";
-import type { ApiError, MyProfileResponse } from "./types";
+import { isAxiosError } from "axios";
+import { workerProfileService } from "../../services/workerProfileService";
+import { toApiError } from "../utils";
+import { workerProfileActions } from "./constants";
+import type { ApiError } from "../types";
+import type {
+  WorkerProfile,
+  CreateWorkerProfilePayload,
+  UpdateWorkerProfilePayload,
+} from "./types";
 
-const toApiError = (error: unknown): ApiError => {
-  if (typeof error === "object" && error !== null && "response" in error) {
-    const response = (error as {
-      response?: { status?: number; data?: { message?: string } };
-    }).response;
-
-    return {
-      status: response?.status,
-      message: response?.data?.message ?? "Сталася помилка. Спробуйте ще раз.",
-    };
-  }
-
-  return {
-    message: error instanceof Error ? error.message : "Сталася помилка.",
-  };
-};
-
-export const fetchMyProfile = createAsyncThunk<
-  MyProfileResponse,
+export const fetchMyWorkerProfile = createAsyncThunk<
+  WorkerProfile | null,
   void,
   { rejectValue: ApiError }
->(profileActions.FETCH_MY_PROFILE, async (_, { rejectWithValue }) => {
+>(workerProfileActions.FETCH_MY_PROFILE, async (_, { rejectWithValue }) => {
   try {
-    const { data } = await profileService.getMyProfile();
-    return data;
+    const { data } = await workerProfileService.getMyProfile();
+    return data.data; // response.data.data — сам профіль
+  } catch (error) {
+    if (isAxiosError(error) && error.response?.status === 404) {
+      return null;
+    }
+    return rejectWithValue(toApiError(error));
+  }
+});
+
+export const createWorkerProfile = createAsyncThunk<
+  WorkerProfile,
+  CreateWorkerProfilePayload,
+  { rejectValue: ApiError }
+>(workerProfileActions.CREATE_PROFILE, async (payload, { rejectWithValue }) => {
+  try {
+    const { data } = await workerProfileService.createProfile(payload);
+    return data.data;
+  } catch (error) {
+    return rejectWithValue(toApiError(error));
+  }
+});
+
+export const updateWorkerProfile = createAsyncThunk<
+  WorkerProfile,
+  UpdateWorkerProfilePayload,
+  { rejectValue: ApiError }
+>(workerProfileActions.UPDATE_PROFILE, async (payload, { rejectWithValue }) => {
+  try {
+    const { data } = await workerProfileService.updateProfile(payload);
+    return data.data;
   } catch (error) {
     return rejectWithValue(toApiError(error));
   }
