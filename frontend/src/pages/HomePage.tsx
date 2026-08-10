@@ -1,5 +1,7 @@
 import { Hero } from "../sectionsHero/Hero";
 import { useBusinessCta } from "../hooks/useBusinessCta";
+import { selectIsLoggedIn, selectUserInfo } from "../redux/auth/selectors";
+import { useAppSelector } from "../redux/hooks";
 
 interface HomePageProps {
   onOpenSignUp?: () => void;
@@ -8,10 +10,17 @@ interface HomePageProps {
 
 export default function HomePage({ onOpenSignUp, onOpenBusinessSignUp }: HomePageProps) {
   const handleBusinessCta = useBusinessCta(onOpenBusinessSignUp);
+  const isAuthenticated = useAppSelector(selectIsLoggedIn);
+  const user = useAppSelector(selectUserInfo);
 
   return (
     <div className="min-h-screen bg-white font-['Inter'] text-[#12131A] antialiased">
-      <Hero onOpenSignUp={onOpenSignUp} onOpenBusinessSignUp={handleBusinessCta} />
+      <Hero
+        onOpenSignUp={onOpenSignUp}
+        onOpenBusinessSignUp={handleBusinessCta}
+        isAuthenticated={isAuthenticated}
+        userRole={user?.role}
+      />
     </div>
   );
 }
