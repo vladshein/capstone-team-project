@@ -156,6 +156,12 @@ export const applyToShift = async (req, res, next) => {
       throw error;
     }
 
+    if (new Date(shift.startTime) <= new Date()) {
+      const error = new Error("Відгукнутися можна лише до початку зміни.");
+      error.status = 400;
+      throw error;
+    }
+
     const existingApplication = await shiftService.findShiftApplication(
       shiftId,
       workerId,

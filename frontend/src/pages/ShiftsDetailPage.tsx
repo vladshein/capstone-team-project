@@ -157,7 +157,10 @@ export default function ShiftsDetailPage() {
   const bonusRate = Number(shift.bonusRate) || 0;
   const hasBonus = bonusRate > 0;
   const status = statusMeta[shift.status] ?? statusMeta.cancelled;
-  const canApply = shift.status === "open";
+  const now = new Date();
+  const isShiftStarted = new Date(shift.startTime) <= now;
+  const isShiftFinished = new Date(shift.endTime) <= now;
+  const canApply = shift.status === "open" && !isShiftStarted;
   const hasApplied = activeApplication?.shiftId === shift.id;
 
   const handleApply = async () => {
@@ -364,7 +367,11 @@ export default function ShiftsDetailPage() {
                 </>
               ) : (
                 <p className="mt-6 rounded-[var(--radius-card)] bg-bg-muted px-4 py-3 text-center text-sm font-medium text-text-muted">
-                  {status.label}
+                  {isShiftFinished
+                    ? "Зміна вже завершилася"
+                    : isShiftStarted
+                      ? "Зміна вже розпочалася"
+                      : status.label}
                 </p>
               )}
             </div>

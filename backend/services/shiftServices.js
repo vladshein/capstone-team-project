@@ -58,6 +58,9 @@ export const getAllShifts = async ({
   // Базова умова: показувати тільки відкриті зміни
   const whereCondition = {
     status: "open",
+    // Відкритою для відгуку може бути лише зміна, яка ще не почалася.
+    // Це прибирає прострочені записи з біржі, карток «поруч» і фасетів фільтрів.
+    startTime: { [Op.gt]: new Date() },
   };
 
   // Фільтрація за категорією
@@ -78,7 +81,7 @@ export const getAllShifts = async ({
   }
 
   if (dateFrom || dateTo) {
-    whereCondition.startTime = {};
+    // Базове обмеження startTime > now зберігаємо й додаємо межі календаря.
     if (dateFrom) whereCondition.startTime[Op.gte] = dateFrom;
     if (dateTo) whereCondition.startTime[Op.lt] = dateTo;
   }
