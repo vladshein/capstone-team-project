@@ -21,7 +21,7 @@ export const NAV_LINKS = [
   },
   {
     id: "nav-worker-cabinet",
-    href: "/my-shifts",
+    href: "/cabinet",
     label: "Кабінет виконавця",
     authRequired: true,
     roles: [USER_ROLES.WORKER],
@@ -50,7 +50,7 @@ export const FOOTER_LINKS = [
       { id: "f-w-1", href: "/shifts", label: "Знайти зміну" },
       {
         id: "f-w-2",
-        href: "/my-shifts",
+        href: "/cabinet/bookings",
         label: "Мої бронювання",
         authRequired: true,
       },

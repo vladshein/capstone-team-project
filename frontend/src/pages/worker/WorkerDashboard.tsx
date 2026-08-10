@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React from "react";
+import { Link } from "react-router-dom";
 import {
   Star,
   MapPin,
@@ -13,6 +14,7 @@ import {
 import type { AuthUser } from "../../redux/auth/types";
 import { FavoriteShiftsTab } from "./FavoriteShiftsTab";
 import { NearbyWorkerShiftsTab } from "./NearbyWorkerShiftsTab";
+import { BookingsTab } from "./BookingsTab";
 
 /* ---------------------------------------------------------------------- */
 /*  Types — узгоджені з Backend_TZ (GET /verification-status,             */
@@ -56,6 +58,7 @@ export interface UpcomingShift {
 
 interface WorkerDashboardProps {
   user: AuthUser;
+  activeTab: WorkerDashboardTab;
   workerProfile: {
     firstName: string;
     lastName: string;
@@ -68,12 +71,12 @@ interface WorkerDashboardProps {
   onConfirmAttendance?: (shiftId: string) => void;
 }
 
-type TabKey = "search" | "bookings" | "favorites";
+export type WorkerDashboardTab = "search" | "bookings" | "favorites";
 
-const TABS: { key: TabKey; label: string }[] = [
-  { key: "search", label: "Пошук змін" },
-  { key: "bookings", label: "Мої бронювання" },
-  { key: "favorites", label: "Збережені зміни" },
+const TABS: { key: WorkerDashboardTab; label: string; to: string }[] = [
+  { key: "search", label: "Пошук змін", to: "/cabinet/search" },
+  { key: "bookings", label: "Мої бронювання", to: "/cabinet/bookings" },
+  { key: "favorites", label: "Збережені зміни", to: "/cabinet/favorites" },
 ];
 
 /* ---------------------------------------------------------------------- */
@@ -134,13 +137,12 @@ function VerificationRow({
 /* ---------------------------------------------------------------------- */
 
 export function WorkerDashboard({
+  activeTab,
   workerProfile,
   upcomingShift,
   bonuses = [],
   onConfirmAttendance,
 }: WorkerDashboardProps) {
-  const [activeTab, setActiveTab] = useState<TabKey>("bookings");
-
   const fullName =
     workerProfile.firstName || workerProfile.lastName
       ? `${workerProfile.firstName} ${workerProfile.lastName}`.trim()
@@ -284,10 +286,9 @@ export function WorkerDashboard({
           <section>
             <div className="flex gap-1 border-b border-border">
               {TABS.map((tab) => (
-                <button
+                <Link
                   key={tab.key}
-                  type="button"
-                  onClick={() => setActiveTab(tab.key)}
+                  to={tab.to}
                   className={`px-4 py-2.5 text-sm font-medium transition-colors ${
                     activeTab === tab.key
                       ? "border-b-2 border-accent text-accent-text"
@@ -295,14 +296,14 @@ export function WorkerDashboard({
                   }`}
                 >
                   {tab.label}
-                </button>
+                </Link>
               ))}
             </div>
 
             <div className="mt-4 rounded-[var(--radius-card)] border border-border bg-bg shadow-sm">
               {activeTab === "search" && <NearbyWorkerShiftsTab />}
               {activeTab === "bookings" && (
-                <BookingsTab upcomingShift={upcomingShift} />
+                <BookingsTab />
               )}
               {activeTab === "favorites" && <FavoriteShiftsTab />}
             </div>
@@ -316,37 +317,3 @@ export function WorkerDashboard({
 /* ---------------------------------------------------------------------- */
 /*  Вкладки                                                                */
 /* ---------------------------------------------------------------------- */
-
-function BookingsTab({
-  upcomingShift,
-}: {
-  upcomingShift?: UpcomingShift | null;
-}) {
-  // TODO: підʼєднати GET /api/v1/shifts/my-calendar для повного списку бронювань,
-  // не тільки найближчої зміни.
-  if (!upcomingShift) {
-    return (
-      <div className="flex items-center justify-center p-8 text-sm text-text-subtle">
-        Активних бронювань поки немає. Час взяти першу зміну!
-      </div>
-    );
-  }
-  return (
-    <div className="divide-y divide-border">
-      <div className="flex items-center justify-between p-4">
-        <div>
-          <p className="font-medium text-ink">
-            {upcomingShift.position} · {upcomingShift.companyName}
-          </p>
-          <p className="text-sm text-text-muted">
-            {upcomingShift.date}, {upcomingShift.startTime}–
-            {upcomingShift.endTime}
-          </p>
-        </div>
-        <span className="rounded-full bg-accent/10 px-2.5 py-0.5 text-xs font-semibold text-accent-text">
-          {upcomingShift.status === "Active" ? "Триває" : "Заброньовано"}
-        </span>
-      </div>
-    </div>
-  );
-}

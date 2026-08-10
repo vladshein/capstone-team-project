@@ -16,6 +16,7 @@ import {
 import { useAppDispatch, useAppSelector } from "./redux/hooks";
 import type { ApiError } from "./redux/auth/types";
 import { getDashboardPath } from "./redux/auth/helpers";
+import type { WorkerDashboardTab } from "./pages/worker/WorkerDashboard";
 
 const HomePage = lazy(() => import("./pages/HomePage"));
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
@@ -94,6 +95,14 @@ export default function App() {
     }
   };
 
+  const renderWorkerDashboard = (activeTab: WorkerDashboardTab) => {
+    if (!isAuthenticated) return <Navigate to="/" replace />;
+    if (getDashboardPath(user?.role) !== "/cabinet") {
+      return <Navigate to={getDashboardPath(user?.role)} replace />;
+    }
+    return <WorkerDashboardPage activeTab={activeTab} />;
+  };
+
   if (isRefreshing || isReduxLoading) {
     return <Loader fullScreen />;
   }
@@ -128,18 +137,10 @@ export default function App() {
                 }
               />
 
-              <Route
-                path="/my-shifts"
-                element={
-                  !isAuthenticated ? (
-                    <Navigate to="/" replace />
-                  ) : getDashboardPath(user?.role) !== "/my-shifts" ? (
-                    <Navigate to={getDashboardPath(user?.role)} replace />
-                  ) : (
-                    <WorkerDashboardPage />
-                  )
-                }
-              />
+              <Route path="/cabinet" element={renderWorkerDashboard("bookings")} />
+              <Route path="/cabinet/search" element={renderWorkerDashboard("search")} />
+              <Route path="/cabinet/bookings" element={renderWorkerDashboard("bookings")} />
+              <Route path="/cabinet/favorites" element={renderWorkerDashboard("favorites")} />
 
               <Route
                 path="/dashboard"

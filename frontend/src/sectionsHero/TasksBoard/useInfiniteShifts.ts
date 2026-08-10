@@ -6,6 +6,7 @@ export function useInfiniteShifts(
   params: GetShiftsParams,
   isEnabled: boolean,
   hasEmptyPartnerSelection = false,
+  fallbackWithoutCity = false,
 ) {
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [totalPages, setTotalPages] = useState(0);
@@ -13,6 +14,7 @@ export function useInfiniteShifts(
   const [partnerOptions, setPartnerOptions] = useState<{ label: string; count: number }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isFallback, setIsFallback] = useState(false);
 
   // Обидва мультиселекти нормалізуємо, щоб порядок кліків не змінював запит.
   const requestParams = useMemo(
@@ -34,16 +36,30 @@ export function useInfiniteShifts(
       setTotalItems(0);
       if (!isEnabled) setPartnerOptions([]);
       setError(null);
+      setIsFallback(false);
       setIsLoading(false);
       return undefined;
     }
 
     setIsLoading(true);
     setError(null);
+    setIsFallback(false);
 
     void getAllShifts(requestParams)
       .then((response) => {
         if (cancelled) return;
+
+        if (fallbackWithoutCity && requestParams.city && response.totalItems === 0) {
+          return getAllShifts({ ...requestParams, city: undefined }).then((fallbackResponse) => {
+            if (cancelled) return;
+            setShifts(fallbackResponse.data);
+            setTotalPages(fallbackResponse.totalPages);
+            setTotalItems(fallbackResponse.totalItems);
+            setPartnerOptions(fallbackResponse.partnerOptions ?? []);
+            setIsFallback(fallbackResponse.totalItems > 0);
+          });
+        }
+
         setShifts(response.data);
         setTotalPages(response.totalPages);
         setTotalItems(response.totalItems);
@@ -59,7 +75,7 @@ export function useInfiniteShifts(
     return () => {
       cancelled = true;
     };
-  }, [hasEmptyPartnerSelection, isEnabled, requestKey]);
+  }, [fallbackWithoutCity, hasEmptyPartnerSelection, isEnabled, requestKey]);
 
-  return { shifts, totalPages, totalItems, partnerOptions, isLoading, error };
+  return { shifts, totalPages, totalItems, partnerOptions, isLoading, error, isFallback };
 }

@@ -95,6 +95,32 @@ export interface ShiftApplication {
   appliedAt: string;
 }
 
+export interface WorkerShiftApplication {
+  id: number;
+  shiftId: number;
+  workerId: number;
+  status: "pending" | "approved" | "rejected" | "completed" | "no_show" | "cancelled";
+  appliedAt: string;
+  Shift: {
+    id: number;
+    startTime: string;
+    endTime: string;
+    hourlyRate: number | string;
+    bonusRate: number | string;
+    description: string | null;
+    status: ShiftStatus;
+    JobPosition?: ShiftJobPosition;
+    Location?: ShiftLocation;
+  };
+}
+
+export interface WorkerShiftApplicationsResponse {
+  totalItems: number;
+  totalPages: number;
+  currentPage: number;
+  data: WorkerShiftApplication[];
+}
+
 /**
  * Отримати список відкритих змін з опційною фільтрацією та пагінацією.
  * Відповідає GET /api/shifts
@@ -135,4 +161,20 @@ export async function applyToShift(shiftId: number): Promise<ShiftApplication> {
     `/shifts/${shiftId}/applications`,
   );
   return data.data;
+}
+
+export async function getMyShiftApplications(
+  page = 1,
+  limit = 8,
+  shiftId?: number,
+  scope: "active" | "archive" = "active",
+): Promise<WorkerShiftApplicationsResponse> {
+  const { data } = await api.get<WorkerShiftApplicationsResponse>("/shifts/worker/my-jobs", {
+    params: { page, limit, shiftId, scope },
+  });
+  return data;
+}
+
+export async function cancelShiftApplication(applicationId: number): Promise<void> {
+  await api.delete(`/shifts/applications/${applicationId}`);
 }

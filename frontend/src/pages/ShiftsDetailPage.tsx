@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import {
   ArrowLeft,
@@ -16,6 +16,7 @@ import {
 import { Link, useParams } from "react-router-dom";
 
 import Loader from "../components/ui/Loader";
+import { Modal } from "../components/ui/Modal";
 import NotFoundPage from "./NotFoundPage";
 import { applyToShift, fetchShiftById } from "../redux/shift/actions";
 import { selectIsLoggedIn, selectUserInfo } from "../redux/auth/selectors";
@@ -30,6 +31,12 @@ import {
 import { useAppDispatch, useAppSelector } from "../redux/hooks";
 import type { Shift } from "../redux/shift/types";
 import { useFavoriteShifts } from "../hooks/useFavoriteShifts";
+import {
+  cancelShiftApplication,
+  getMyShiftApplications,
+  type WorkerShiftApplication,
+} from "../api/shifts";
+import { clearApplication } from "../redux/shift/slice";
 
 const moneyFormatter = new Intl.NumberFormat("uk-UA", {
   maximumFractionDigits: 0,
@@ -86,6 +93,10 @@ export default function ShiftsDetailPage() {
   const application = useAppSelector(selectShiftApplication);
   const applicationError = useAppSelector(selectShiftApplicationError);
   const { isFavorite, toggleFavorite } = useFavoriteShifts();
+  const [activeApplication, setActiveApplication] = useState<WorkerShiftApplication | null>(null);
+  const [isCheckingApplication, setIsCheckingApplication] = useState(false);
+  const [isCancellingApplication, setIsCancellingApplication] = useState(false);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const shiftId = Number(id);
   const isInvalidId = !Number.isInteger(shiftId) || shiftId <= 0;
   const favorite = shift ? isFavorite(shift.id) : false;
@@ -93,6 +104,31 @@ export default function ShiftsDetailPage() {
   useEffect(() => {
     if (!isInvalidId) void dispatch(fetchShiftById(shiftId));
   }, [dispatch, isInvalidId, shiftId]);
+
+  useEffect(() => {
+    if (!shift || !isAuthenticated || user?.role !== "worker") {
+      setActiveApplication(null);
+      setIsCheckingApplication(false);
+      return;
+    }
+
+    let isCurrent = true;
+    setIsCheckingApplication(true);
+    void getMyShiftApplications(1, 1, shift.id)
+      .then((response) => {
+        if (isCurrent) setActiveApplication(response.data[0] ?? null);
+      })
+      .catch(() => {
+        if (isCurrent) setActiveApplication(null);
+      })
+      .finally(() => {
+        if (isCurrent) setIsCheckingApplication(false);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [application?.id, isAuthenticated, shift, user?.role]);
 
   if (!isInvalidId && (isLoading || (!shift && !error))) {
     return <Loader fullScreen label="Завантажуємо деталі зміни…" />;
@@ -122,7 +158,7 @@ export default function ShiftsDetailPage() {
   const hasBonus = bonusRate > 0;
   const status = statusMeta[shift.status] ?? statusMeta.cancelled;
   const canApply = shift.status === "open";
-  const hasApplied = application?.shiftId === shift.id;
+  const hasApplied = activeApplication?.shiftId === shift.id;
 
   const handleApply = async () => {
     if (!isAuthenticated) {
@@ -136,7 +172,20 @@ export default function ShiftsDetailPage() {
     }
 
     try {
-      await dispatch(applyToShift(shift.id)).unwrap();
+      const createdApplication = await dispatch(applyToShift(shift.id)).unwrap();
+      setActiveApplication({
+        ...createdApplication,
+        status: createdApplication.status === "approved" ? "approved" : "pending",
+        Shift: {
+          id: shift.id,
+          startTime: shift.startTime,
+          endTime: shift.endTime,
+          hourlyRate: shift.hourlyRate,
+          bonusRate: shift.bonusRate,
+          description: shift.description,
+          status: shift.status,
+        },
+      });
       toast.success("Відгук на зміну надіслано.");
     } catch (requestError) {
       toast.error(
@@ -147,7 +196,29 @@ export default function ShiftsDetailPage() {
     }
   };
 
+  const handleCancelApplication = async () => {
+    if (!activeApplication) return;
+
+    setIsCancellingApplication(true);
+    try {
+      await cancelShiftApplication(activeApplication.id);
+      setActiveApplication(null);
+      dispatch(clearApplication());
+      setIsCancelModalOpen(false);
+      toast.success("Відгук на зміну відкликано.");
+    } catch (requestError) {
+      toast.error(
+        requestError instanceof Error
+          ? requestError.message
+          : "Не вдалося відкликати відгук.",
+      );
+    } finally {
+      setIsCancellingApplication(false);
+    }
+  };
+
   return (
+    <>
     <main className="bg-bg-muted py-8 sm:py-10 lg:py-12">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
         <Link
@@ -260,22 +331,40 @@ export default function ShiftsDetailPage() {
                 <p className="flex items-center gap-2 text-sm text-text"><CalendarDays className="h-4 w-4 text-text-subtle" /> {formatDate(shift.startTime)}</p>
                 <p className="mt-3 flex items-center gap-2 text-sm text-text"><Clock3 className="h-4 w-4 text-text-subtle" /> {formatTime(shift.startTime)} — {formatTime(shift.endTime)}</p>
               </div>
-              {canApply && !hasApplied ? (
+              {hasApplied ? (
+                <>
+                  <p className="mt-6 rounded-[var(--radius-card)] bg-accent/10 px-4 py-3 text-center text-sm font-medium text-accent-text">
+                    {activeApplication?.status === "approved"
+                      ? "Компанія підтвердила вашу участь"
+                      : "Ваш відгук надіслано"}
+                  </p>
+                  {new Date(shift.startTime) > new Date() && (
+                    <button
+                      type="button"
+                      onClick={() => setIsCancelModalOpen(true)}
+                      disabled={isCancellingApplication}
+                      className="mt-3 flex min-h-[44px] w-full items-center justify-center rounded-[var(--radius-pill)] border border-danger/30 px-5 text-sm font-semibold text-danger transition-colors hover:bg-danger/10 disabled:cursor-wait disabled:opacity-60"
+                    >
+                      {isCancellingApplication ? "Відкликаємо відгук…" : "Відкликати відгук"}
+                    </button>
+                  )}
+                </>
+              ) : canApply ? (
                 <>
                   <button
                     type="button"
                     onClick={handleApply}
-                    disabled={isApplying}
+                    disabled={isApplying || isCheckingApplication}
                     className="mt-6 flex min-h-[48px] w-full items-center justify-center rounded-[var(--radius-pill)] bg-accent px-5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                   >
-                    {isApplying ? "Надсилаємо відгук…" : "Відгукнутися на зміну"}
+                    {isCheckingApplication ? "Перевіряємо заявку…" : isApplying ? "Надсилаємо відгук…" : "Відгукнутися на зміну"}
                   </button>
                   <p className="mt-3 text-center text-xs leading-5 text-text-subtle">Після відгуку компанія підтвердить вашу участь.</p>
                   {applicationError && <p className="mt-2 text-center text-xs text-danger">{applicationError}</p>}
                 </>
               ) : (
                 <p className="mt-6 rounded-[var(--radius-card)] bg-bg-muted px-4 py-3 text-center text-sm font-medium text-text-muted">
-                  {hasApplied ? "Ваш відгук надіслано" : status.label}
+                  {status.label}
                 </p>
               )}
             </div>
@@ -283,5 +372,33 @@ export default function ShiftsDetailPage() {
         </div>
       </div>
     </main>
+    <Modal
+      isOpen={isCancelModalOpen}
+      onClose={() => setIsCancelModalOpen(false)}
+      title="Відкликати відгук?"
+    >
+      <p className="text-sm leading-6 text-text-muted">
+        Компанія більше не розглядатиме вашу заявку на цю зміну. Ви зможете відгукнутися повторно, якщо вакансія залишиться відкритою.
+      </p>
+      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button
+          type="button"
+          onClick={() => setIsCancelModalOpen(false)}
+          disabled={isCancellingApplication}
+          className="min-h-[44px] rounded-[var(--radius-pill)] border border-border px-5 text-sm font-semibold text-text transition-colors hover:border-accent disabled:opacity-60"
+        >
+          Залишити відгук
+        </button>
+        <button
+          type="button"
+          onClick={handleCancelApplication}
+          disabled={isCancellingApplication}
+          className="min-h-[44px] rounded-[var(--radius-pill)] bg-danger px-5 text-sm font-semibold text-white transition-colors hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
+        >
+          {isCancellingApplication ? "Відкликаємо…" : "Відкликати"}
+        </button>
+      </div>
+    </Modal>
+    </>
   );
 }

@@ -262,10 +262,19 @@ export const cancelShift = async (shiftId) => {
 };
 
 export const findShiftApplication = async (shiftId, workerId) => {
-  return await ShiftApplication.findOne({ where: { shiftId, workerId } });
+  return await ShiftApplication.findOne({
+    where: { shiftId, workerId, status: { [Op.in]: ["pending", "approved"] } },
+  });
 };
 
 export const createShiftApplication = async (shiftId, workerId) => {
+  const cancelledApplication = await ShiftApplication.findOne({
+    where: { shiftId, workerId, status: "cancelled" },
+  });
+  if (cancelledApplication) {
+    return await cancelledApplication.update({ status: "pending", appliedAt: new Date() });
+  }
+
   return await ShiftApplication.create({
     shiftId,
     workerId,
@@ -273,19 +282,51 @@ export const createShiftApplication = async (shiftId, workerId) => {
   });
 };
 
+export const cancelWorkerShiftApplication = async (applicationId, workerId) => {
+  const application = await ShiftApplication.findOne({
+    where: { id: applicationId, workerId },
+    include: [{ model: Shift, attributes: ["id", "startTime"] }],
+  });
+
+  if (!application) return { application: null, reason: "not_found" };
+  if (!["pending", "approved"].includes(application.status)) {
+    return { application: null, reason: "status" };
+  }
+  if (new Date(application.Shift.startTime) <= new Date()) {
+    return { application: null, reason: "started" };
+  }
+
+  await application.update({ status: "cancelled" });
+  return { application, reason: null };
+};
+
 /**
  * Отримує історію робіт (змін) для конкретного робітника.
  */
 export const getWorkerShiftHistory = async (
   workerId,
-  { page = 1, limit = 10, status },
+  { page = 1, limit = 10, status, shiftId, scope = "active" },
 ) => {
   const offset = (page - 1) * limit;
   const whereCondition = { workerId };
+  const now = new Date();
+  const isArchive = scope === "archive";
+
+  if (isArchive) {
+    whereCondition[Op.or] = [
+      { status: { [Op.in]: ["rejected", "completed", "no_show", "cancelled"] } },
+      where(col("Shift.endTime"), { [Op.lt]: now }),
+    ];
+  } else {
+    whereCondition.status = { [Op.in]: ["pending", "approved"] };
+  }
 
   // Якщо передано статус заявки (наприклад, 'approved' - актуальні, 'completed' - завершені)
   if (status) {
     whereCondition.status = status;
+  }
+  if (Number.isInteger(shiftId) && shiftId > 0) {
+    whereCondition.shiftId = shiftId;
   }
 
   const { count, rows } = await ShiftApplication.findAndCountAll({
@@ -295,7 +336,8 @@ export const getWorkerShiftHistory = async (
     include: [
       {
         model: Shift,
-        attributes: ["id", "startTime", "endTime", "hourlyRate", "status"],
+        attributes: ["id", "startTime", "endTime", "hourlyRate", "bonusRate", "description", "status"],
+        ...(isArchive ? {} : { where: { endTime: { [Op.gte]: now } }, required: true }),
         include: [
           { model: JobPosition, attributes: ["id", "title"] },
           {
@@ -307,8 +349,7 @@ export const getWorkerShiftHistory = async (
       },
     ],
     order: [
-      // Сортуємо за часом початку зміни, щоб найновіші (або найближчі) були зверху
-      [Shift, "startTime", "DESC"],
+      [Shift, "startTime", isArchive ? "DESC" : "ASC"],
     ],
   });
 
