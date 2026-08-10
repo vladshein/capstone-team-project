@@ -18,6 +18,7 @@ import type { ApiError } from "./redux/auth/types";
 import { getDashboardPath } from "./redux/auth/helpers";
 
 const HomePage = lazy(() => import("./pages/HomePage"));
+const AboutPage = lazy(() => import("./pages/AboutPage"));
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 const ShiftsDetailPage = lazy(() => import("./pages/ShiftsDetailPage"));
 const WorkerDashboardPage = lazy(
@@ -132,6 +133,7 @@ export default function App() {
         // userRole={user?.role}
         onOpenSignIn={() => setAuthModal("signin")}
         onOpenSignUp={() => openSignUp()}
+        onOpenBusinessSignUp={() => openSignUp("business_client")}
         onLogout={handleLogout}
       >
         <Suspense fallback={<Loader fullScreen />}>
@@ -146,6 +148,7 @@ export default function App() {
                 />
               }
             />
+            <Route path="/about" element={<AboutPage />} />
             <Route path="/shifts/:id" element={<ShiftsDetailPage />} />
 
             <Route
