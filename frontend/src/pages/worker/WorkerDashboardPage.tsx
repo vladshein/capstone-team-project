@@ -13,7 +13,6 @@ import {
   type Bonus,
   type UpcomingShift,
   type VerificationStatus,
-  type WorkerDashboardTab,
 } from "./WorkerDashboard";
 
 // TODO: замінити на реальні селектори/actions, коли зʼявляться відповідні
@@ -35,11 +34,7 @@ const DEFAULT_VERIFICATION: VerificationStatus = {
   medical: "none",
 };
 
-interface WorkerDashboardPageProps {
-  activeTab: WorkerDashboardTab;
-}
-
-export function WorkerDashboardPage({ activeTab }: WorkerDashboardPageProps) {
+export function WorkerDashboardPage() {
   const dispatch = useAppDispatch();
   const user = useAppSelector(selectUserInfo);
   const profile = useAppSelector(selectWorkerProfile);
@@ -78,7 +73,6 @@ export function WorkerDashboardPage({ activeTab }: WorkerDashboardPageProps) {
   return (
     <WorkerDashboard
       user={user}
-      activeTab={activeTab}
       workerProfile={{
         firstName: workerData?.firstName ?? "",
         lastName: workerData?.lastName ?? "",

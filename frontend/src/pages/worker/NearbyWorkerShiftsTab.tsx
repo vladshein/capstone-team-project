@@ -86,3 +86,5 @@ export function NearbyWorkerShiftsTab() {
     </div>
   );
 }
+
+export default NearbyWorkerShiftsTab;

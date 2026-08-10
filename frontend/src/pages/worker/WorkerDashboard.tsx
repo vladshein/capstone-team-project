@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import {
   Star,
   MapPin,
@@ -12,9 +12,6 @@ import {
   BellRing,
 } from "lucide-react";
 import type { AuthUser } from "../../redux/auth/types";
-import { FavoriteShiftsTab } from "./FavoriteShiftsTab";
-import { NearbyWorkerShiftsTab } from "./NearbyWorkerShiftsTab";
-import { BookingsTab } from "./BookingsTab";
 
 /* ---------------------------------------------------------------------- */
 /*  Types — узгоджені з Backend_TZ (GET /verification-status,             */
@@ -58,7 +55,6 @@ export interface UpcomingShift {
 
 interface WorkerDashboardProps {
   user: AuthUser;
-  activeTab: WorkerDashboardTab;
   workerProfile: {
     firstName: string;
     lastName: string;
@@ -71,12 +67,10 @@ interface WorkerDashboardProps {
   onConfirmAttendance?: (shiftId: string) => void;
 }
 
-export type WorkerDashboardTab = "search" | "bookings" | "favorites";
-
-const TABS: { key: WorkerDashboardTab; label: string; to: string }[] = [
-  { key: "search", label: "Пошук змін", to: "/cabinet/search" },
-  { key: "bookings", label: "Мої бронювання", to: "/cabinet/bookings" },
-  { key: "favorites", label: "Збережені зміни", to: "/cabinet/favorites" },
+const TABS = [
+  { key: "search", label: "Пошук змін", to: "search" },
+  { key: "bookings", label: "Мої бронювання", to: "bookings" },
+  { key: "favorites", label: "Збережені зміни", to: "favorites" },
 ];
 
 /* ---------------------------------------------------------------------- */
@@ -137,12 +131,12 @@ function VerificationRow({
 /* ---------------------------------------------------------------------- */
 
 export function WorkerDashboard({
-  activeTab,
   workerProfile,
   upcomingShift,
   bonuses = [],
   onConfirmAttendance,
 }: WorkerDashboardProps) {
+  const { pathname } = useLocation();
   const fullName =
     workerProfile.firstName || workerProfile.lastName
       ? `${workerProfile.firstName} ${workerProfile.lastName}`.trim()
@@ -286,26 +280,22 @@ export function WorkerDashboard({
           <section>
             <div className="flex gap-1 border-b border-border">
               {TABS.map((tab) => (
-                <Link
+                <NavLink
                   key={tab.key}
                   to={tab.to}
-                  className={`px-4 py-2.5 text-sm font-medium transition-colors ${
-                    activeTab === tab.key
+                  className={({ isActive }) => `px-4 py-2.5 text-sm font-medium transition-colors ${
+                    isActive || (tab.key === "bookings" && pathname === "/cabinet")
                       ? "border-b-2 border-accent text-accent-text"
                       : "text-text-muted hover:text-ink"
                   }`}
                 >
                   {tab.label}
-                </Link>
+                </NavLink>
               ))}
             </div>
 
             <div className="mt-4 rounded-[var(--radius-card)] border border-border bg-bg shadow-sm">
-              {activeTab === "search" && <NearbyWorkerShiftsTab />}
-              {activeTab === "bookings" && (
-                <BookingsTab />
-              )}
-              {activeTab === "favorites" && <FavoriteShiftsTab />}
+              <Outlet />
             </div>
           </section>
         </main>
