@@ -7,7 +7,7 @@ import {
   selectWorkerProfileError,
   selectWorkerProfileLoading,
 } from "../../redux/profile/selectors";
-// import { Loader } from "../../components/ui/Loader"; // TODO: підключити, коли буде відомий реальний API компонента
+import { Loader } from "../../components/ui/Loader";
 import {
   WorkerDashboard,
   type Bonus,
@@ -52,12 +52,7 @@ export function WorkerDashboardPage() {
   }, [dispatch]);
 
   if (isLoading && !profile) {
-    return (
-      // <Loader />
-      <div className="flex items-center justify-center py-[var(--space-section)] text-sm text-text-subtle">
-        Завантаження...
-      </div>
-    );
+    return <Loader label="Завантажуємо кабінет…" size="lg" fullScreen />;
   }
 
   if (error) {

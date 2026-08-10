@@ -257,7 +257,7 @@ export default function ShiftsDetailPage() {
                   onClick={() => toggleFavorite(shift.id)}
                   aria-pressed={favorite}
                   aria-label={favorite ? "Прибрати зміну з обраного" : "Додати зміну в обране"}
-                  className={`inline-flex h-11 w-11 items-center justify-center rounded-[var(--radius-pill)] border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                  className={`inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-[var(--radius-pill)] border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
                     favorite
                       ? "border-accent bg-accent/10 text-accent"
                       : "border-border bg-bg text-text-subtle hover:border-accent hover:text-accent"

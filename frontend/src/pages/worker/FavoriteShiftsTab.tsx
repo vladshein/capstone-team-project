@@ -1,36 +1,65 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowUpRight, Heart } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { getShiftById, type Shift } from "../../api/shifts";
+import { Loader } from "../../components/ui/Loader";
 import { useFavoriteShifts } from "../../hooks/useFavoriteShifts";
 
 const CARDS_PER_PAGE = 8;
 
 export function FavoriteShiftsTab() {
-  const { favoriteIds, toggleFavorite } = useFavoriteShifts();
+  const { favoriteIds, toggleFavorite, removeFavorite } = useFavoriteShifts();
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
+  const savedShiftIds = useMemo(
+    () =>
+      favoriteIds
+        .map(Number)
+        .filter((id) => Number.isInteger(id) && id > 0),
+    [favoriteIds],
+  );
+  const totalPages = Math.ceil(savedShiftIds.length / CARDS_PER_PAGE);
+  const activePage = Math.min(currentPage, Math.max(totalPages, 1));
+  const pageShiftIds = useMemo(
+    () =>
+      savedShiftIds.slice(
+        (activePage - 1) * CARDS_PER_PAGE,
+        activePage * CARDS_PER_PAGE,
+      ),
+    [activePage, savedShiftIds],
+  );
+
   useEffect(() => {
     let isCurrent = true;
-    const shiftIds = favoriteIds
-      .map(Number)
-      .filter((id) => Number.isInteger(id) && id > 0);
 
-    if (shiftIds.length === 0) {
+    if (pageShiftIds.length === 0) {
       setShifts([]);
+      setIsLoading(false);
       return () => {
         isCurrent = false;
       };
     }
 
     setIsLoading(true);
-    void Promise.all(shiftIds.map((id) => getShiftById(id).catch(() => null))).then(
+    void Promise.all(pageShiftIds.map((id) => getShiftById(id).catch(() => null))).then(
       (savedShifts) => {
         if (isCurrent) {
-          setShifts(savedShifts.filter((shift): shift is Shift => shift !== null));
+          const availableShifts = savedShifts.filter(
+            (shift): shift is Shift =>
+              shift !== null && new Date(shift.endTime).getTime() > Date.now(),
+          );
+          const finishedShiftIds = savedShifts
+            .filter(
+              (shift): shift is Shift =>
+                shift !== null && new Date(shift.endTime).getTime() <= Date.now(),
+            )
+            .map((shift) => shift.id);
+
+          finishedShiftIds.forEach(removeFavorite);
+          setShifts(availableShifts);
           setIsLoading(false);
         }
       },
@@ -39,21 +68,14 @@ export function FavoriteShiftsTab() {
     return () => {
       isCurrent = false;
     };
-  }, [favoriteIds]);
-
-  const totalPages = Math.ceil(shifts.length / CARDS_PER_PAGE);
-  const activePage = Math.min(currentPage, Math.max(totalPages, 1));
-  const pageShifts = shifts.slice(
-    (activePage - 1) * CARDS_PER_PAGE,
-    activePage * CARDS_PER_PAGE,
-  );
+  }, [pageShiftIds, removeFavorite]);
 
   useEffect(() => {
     setCurrentPage((page) => Math.min(page, Math.max(totalPages, 1)));
   }, [totalPages]);
 
-  if (isLoading) {
-    return <p className="p-8 text-center text-sm text-text-subtle">Завантажуємо збережені зміни…</p>;
+  if (isLoading && shifts.length === 0) {
+    return <Loader label="Завантажуємо збережені зміни…" />;
   }
 
   if (favoriteIds.length === 0) {
@@ -73,8 +95,9 @@ export function FavoriteShiftsTab() {
 
   return (
     <div className="p-4">
+      {isLoading && <Loader label="Оновлюємо збережені зміни…" size="sm" />}
       <div className="grid gap-4 sm:grid-cols-2">
-      {pageShifts.map((shift) => {
+      {shifts.map((shift) => {
         const companyName = shift.Location?.Company?.name ?? "Компанія";
         const title = shift.JobPosition?.title ?? shift.Category?.name ?? "Зміна";
         const startTime = new Date(shift.startTime);
@@ -93,7 +116,7 @@ export function FavoriteShiftsTab() {
                 type="button"
                 onClick={() => toggleFavorite(shift.id)}
                 aria-label="Прибрати зміну зі збережених"
-                className="-mr-2 -mt-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-pill)] text-accent transition-colors hover:bg-accent/10"
+                className="-mr-2 -mt-2 flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-[var(--radius-pill)] text-accent transition-colors hover:bg-accent/10"
               >
                 <Heart className="h-5 w-5 fill-current" />
               </button>
@@ -106,7 +129,11 @@ export function FavoriteShiftsTab() {
                 ? ` · ${startTime.toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" })}—${endTime.toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" })}`
                 : ""}
             </p>
-            <p className="mt-1 text-sm text-text-muted">{shift.Location?.address}, {shift.Location?.city}</p>
+            <p className="mt-1 text-sm text-text-muted">
+              {[shift.Location?.address, shift.Location?.city]
+                .filter(Boolean)
+                .join(", ") || "Адреса уточнюється"}
+            </p>
             <div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-4">
               <span className="font-mono font-bold text-accent">~{Math.round(payment).toLocaleString("uk-UA")} ₴</span>
               <Link

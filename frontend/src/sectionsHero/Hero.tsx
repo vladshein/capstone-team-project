@@ -5,12 +5,21 @@ import { TasksBoard } from "./TasksBoard/TasksBoard";
 import { NearbyShifts } from "./NearbyShifts";
 import { TestimonialsSlider } from "./Testimonials";
 import { HOW_IT_WORKS } from "../constants/mockData";
+import type { AuthUser } from "../redux/auth/types";
 
 interface HeroProps {
   onOpenSignUp?: () => void;
+  onOpenBusinessSignUp?: () => void;
+  isAuthenticated?: boolean;
+  userRole?: AuthUser["role"];
 }
 
-export function Hero({ onOpenSignUp }: HeroProps) {
+export function Hero({
+  onOpenSignUp,
+  onOpenBusinessSignUp,
+  isAuthenticated = false,
+  userRole,
+}: HeroProps) {
   const [audience, setAudience] = useState<"worker" | "business">("worker");
 
   const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -68,17 +77,18 @@ export function Hero({ onOpenSignUp }: HeroProps) {
 
             <div className="mt-4 flex flex-col gap-3 text-sm sm:flex-row sm:flex-wrap">
               <a
-                href="/shifts"
+                href="/#zavdannia"
                 className="flex min-h-[44px] items-center justify-center rounded-[var(--radius-pill)] bg-ink px-5 font-medium text-white hover:bg-accent sm:justify-start"
               >
                 Я шукаю зміну
               </a>
-              <a
-                href="/dashboard"
+              <button
+                type="button"
+                onClick={onOpenBusinessSignUp}
                 className="flex min-h-[44px] items-center justify-center rounded-[var(--radius-pill)] border border-border bg-bg px-5 font-medium hover:border-accent-hover sm:justify-start"
               >
                 Мені потрібен персонал
-              </a>
+              </button>
             </div>
           </div>
 
@@ -217,16 +227,34 @@ export function Hero({ onOpenSignUp }: HeroProps) {
             Перша зміна може початися вже сьогодні
           </h2>
           <p className="mt-3 text-sm text-text-on-dark sm:mt-4 sm:text-base">
-            Реєстрація займає дві хвилини. Обери роль — виконавець чи бізнес — і
-            починай.
+            {isAuthenticated
+              ? "Переглядайте актуальні зміни або керуйте вакансіями у своєму кабінеті."
+              : "Реєстрація займає дві хвилини. Обери роль — виконавець чи бізнес — і починай."}
           </p>
-          <button
-            type="button"
-            onClick={onOpenSignUp}
-            className="mt-6 min-h-[44px] w-full rounded-[var(--radius-pill)] bg-accent px-7 text-sm font-medium text-white hover:bg-accent-hover sm:mt-8 sm:w-auto"
-          >
-            Зареєструватися безкоштовно
-          </button>
+          {!isAuthenticated ? (
+            <button
+              type="button"
+              onClick={onOpenSignUp}
+              className="mt-6 min-h-[44px] w-full rounded-[var(--radius-pill)] bg-accent px-7 text-sm font-medium text-white hover:bg-accent-hover sm:mt-8 sm:w-auto"
+            >
+              Зареєструватися безкоштовно
+            </button>
+          ) : userRole === "business_client" ? (
+            <button
+              type="button"
+              onClick={onOpenBusinessSignUp}
+              className="mt-6 min-h-[44px] w-full rounded-[var(--radius-pill)] bg-accent px-7 text-sm font-medium text-white hover:bg-accent-hover sm:mt-8 sm:w-auto"
+            >
+              Перейти в кабінет
+            </button>
+          ) : (
+            <a
+              href="#zavdannia"
+              className="mt-6 inline-flex min-h-[44px] w-full items-center justify-center rounded-[var(--radius-pill)] bg-accent px-7 text-sm font-medium text-white hover:bg-accent-hover sm:mt-8 sm:w-auto"
+            >
+              Знайти зміну
+            </a>
+          )}
         </div>
       </section>
     </div>

@@ -41,13 +41,70 @@ export const getApproximateLocation = async (ip) => {
     throw new Error(data.reason ?? "Не вдалося визначити місто за IP-адресою.");
   }
 
+  let city = data.city ?? null;
+  const latitude = Number(data.latitude);
+  const longitude = Number(data.longitude);
+
+  // IP-сервіс часто повертає транслітеровані назви міст. Уточнюємо назву за
+  // координатами з українською локалізацією, але не ламаємо IP-fallback, якщо
+  // зовнішній reverse-geocoding тимчасово недоступний.
+  if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+    try {
+      const preciseLocation = await getCityByCoordinates(latitude, longitude);
+      city = preciseLocation?.city ?? city;
+    } catch {
+      // Залишаємо назву, яку повернув IP-сервіс.
+    }
+  }
+
   const location = {
-    city: data.city ?? null,
+    city,
     region: data.region ?? null,
     country: data.country_code ?? data.country ?? null,
     latitude: data.latitude ?? null,
     longitude: data.longitude ?? null,
     accuracy: "city",
+  };
+
+  locationCache.set(cacheKey, { location, expiresAt: Date.now() + CACHE_TTL_MS });
+  return location;
+};
+
+export const getCityByCoordinates = async (latitude, longitude) => {
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+
+  // Округлення до ~110 м дає змогу не звертатися до сервісу повторно, коли
+  // браузер повертає трохи інші координати тієї самої точки.
+  const cacheKey = `reverse:${latitude.toFixed(3)}:${longitude.toFixed(3)}`;
+  const cached = locationCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.location;
+
+  const params = new URLSearchParams({
+    format: "jsonv2",
+    lat: String(latitude),
+    lon: String(longitude),
+    zoom: "10",
+    addressdetails: "1",
+  });
+  const response = await fetch(`https://nominatim.openstreetmap.org/reverse?${params}`, {
+    headers: {
+      "User-Agent": "Zmina.ua/1.0",
+      "Accept-Language": "uk",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("Не вдалося визначити місто за координатами.");
+  }
+
+  const { address = {} } = await response.json();
+  const location = {
+    city:
+      address.city ??
+      address.town ??
+      address.village ??
+      address.municipality ??
+      null,
   };
 
   locationCache.set(cacheKey, { location, expiresAt: Date.now() + CACHE_TTL_MS });

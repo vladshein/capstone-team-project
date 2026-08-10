@@ -10,6 +10,7 @@ import {
 } from "../../api/shifts";
 import { formatShiftDate, formatTimeRange } from "../../sectionsHero/TasksBoard/formatters";
 import { Modal } from "../../components/ui/Modal";
+import { Loader } from "../../components/ui/Loader";
 
 const APPLICATIONS_PER_PAGE = 8;
 type BookingScope = "active" | "archive";
@@ -75,8 +76,9 @@ export function BookingsTab() {
     }
   };
 
-  const content = isLoading ? (
-    <p className="p-8 text-center text-sm text-text-subtle">Завантажуємо ваші заявки…</p>
+  const isInitialLoading = isLoading && applications.length === 0;
+  const content = isInitialLoading ? (
+    <Loader label="Завантажуємо ваші заявки…" />
   ) : applications.length === 0 ? (
     <div className="flex flex-col items-center gap-2 p-8 text-center text-sm text-text-subtle">
       <p>{scope === "active" ? "У вас поки немає активних заявок на зміни." : "Архів заявок поки порожній."}</p>
@@ -86,6 +88,7 @@ export function BookingsTab() {
     </div>
   ) : (
     <div className="divide-y divide-border">
+      {isLoading && <Loader label="Оновлюємо заявки…" size="sm" />}
       {applications.map((application) => {
         const shift = application.Shift;
         const status = statusMeta[application.status];

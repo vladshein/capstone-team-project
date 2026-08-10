@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft } from "lucide-react";
 import { CategoryPicker } from "./CategoryPicker";
 import type { CalendarPeriod } from "./DateStrip";
 import { FilterSidebar } from "./FilterSidebar";
@@ -15,7 +16,8 @@ import {
   selectPartnerSelectionMode,
   selectShiftSort,
 } from "../../redux/shift/selectors";
-import { toggleCategory } from "../../redux/shift/slice";
+import { clearSelectedCategories, toggleCategory } from "../../redux/shift/slice";
+import { Loader } from "../../components/ui/Loader";
 
 const CARDS_PER_PAGE = 8;
 
@@ -41,7 +43,13 @@ export function TasksBoard() {
       return "";
     }
   });
-  const { coordinates, error: locationError, isLocating, requestLocation } = useGeolocation();
+  const {
+    coordinates,
+    city: preciseCity,
+    error: locationError,
+    isLocating,
+    requestLocation,
+  } = useGeolocation();
   const { location: approximateLocation, isLoading: isLoadingApproximateLocation } =
     useApproximateLocation();
   const { categories, error: categoriesError, isLoading: isLoadingCategories } =
@@ -59,7 +67,7 @@ export function TasksBoard() {
           longitude: approximateLocation.longitude,
         }
       : null;
-  const selectedCity = manualCity || approximateLocation?.city || undefined;
+  const selectedCity = preciseCity || manualCity || approximateLocation?.city || undefined;
   const shiftRequestParams = useMemo(() => {
     const now = new Date();
     const periodStart = selectedDate
@@ -91,6 +99,9 @@ export function TasksBoard() {
   );
   const toggleCategoryFromCard = (categoryId: string) => {
     dispatch(toggleCategory(categoryId));
+  };
+  const returnToCategories = () => {
+    dispatch(clearSelectedCategories());
   };
   const saveManualCity = (city: string) => {
     const normalizedCity = city.trim();
@@ -144,6 +155,7 @@ export function TasksBoard() {
           locationError={locationError}
           onRequestLocation={requestLocation}
           approximateLocation={approximateLocation}
+          preciseCity={preciseCity}
           manualCity={manualCity}
           onSaveManualCity={saveManualCity}
           isLoadingApproximateLocation={isLoadingApproximateLocation}
@@ -161,7 +173,7 @@ export function TasksBoard() {
           className="min-w-0"
         >
           {isLoadingCategories && (
-            <p className="text-sm text-text-muted">Завантажуємо категорії…</p>
+            <Loader label="Завантажуємо категорії…" />
           )}
           {categoriesError && (
             <p className="text-sm text-danger">{categoriesError}</p>
@@ -176,6 +188,14 @@ export function TasksBoard() {
                 />
               ) : (
                 <>
+                <button
+                  type="button"
+                  onClick={returnToCategories}
+                  className="mb-5 inline-flex min-h-[40px] items-center gap-2 rounded-[var(--radius-pill)] px-1 text-sm font-medium text-text-muted transition-colors hover:text-accent-text"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Усі категорії
+                </button>
                 {isFallback && selectedCity && !isLoading && (
                   <p className="mb-4 rounded-[var(--radius-card)] border border-accent/20 bg-accent/10 px-4 py-3 text-sm text-accent-text">
                     У {selectedCity} за обраними фільтрами поки немає змін — показуємо найближчі доступні.
@@ -183,14 +203,16 @@ export function TasksBoard() {
                 )}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
                 {isLoading && (
-                  <p className="text-sm text-text-muted sm:col-span-2">Завантаження завдань…</p>
+                  <div className="sm:col-span-2">
+                    <Loader label="Завантажуємо завдання…" />
+                  </div>
                 )}
                 {error && <p className="text-sm text-red-600 sm:col-span-2">{error}</p>}
                 {!isLoading && !error && shifts.length === 0 && (
                   <p className="text-sm text-text-muted sm:col-span-2">Наразі немає доступних завдань.</p>
                 )}
 
-                {!isLoading && shifts.map((shift) => <TaskCard key={shift.id} shift={shift} />)}
+                {shifts.map((shift) => <TaskCard key={shift.id} shift={shift} />)}
                 </div>
                 </>
               )}
