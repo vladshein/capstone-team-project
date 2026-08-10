@@ -9,6 +9,7 @@ import {
   selectBusinessProfileLoading,
 } from "../../redux/profile/selectors";
 import { CreateCompanyModal, type CreateCompanyPayload } from "./CreateCompanyModal";
+import { Loader } from "../../components/ui/Loader";
 
 function ProfileField({ label, value }: { label: string; value?: string }) {
   return (
@@ -48,11 +49,7 @@ export function BusinessProfilePage() {
   };
 
   if (isLoading && !profile) {
-    return (
-      <div className="flex items-center justify-center py-[var(--space-section)] text-sm text-text-subtle">
-        Завантаження...
-      </div>
-    );
+    return <Loader label="Завантажуємо профіль компанії…" size="lg" fullScreen />;
   }
 
   if (error) {

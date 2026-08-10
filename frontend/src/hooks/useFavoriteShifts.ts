@@ -41,9 +41,24 @@ export function useFavoriteShifts() {
     }
   }, []);
 
+  const removeFavorite = useCallback((shiftId: string | number) => {
+    const id = String(shiftId);
+    const nextFavoriteIds = readFavorites().filter(
+      (favoriteId) => favoriteId !== id,
+    );
+
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextFavoriteIds));
+      window.dispatchEvent(new Event(UPDATE_EVENT));
+    } catch {
+      // Якщо localStorage недоступний, зміна просто залишиться у списку.
+    }
+  }, []);
+
   return {
     favoriteIds,
     isFavorite: (shiftId: string | number) => favoriteIds.includes(String(shiftId)),
     toggleFavorite,
+    removeFavorite,
   };
 }

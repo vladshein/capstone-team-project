@@ -170,15 +170,15 @@ export function WorkerDashboard({
               Верифікація
             </h3>
             <ul className="mt-2 divide-y divide-border">
-              {(Object.keys(VERIFICATION_LABELS) as (keyof VerificationStatus)[]).map(
-                (key) => (
-                  <VerificationRow
-                    key={key}
-                    label={VERIFICATION_LABELS[key]}
-                    state={workerProfile.verification[key]}
-                  />
-                ),
-              )}
+              {(
+                Object.keys(VERIFICATION_LABELS) as (keyof VerificationStatus)[]
+              ).map((key) => (
+                <VerificationRow
+                  key={key}
+                  label={VERIFICATION_LABELS[key]}
+                  state={workerProfile.verification[key]}
+                />
+              ))}
             </ul>
             {workerProfile.taxNumber && (
               <p className="mt-3 text-xs text-text-subtle">
@@ -208,7 +208,9 @@ export function WorkerDashboard({
                     <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-bg-muted">
                       <div
                         className="h-full rounded-full bg-accent transition-all"
-                        style={{ width: `${Math.min(bonus.progressPercent, 100)}%` }}
+                        style={{
+                          width: `${Math.min(bonus.progressPercent, 100)}%`,
+                        }}
                       />
                     </div>
                   </div>
@@ -225,9 +227,7 @@ export function WorkerDashboard({
           {/* Наступна зміна + підтвердження виходу (confirm-attendance) */}
           {upcomingShift && (
             <section>
-              <h3 className="font-heading text-lg font-bold">
-                Наступна зміна
-              </h3>
+              <h3 className="font-heading text-lg font-bold">Наступна зміна</h3>
               <div className="mt-4 rounded-[var(--radius-card)] border border-border bg-bg p-5 shadow-sm">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -283,11 +283,14 @@ export function WorkerDashboard({
                 <NavLink
                   key={tab.key}
                   to={tab.to}
-                  className={({ isActive }) => `px-4 py-2.5 text-sm font-medium transition-colors ${
-                    isActive || (tab.key === "bookings" && pathname === "/cabinet")
-                      ? "border-b-2 border-accent text-accent-text"
-                      : "text-text-muted hover:text-ink"
-                  }`}
+                  className={({ isActive }) =>
+                    `px-4 py-2.5 text-sm font-medium transition-colors ${
+                      isActive ||
+                      (tab.key === "bookings" && pathname === "/cabinet")
+                        ? "border-b-2 border-accent text-accent-text"
+                        : "text-text-muted hover:text-ink"
+                    }`
+                  }
                 >
                   {tab.label}
                 </NavLink>
@@ -303,7 +306,3 @@ export function WorkerDashboard({
     </div>
   );
 }
-
-/* ---------------------------------------------------------------------- */
-/*  Вкладки                                                                */
-/* ---------------------------------------------------------------------- */

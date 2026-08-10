@@ -12,6 +12,7 @@ import {
   CreateWorkerProfileModal,
   type CreateWorkerProfilePayload,
 } from "./CreateWorkerProfileModal";
+import { Loader } from "../../components/ui/Loader";
 
 function ProfileField({ label, value }: { label: string; value?: string }) {
   return (
@@ -51,11 +52,7 @@ export function WorkerProfilePage() {
   };
 
   if (isLoading && !profile) {
-    return (
-      <div className="flex items-center justify-center py-[var(--space-section)] text-sm text-text-subtle">
-        Завантаження...
-      </div>
-    );
+    return <Loader label="Завантажуємо профіль…" size="lg" fullScreen />;
   }
 
   if (error) {

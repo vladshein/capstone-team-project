@@ -1,13 +1,16 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { profileService } from "../../services/profileService";
+import type { RootState } from "../store";
 import { profileActions } from "./constants";
 import type { ApiError, MyProfileResponse } from "./types";
 
 const toApiError = (error: unknown): ApiError => {
   if (typeof error === "object" && error !== null && "response" in error) {
-    const response = (error as {
-      response?: { status?: number; data?: { message?: string } };
-    }).response;
+    const response = (
+      error as {
+        response?: { status?: number; data?: { message?: string } };
+      }
+    ).response;
 
     return {
       status: response?.status,
@@ -23,12 +26,22 @@ const toApiError = (error: unknown): ApiError => {
 export const fetchMyProfile = createAsyncThunk<
   MyProfileResponse,
   void,
-  { rejectValue: ApiError }
->(profileActions.FETCH_MY_PROFILE, async (_, { rejectWithValue }) => {
-  try {
-    const { data } = await profileService.getMyProfile();
-    return data;
-  } catch (error) {
-    return rejectWithValue(toApiError(error));
-  }
-});
+  { state: RootState; rejectValue: ApiError }
+>(
+  profileActions.FETCH_MY_PROFILE,
+  async (_, { rejectWithValue }) => {
+    try {
+      const { data } = await profileService.getMyProfile();
+      return data;
+    } catch (error) {
+      return rejectWithValue(toApiError(error));
+    }
+  },
+  {
+    condition: (_, { getState }) => {
+      const { workerProfile, businessProfile } = getState();
+
+      return !workerProfile.isLoading && !businessProfile.isLoading;
+    },
+  },
+);

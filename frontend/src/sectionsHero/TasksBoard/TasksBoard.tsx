@@ -16,6 +16,7 @@ import {
   selectShiftSort,
 } from "../../redux/shift/selectors";
 import { toggleCategory } from "../../redux/shift/slice";
+import { Loader } from "../../components/ui/Loader";
 
 const CARDS_PER_PAGE = 8;
 
@@ -161,7 +162,7 @@ export function TasksBoard() {
           className="min-w-0"
         >
           {isLoadingCategories && (
-            <p className="text-sm text-text-muted">Завантажуємо категорії…</p>
+            <Loader label="Завантажуємо категорії…" />
           )}
           {categoriesError && (
             <p className="text-sm text-danger">{categoriesError}</p>
@@ -183,14 +184,16 @@ export function TasksBoard() {
                 )}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
                 {isLoading && (
-                  <p className="text-sm text-text-muted sm:col-span-2">Завантаження завдань…</p>
+                  <div className="sm:col-span-2">
+                    <Loader label="Завантажуємо завдання…" />
+                  </div>
                 )}
                 {error && <p className="text-sm text-red-600 sm:col-span-2">{error}</p>}
                 {!isLoading && !error && shifts.length === 0 && (
                   <p className="text-sm text-text-muted sm:col-span-2">Наразі немає доступних завдань.</p>
                 )}
 
-                {!isLoading && shifts.map((shift) => <TaskCard key={shift.id} shift={shift} />)}
+                {shifts.map((shift) => <TaskCard key={shift.id} shift={shift} />)}
                 </div>
                 </>
               )}

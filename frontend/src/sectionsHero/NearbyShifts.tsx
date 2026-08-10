@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { getAllShifts, type Shift } from "../api/shifts";
 import { ShiftCard } from "../components/cards/ShiftCard";
+import { Loader } from "../components/ui/Loader";
 import { useApproximateLocation } from "./TasksBoard/useApproximateLocation";
 import { useGeolocation } from "./TasksBoard/useGeolocation";
 import { CATEGORY_ICONS } from "./TasksBoard/CategoryPicker";
@@ -137,7 +138,11 @@ export function NearbyShifts() {
         {locationError && <p className="mt-3 text-xs text-danger">{locationError}</p>}
 
         <div className="mt-6 grid grid-cols-1 gap-4 sm:mt-8 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
-          {isLoading && <p className="text-sm text-text-muted sm:col-span-2 lg:col-span-4">Завантажуємо зміни…</p>}
+          {isLoading && (
+            <div className="sm:col-span-2 lg:col-span-4">
+              <Loader label="Завантажуємо зміни…" />
+            </div>
+          )}
           {!isLoading && nearbyShifts.map(({ shift, distance, CategoryIcon }) => (
             <ShiftCard
               key={shift.id}

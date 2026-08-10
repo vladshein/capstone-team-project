@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { getAllShifts, type Shift } from "../../api/shifts";
+import { Loader } from "../../components/ui/Loader";
 import { TaskCard } from "../../sectionsHero/TasksBoard/TaskCard";
 import { useApproximateLocation } from "../../sectionsHero/TasksBoard/useApproximateLocation";
 
@@ -73,12 +74,13 @@ export function NearbyWorkerShiftsTab() {
         </a>
       </div>
 
-      {isLoading && <p className="py-8 text-center text-sm text-text-subtle">Завантажуємо зміни…</p>}
+      {isLoading && shifts.length === 0 && <Loader label="Завантажуємо зміни…" />}
+      {isLoading && shifts.length > 0 && <Loader label="Оновлюємо зміни…" size="sm" />}
       {!isLoading && error && <p className="py-8 text-center text-sm text-danger">{error}</p>}
       {!isLoading && !error && shifts.length === 0 && (
         <p className="py-8 text-center text-sm text-text-subtle">Поки немає доступних змін поруч.</p>
       )}
-      {!isLoading && !error && shifts.length > 0 && (
+      {!error && shifts.length > 0 && (
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           {shifts.map((shift) => <TaskCard key={shift.id} shift={shift} />)}
         </div>
