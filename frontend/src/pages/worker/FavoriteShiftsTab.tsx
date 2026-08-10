@@ -116,7 +116,7 @@ export function FavoriteShiftsTab() {
                 type="button"
                 onClick={() => toggleFavorite(shift.id)}
                 aria-label="Прибрати зміну зі збережених"
-                className="-mr-2 -mt-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-pill)] text-accent transition-colors hover:bg-accent/10"
+                className="-mr-2 -mt-2 flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-[var(--radius-pill)] text-accent transition-colors hover:bg-accent/10"
               >
                 <Heart className="h-5 w-5 fill-current" />
               </button>
@@ -129,7 +129,11 @@ export function FavoriteShiftsTab() {
                 ? ` · ${startTime.toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" })}—${endTime.toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" })}`
                 : ""}
             </p>
-            <p className="mt-1 text-sm text-text-muted">{shift.Location?.address}, {shift.Location?.city}</p>
+            <p className="mt-1 text-sm text-text-muted">
+              {[shift.Location?.address, shift.Location?.city]
+                .filter(Boolean)
+                .join(", ") || "Адреса уточнюється"}
+            </p>
             <div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-4">
               <span className="font-mono font-bold text-accent">~{Math.round(payment).toLocaleString("uk-UA")} ₴</span>
               <Link

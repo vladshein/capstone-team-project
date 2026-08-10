@@ -40,7 +40,13 @@ const getShiftTotal = (shift: Shift) => {
 export function NearbyShifts() {
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { coordinates, error: locationError, isLocating, requestLocation } = useGeolocation();
+  const {
+    coordinates,
+    city: preciseCity,
+    error: locationError,
+    isLocating,
+    requestLocation,
+  } = useGeolocation();
   const { location: approximateLocation } = useApproximateLocation();
 
   useEffect(() => {
@@ -113,7 +119,9 @@ export function NearbyShifts() {
             </h2>
             <p className="mt-1 text-sm text-text-muted">
               {coordinates
-                ? "Зміни відсортовані за вашою точною локацією"
+                ? preciseCity
+                  ? `Точна локація: ${preciseCity}`
+                  : "Зміни відсортовані за вашою точною локацією"
                 : approximateLocation?.city
                   ? `Орієнтовно для міста ${approximateLocation.city}`
                   : "Визначте локацію, щоб побачити найближчі зміни"}
@@ -148,9 +156,12 @@ export function NearbyShifts() {
               key={shift.id}
               shift={{
                 id: shift.id,
-                category: <CategoryIcon className="h-5 w-5 text-accent" />,
+                category: <CategoryIcon className="h-4 w-4" />,
+                categoryLabel: shift.Category?.name ?? shift.category?.name,
                 role: shift.description || shift.JobPosition?.title || shift.Category?.name || "Зміна",
                 company: shift.Location?.Company?.name || "Партнер не вказаний",
+                address: shift.Location?.address,
+                city: shift.Location?.city,
                 date: `${formatShiftDate(shift.startTime)} · ${formatTimeRange(shift.startTime, shift.endTime)}`,
                 rate: Math.round(Number(shift.hourlyRate) || 0),
                 budget: Math.round(getShiftTotal(shift)),
