@@ -20,9 +20,12 @@ const isSameDay = (first: Date, second: Date) =>
   first.getMonth() === second.getMonth() &&
   first.getDate() === second.getDate();
 
+const startOfDay = (date: Date) =>
+  new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
 export function DateStrip({ selectedDate, onSelectDate, period, onPeriodChange }: DateStripProps) {
   const [weekOffset, setWeekOffset] = useState(0);
-  const today = new Date();
+  const today = startOfDay(new Date());
   const days = useMemo(() => buildWeekStrip(weekOffset), [weekOffset]);
   const selectToday = () => {
     setWeekOffset(0);
@@ -40,8 +43,9 @@ export function DateStrip({ selectedDate, onSelectDate, period, onPeriodChange }
           <button
             type="button"
             aria-label="Попередній тиждень"
-            onClick={() => setWeekOffset((w) => w - 7)}
-            className="flex h-7 w-7 items-center justify-center rounded-[var(--radius-pill)] text-text-muted hover:text-accent"
+            onClick={() => setWeekOffset((w) => Math.max(w - 7, 0))}
+            disabled={weekOffset === 0}
+            className="flex h-7 w-7 items-center justify-center rounded-[var(--radius-pill)] text-text-muted hover:text-accent disabled:cursor-not-allowed disabled:opacity-35"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -84,12 +88,16 @@ export function DateStrip({ selectedDate, onSelectDate, period, onPeriodChange }
       <div className="mt-3 grid grid-cols-7 gap-1.5">
         {days.map((d) => {
           const isSelected = selectedDate ? isSameDay(d, selectedDate) : false;
+          const isPast = startOfDay(d) < today;
           return (
             <button
               key={d.toISOString()}
               type="button"
-              onClick={() => onSelectDate(d)}
-              className={`flex flex-col items-center rounded-[var(--radius-card)] py-2 text-xs font-medium transition-colors ${
+              onClick={() => {
+                if (!isPast) onSelectDate(d);
+              }}
+              disabled={isPast}
+              className={`flex flex-col items-center rounded-[var(--radius-card)] py-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-35 ${
                 isSelected ? "bg-accent text-white" : "text-text-muted hover:bg-bg-muted"
               }`}
             >

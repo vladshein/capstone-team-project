@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import type { AuthUser } from "../../redux/auth/types";
 import { FavoriteShiftsTab } from "./FavoriteShiftsTab";
+import { NearbyWorkerShiftsTab } from "./NearbyWorkerShiftsTab";
 
 /* ---------------------------------------------------------------------- */
 /*  Types — узгоджені з Backend_TZ (GET /verification-status,             */
@@ -299,7 +300,7 @@ export function WorkerDashboard({
             </div>
 
             <div className="mt-4 rounded-[var(--radius-card)] border border-border bg-bg shadow-sm">
-              {activeTab === "search" && <SearchShiftsTab />}
+              {activeTab === "search" && <NearbyWorkerShiftsTab />}
               {activeTab === "bookings" && (
                 <BookingsTab upcomingShift={upcomingShift} />
               )}
@@ -315,22 +316,6 @@ export function WorkerDashboard({
 /* ---------------------------------------------------------------------- */
 /*  Вкладки                                                                */
 /* ---------------------------------------------------------------------- */
-
-function SearchShiftsTab() {
-  // TODO: підʼєднати GET /api/v1/shifts (гео-пошук) + ShiftCard/ShiftsMapViewer
-  // замість заглушки нижче, коли буде готовий /shifts список у сторінці Біржі змін.
-  return (
-    <div className="flex flex-col items-center gap-2 p-8 text-center text-sm text-text-subtle">
-      <p>Тут зʼявиться швидкий пошук змін поруч із вами.</p>
-      <a
-        href="/shifts"
-        className="font-medium text-accent-text hover:underline"
-      >
-        Перейти до біржі змін →
-      </a>
-    </div>
-  );
-}
 
 function BookingsTab({
   upcomingShift,

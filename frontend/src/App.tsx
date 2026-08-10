@@ -5,6 +5,7 @@ import { AuthModals, type AuthModalMode } from "./components/auth/AuthModals";
 import type { SignInPayload } from "./components/auth/SignInModal";
 import type { SignUpPayload } from "./components/auth/SignUpModal";
 import Loader from "./components/ui/Loader";
+import { HashScroll } from "./components/ui/HashScroll";
 import { MainLayout } from "./layouts/MainLayout";
 import { login, logout, refreshUser, register } from "./redux/auth/actions";
 import {
@@ -107,6 +108,7 @@ export default function App() {
         onLogout={handleLogout}
       >
         <Suspense fallback={<Loader fullScreen />}>
+          <HashScroll />
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/shifts/:id" element={<ShiftsDetailPage />} />
