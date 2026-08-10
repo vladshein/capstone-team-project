@@ -14,7 +14,6 @@ const ShiftApplication = sequelize.define(
         "rejected",
         "completed",
         "no_show",
-        "cancelled",
       ),
       allowNull: false,
       defaultValue: "pending",

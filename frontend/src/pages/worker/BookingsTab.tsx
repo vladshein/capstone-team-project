@@ -17,7 +17,6 @@ type BookingScope = "active" | "archive";
 const statusMeta = {
   pending: { label: "Заявка на розгляді", className: "bg-warning/10 text-warning" },
   approved: { label: "Підтверджено компанією", className: "bg-accent/10 text-accent-text" },
-  cancelled: { label: "Відкликано", className: "bg-bg-muted text-text-muted" },
   rejected: { label: "Відхилено", className: "bg-danger/10 text-danger" },
   completed: { label: "Завершено", className: "bg-accent/10 text-accent-text" },
   no_show: { label: "Неявка", className: "bg-danger/10 text-danger" },

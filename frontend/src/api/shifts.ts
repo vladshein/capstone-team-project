@@ -99,7 +99,7 @@ export interface WorkerShiftApplication {
   id: number;
   shiftId: number;
   workerId: number;
-  status: "pending" | "approved" | "rejected" | "completed" | "no_show" | "cancelled";
+  status: "pending" | "approved" | "rejected" | "completed" | "no_show";
   appliedAt: string;
   Shift: {
     id: number;

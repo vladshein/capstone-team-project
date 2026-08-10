@@ -262,19 +262,10 @@ export const cancelShift = async (shiftId) => {
 };
 
 export const findShiftApplication = async (shiftId, workerId) => {
-  return await ShiftApplication.findOne({
-    where: { shiftId, workerId, status: { [Op.in]: ["pending", "approved"] } },
-  });
+  return await ShiftApplication.findOne({ where: { shiftId, workerId } });
 };
 
 export const createShiftApplication = async (shiftId, workerId) => {
-  const cancelledApplication = await ShiftApplication.findOne({
-    where: { shiftId, workerId, status: "cancelled" },
-  });
-  if (cancelledApplication) {
-    return await cancelledApplication.update({ status: "pending", appliedAt: new Date() });
-  }
-
   return await ShiftApplication.create({
     shiftId,
     workerId,
@@ -296,7 +287,7 @@ export const cancelWorkerShiftApplication = async (applicationId, workerId) => {
     return { application: null, reason: "started" };
   }
 
-  await application.update({ status: "cancelled" });
+  await application.destroy();
   return { application, reason: null };
 };
 
@@ -314,7 +305,7 @@ export const getWorkerShiftHistory = async (
 
   if (isArchive) {
     whereCondition[Op.or] = [
-      { status: { [Op.in]: ["rejected", "completed", "no_show", "cancelled"] } },
+      { status: { [Op.in]: ["rejected", "completed", "no_show"] } },
       where(col("Shift.endTime"), { [Op.lt]: now }),
     ];
   } else {
