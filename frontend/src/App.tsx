@@ -16,12 +16,14 @@ import {
 import { useAppDispatch, useAppSelector } from "./redux/hooks";
 import type { ApiError } from "./redux/auth/types";
 import { getDashboardPath } from "./redux/auth/helpers";
-import type { WorkerDashboardTab } from "./pages/worker/WorkerDashboard";
 
 const HomePage = lazy(() => import("./pages/HomePage"));
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 const ShiftsDetailPage = lazy(() => import("./pages/ShiftsDetailPage"));
 const WorkerDashboardPage = lazy(() => import("./pages/worker/WorkerDashboardPage"));
+const NearbyWorkerShiftsTab = lazy(() => import("./pages/worker/NearbyWorkerShiftsTab"));
+const BookingsTab = lazy(() => import("./pages/worker/BookingsTab"));
+const FavoriteShiftsTab = lazy(() => import("./pages/worker/FavoriteShiftsTab"));
 const BusinessDashboardPage = lazy(() => import("./pages/business/BusinessDashboardPage"));
 const WorkerProfilePage = lazy(() => import("./pages/worker/WorkerProfilePage"));
 const BusinessProfilePage = lazy(() => import("./pages/business/BusinessProfilePage"));
@@ -78,7 +80,7 @@ export default function App() {
       const { status, message } = getApiError(error);
       toast.error(
         status === 409
-          ? "Цей email уже використовується"
+          ? message
           : `Помилка реєстрації: ${message}`,
       );
       throw new Error(message);
@@ -95,12 +97,12 @@ export default function App() {
     }
   };
 
-  const renderWorkerDashboard = (activeTab: WorkerDashboardTab) => {
+  const renderWorkerDashboard = () => {
     if (!isAuthenticated) return <Navigate to="/" replace />;
     if (getDashboardPath(user?.role) !== "/cabinet") {
       return <Navigate to={getDashboardPath(user?.role)} replace />;
     }
-    return <WorkerDashboardPage activeTab={activeTab} />;
+    return <WorkerDashboardPage />;
   };
 
   if (isRefreshing || isReduxLoading) {
@@ -137,10 +139,12 @@ export default function App() {
                 }
               />
 
-              <Route path="/cabinet" element={renderWorkerDashboard("bookings")} />
-              <Route path="/cabinet/search" element={renderWorkerDashboard("search")} />
-              <Route path="/cabinet/bookings" element={renderWorkerDashboard("bookings")} />
-              <Route path="/cabinet/favorites" element={renderWorkerDashboard("favorites")} />
+              <Route path="/cabinet" element={renderWorkerDashboard()}>
+                <Route index element={<BookingsTab />} />
+                <Route path="search" element={<NearbyWorkerShiftsTab />} />
+                <Route path="bookings" element={<BookingsTab />} />
+                <Route path="favorites" element={<FavoriteShiftsTab />} />
+              </Route>
 
               <Route
                 path="/dashboard"
