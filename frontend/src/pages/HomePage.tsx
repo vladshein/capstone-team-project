@@ -1,9 +1,17 @@
 import { Hero } from "../sectionsHero/Hero";
+import { useBusinessCta } from "../hooks/useBusinessCta";
 
-export default function HomePage() {
+interface HomePageProps {
+  onOpenSignUp?: () => void;
+  onOpenBusinessSignUp?: () => void;
+}
+
+export default function HomePage({ onOpenSignUp, onOpenBusinessSignUp }: HomePageProps) {
+  const handleBusinessCta = useBusinessCta(onOpenBusinessSignUp);
+
   return (
     <div className="min-h-screen bg-white font-['Inter'] text-[#12131A] antialiased">
-      <Hero />
+      <Hero onOpenSignUp={onOpenSignUp} onOpenBusinessSignUp={handleBusinessCta} />
     </div>
   );
 }

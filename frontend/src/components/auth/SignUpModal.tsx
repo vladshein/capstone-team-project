@@ -1,4 +1,4 @@
-import { SyntheticEvent, useState } from "react";
+import { SyntheticEvent, useEffect, useState } from "react";
 import { Modal } from "../ui/Modal";
 import { FormField } from "../ui/FormField";
 import { emailRegExp, phoneRegExp } from "../../constants//authConstants";
@@ -14,6 +14,7 @@ export interface SignUpPayload {
 
 interface SignUpModalProps {
   isOpen: boolean;
+  initialRole?: UserRole;
   onClose: () => void;
   onSwitchToSignIn: () => void;
   onSignUp: (payload: SignUpPayload) => Promise<void>;
@@ -31,11 +32,12 @@ interface FormErrors {
 
 export function SignUpModal({
   isOpen,
+  initialRole = "worker",
   onClose,
   onSwitchToSignIn,
   onSignUp,
 }: SignUpModalProps) {
-  const [role, setRole] = useState<UserRole>("worker");
+  const [role, setRole] = useState<UserRole>(initialRole);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
@@ -43,6 +45,10 @@ export function SignUpModal({
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) setRole(initialRole);
+  }, [initialRole, isOpen]);
 
   const validate = (): FormErrors => {
     const next: FormErrors = {};

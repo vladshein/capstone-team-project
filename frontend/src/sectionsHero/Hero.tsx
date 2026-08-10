@@ -8,9 +8,10 @@ import { HOW_IT_WORKS } from "../constants/mockData";
 
 interface HeroProps {
   onOpenSignUp?: () => void;
+  onOpenBusinessSignUp?: () => void;
 }
 
-export function Hero({ onOpenSignUp }: HeroProps) {
+export function Hero({ onOpenSignUp, onOpenBusinessSignUp }: HeroProps) {
   const [audience, setAudience] = useState<"worker" | "business">("worker");
 
   const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -68,17 +69,18 @@ export function Hero({ onOpenSignUp }: HeroProps) {
 
             <div className="mt-4 flex flex-col gap-3 text-sm sm:flex-row sm:flex-wrap">
               <a
-                href="/shifts"
+                href="/#zavdannia"
                 className="flex min-h-[44px] items-center justify-center rounded-[var(--radius-pill)] bg-ink px-5 font-medium text-white hover:bg-accent sm:justify-start"
               >
                 Я шукаю зміну
               </a>
-              <a
-                href="/dashboard"
+              <button
+                type="button"
+                onClick={onOpenBusinessSignUp}
                 className="flex min-h-[44px] items-center justify-center rounded-[var(--radius-pill)] border border-border bg-bg px-5 font-medium hover:border-accent-hover sm:justify-start"
               >
                 Мені потрібен персонал
-              </a>
+              </button>
             </div>
           </div>
 

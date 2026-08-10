@@ -1,4 +1,4 @@
-import api from "./axiosInstance";
+import api from "./client";
 
 export type ShiftStatus =
   | "open"
@@ -145,7 +145,7 @@ export async function getShiftById(id: number): Promise<Shift> {
 
 /**
  * Створити нову зміну (для бізнесу/клієнтів). Токен береться автоматично
- * з interceptor'а в axiosInstance — окремо передавати не треба.
+ * зі спільного API-клієнта — окремо передавати не треба.
  * Відповідає POST /api/shifts
  */
 export async function createShift(

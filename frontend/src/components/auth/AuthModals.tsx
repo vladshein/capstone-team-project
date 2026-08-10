@@ -1,11 +1,12 @@
 import { SignInModal, SignInPayload } from "./SignInModal";
-import { SignUpModal, SignUpPayload } from "./SignUpModal";
+import { SignUpModal, SignUpPayload, type UserRole } from "./SignUpModal";
 import { emailRegExp,  } from "../../constants/authConstants";
 
 export type AuthModalMode = "signin" | "signup" | null;
 
 interface AuthModalsProps {
   mode: AuthModalMode;
+  signUpRole?: UserRole;
   onClose: () => void;
   onSwitchMode: (mode: AuthModalMode) => void;
   onSignIn: (payload: SignInPayload) => Promise<void>;
@@ -14,6 +15,7 @@ interface AuthModalsProps {
 
 export function AuthModals({
   mode,
+  signUpRole,
   onClose,
   onSwitchMode,
   onSignIn,
@@ -29,6 +31,7 @@ export function AuthModals({
       />
       <SignUpModal
         isOpen={mode === "signup"}
+        initialRole={signUpRole}
         onClose={onClose}
         onSwitchToSignIn={() => onSwitchMode("signin")}
         onSignUp={onSignUp}

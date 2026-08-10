@@ -1,4 +1,4 @@
-import api from "./axiosInstance";
+import api from "./client";
 
 export interface ApproximateLocation {
   city: string | null;

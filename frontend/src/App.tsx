@@ -1,9 +1,9 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import toast, { Toaster } from "react-hot-toast";
 import { AuthModals, type AuthModalMode } from "./components/auth/AuthModals";
 import type { SignInPayload } from "./components/auth/SignInModal";
-import type { SignUpPayload } from "./components/auth/SignUpModal";
+import type { SignUpPayload, UserRole } from "./components/auth/SignUpModal";
 import Loader from "./components/ui/Loader";
 import { HashScroll } from "./components/ui/HashScroll";
 import { MainLayout } from "./layouts/MainLayout";
@@ -41,6 +41,7 @@ export default function App() {
   const user = useAppSelector(selectUserInfo);
   const isAuthenticated = useAppSelector(selectIsLoggedIn);
   const isRefreshing = useAppSelector(selectIsRefreshing);
+  const authToken = useAppSelector((state) => state.auth.token);
   const isReduxLoading = useAppSelector((state) =>
     Boolean(
       state.auth.isLoading,
@@ -51,10 +52,21 @@ export default function App() {
     ),
   );
   const [authModal, setAuthModal] = useState<AuthModalMode>(null);
+  const [signUpRole, setSignUpRole] = useState<UserRole>("worker");
+  const [isAuthInitialized, setIsAuthInitialized] = useState(() => !authToken);
+  const hasStartedInitialRefresh = useRef(false);
 
   useEffect(() => {
-    void dispatch(refreshUser());
-  }, [dispatch]);
+    if (hasStartedInitialRefresh.current) return;
+    hasStartedInitialRefresh.current = true;
+
+    if (!authToken) {
+      setIsAuthInitialized(true);
+      return;
+    }
+
+    void dispatch(refreshUser()).finally(() => setIsAuthInitialized(true));
+  }, [authToken, dispatch]);
 
   const handleSignIn = async (payload: SignInPayload) => {
     try {
@@ -97,6 +109,11 @@ export default function App() {
     }
   };
 
+  const openSignUp = (role: UserRole = "worker") => {
+    setSignUpRole(role);
+    setAuthModal("signup");
+  };
+
   const renderWorkerDashboard = () => {
     if (!isAuthenticated) return <Navigate to="/" replace />;
     if (getDashboardPath(user?.role) !== "/cabinet") {
@@ -105,7 +122,7 @@ export default function App() {
     return <WorkerDashboardPage />;
   };
 
-  if (isRefreshing || isReduxLoading) {
+  if (!isAuthInitialized || isRefreshing || isReduxLoading) {
     return <Loader fullScreen />;
   }
 
@@ -115,13 +132,16 @@ export default function App() {
         // isAuthenticated={isAuthenticated}
         // userRole={user?.role}
         onOpenSignIn={() => setAuthModal("signin")}
-        onOpenSignUp={() => setAuthModal("signup")}
+        onOpenSignUp={() => openSignUp()}
         onLogout={handleLogout}
       >
         <Suspense fallback={<Loader fullScreen />}>
           <HashScroll />
           <Routes>
-            <Route path="/" element={<HomePage />} />
+            <Route
+              path="/"
+              element={<HomePage onOpenSignUp={() => openSignUp()} onOpenBusinessSignUp={() => openSignUp("business_client")} />}
+            />
             <Route path="/shifts/:id" element={<ShiftsDetailPage />} />
 
               <Route
@@ -166,6 +186,7 @@ export default function App() {
 
       <AuthModals
         mode={authModal}
+        signUpRole={signUpRole}
         onClose={() => setAuthModal(null)}
         onSwitchMode={setAuthModal}
         onSignIn={handleSignIn}

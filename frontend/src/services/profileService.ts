@@ -1,4 +1,4 @@
-import api from "./api";
+import api from "../api/client.ts";
 
 export const profileService = {
   getMyProfile: () => api.get("/users/me/profile"),
