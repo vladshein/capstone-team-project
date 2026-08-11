@@ -27,6 +27,14 @@ shiftRouter.get(
   shiftController.getWorkerShifts,
 );
 
+/** @route DELETE /api/shifts/applications/:applicationId */
+shiftRouter.delete(
+  "/applications/:applicationId",
+  authenticate,
+  checkRole("worker"),
+  shiftController.cancelWorkerApplication,
+);
+
 /**
  * @route GET /api/shifts/:id
  * @desc Отримати детальну інформацію про конкретну зміну за її ID.

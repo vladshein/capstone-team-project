@@ -33,6 +33,7 @@ interface FilterSidebarProps {
   locationError: string | null;
   onRequestLocation: () => void;
   approximateLocation: ApproximateLocation | null;
+  preciseCity: string | null;
   manualCity: string;
   onSaveManualCity: (city: string) => void;
   isLoadingApproximateLocation: boolean;
@@ -51,6 +52,7 @@ export function FilterSidebar({
   locationError,
   onRequestLocation,
   approximateLocation,
+  preciseCity,
   manualCity,
   onSaveManualCity,
   isLoadingApproximateLocation,
@@ -128,8 +130,8 @@ export function FilterSidebar({
           <MapPin className="h-4 w-4 shrink-0 text-accent" />
           {isLoadingApproximateLocation
             ? "Визначаємо ваше місто…"
-            : approximateLocation?.city || manualCity
-              ? `Ваше місто: ${approximateLocation?.city ?? manualCity}`
+            : preciseCity || manualCity || approximateLocation?.city
+              ? `Ваше місто: ${preciseCity || manualCity || approximateLocation?.city}`
               : "Місто не вдалося визначити"}
         </div>
         <button

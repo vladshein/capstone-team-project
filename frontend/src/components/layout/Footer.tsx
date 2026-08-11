@@ -1,4 +1,13 @@
-export function Footer() {
+import { useBusinessCta } from "../../hooks/useBusinessCta";
+import { Link } from "react-router-dom";
+
+interface FooterProps {
+  onOpenBusinessSignUp?: () => void;
+}
+
+export function Footer({ onOpenBusinessSignUp }: FooterProps) {
+  const handleBusinessCta = useBusinessCta(onOpenBusinessSignUp);
+
   return (
     <footer className="border-t border-border bg-bg py-10 sm:py-12">
       <div className="mx-auto grid max-w-7xl grid-cols-2 gap-x-6 gap-y-8 px-4 sm:px-6 md:grid-cols-4 md:px-8">
@@ -14,12 +23,12 @@ export function Footer() {
           <h4 className="text-sm font-semibold">Виконавцям</h4>
           <ul className="mt-3 space-y-2 text-sm text-text-muted">
             <li>
-              <a href="/shifts" className="hover:text-accent">
+              <a href="/#zavdannia" className="hover:text-accent">
                 Знайти зміну
               </a>
             </li>
             <li>
-              <a href="/my-shifts" className="hover:text-accent">
+              <a href="/cabinet/bookings" className="hover:text-accent">
                 Мої бронювання
               </a>
             </li>
@@ -29,14 +38,22 @@ export function Footer() {
           <h4 className="text-sm font-semibold">Бізнесу</h4>
           <ul className="mt-3 space-y-2 text-sm text-text-muted">
             <li>
-              <a href="/dashboard" className="hover:text-accent">
+              <button
+                type="button"
+                onClick={handleBusinessCta}
+                className="cursor-pointer text-left hover:text-accent"
+              >
                 Розмістити вакансію
-              </a>
+              </button>
             </li>
             <li>
-              <a href="/dashboard" className="hover:text-accent">
+              <button
+                type="button"
+                onClick={handleBusinessCta}
+                className="cursor-pointer text-left hover:text-accent"
+              >
                 Кабінет замовника
-              </a>
+              </button>
             </li>
           </ul>
         </div>
@@ -44,9 +61,9 @@ export function Footer() {
           <h4 className="text-sm font-semibold">Компанія</h4>
           <ul className="mt-3 space-y-2 text-sm text-text-muted">
             <li>
-              <a href="/about" className="hover:text-accent">
+              <Link to="/about" className="hover:text-accent">
                 Про нас
-              </a>
+              </Link>
             </li>
             <li>
               <a href="/terms" className="hover:text-accent">

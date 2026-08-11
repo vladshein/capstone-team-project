@@ -6,6 +6,7 @@ interface MainLayoutProps {
   children: ReactNode;
   onOpenSignIn?: () => void;
   onOpenSignUp?: () => void;
+  onOpenBusinessSignUp?: () => void;
   onLogout?: () => void;
 }
 
@@ -13,6 +14,7 @@ export function MainLayout({
   children,
   onOpenSignIn,
   onOpenSignUp,
+  onOpenBusinessSignUp,
   onLogout,
 }: MainLayoutProps) {
   return (
@@ -25,7 +27,7 @@ export function MainLayout({
 
       <main className="flex-1">{children}</main>
 
-      <Footer />
+      <Footer onOpenBusinessSignUp={onOpenBusinessSignUp} />
     </div>
   );
 }

@@ -32,7 +32,7 @@ export function TaskCard({ shift }: { shift: Shift }) {
               onClick={() => toggleFavorite(shift.id)}
               aria-pressed={favorite}
               aria-label={favorite ? "Прибрати з обраного" : "Додати в обране"}
-              className="-mr-2 flex h-9 w-9 items-center justify-center rounded-[var(--radius-pill)] text-text-subtle transition-colors hover:text-accent"
+              className="-mr-2 flex h-9 w-9 cursor-pointer items-center justify-center rounded-[var(--radius-pill)] text-text-subtle transition-colors hover:text-accent"
             >
               <Heart className={`h-5 w-5 ${favorite ? "fill-current text-accent" : "fill-none"}`} />
             </button>
@@ -42,7 +42,11 @@ export function TaskCard({ shift }: { shift: Shift }) {
           {formatShiftDate(shift.startTime)} · {formatTimeRange(shift.startTime, shift.endTime)}
         </p>
         <p className="mt-3 text-sm font-medium">{companyName}</p>
-        <p className="text-sm text-text-muted">{shift.Location?.address}</p>
+        <p className="text-sm text-text-muted">
+          {[shift.Location?.address, shift.Location?.city]
+            .filter(Boolean)
+            .join(", ") || "Адреса уточнюється"}
+        </p>
       </div>
 
       <div className="mt-5 flex items-end justify-between gap-3 border-t border-border pt-4">

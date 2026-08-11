@@ -9,6 +9,7 @@ import {
   selectBusinessProfileLoading,
 } from "../../redux/profile/selectors";
 import { BusinessDashboard } from "./BusinessDashboard";
+import { Loader } from "../../components/ui/Loader";
 
 export function BusinessDashboardPage() {
   const dispatch = useAppDispatch();
@@ -22,11 +23,7 @@ export function BusinessDashboardPage() {
   }, [dispatch]);
 
   if (isLoading && !profile) {
-    return (
-      <div className="flex items-center justify-center py-[var(--space-section)] text-sm text-text-subtle">
-        Завантаження...
-      </div>
-    );
+    return <Loader label="Завантажуємо кабінет…" size="lg" fullScreen />;
   }
 
   if (error) {

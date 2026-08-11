@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { getCityByCoordinates } from "../../api/location";
 
 export interface UserCoordinates {
   latitude: number;
@@ -20,6 +21,7 @@ const getErrorMessage = (error: GeolocationPositionError) => {
 
 export function useGeolocation() {
   const [coordinates, setCoordinates] = useState<UserCoordinates | null>(null);
+  const [city, setCity] = useState<string | null>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,11 +36,21 @@ export function useGeolocation() {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setCoordinates({
+        const nextCoordinates = {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
-        });
-        setIsLocating(false);
+        };
+        setCoordinates(nextCoordinates);
+
+        void getCityByCoordinates(
+          nextCoordinates.latitude,
+          nextCoordinates.longitude,
+        )
+          .then(({ city: resolvedCity }) => setCity(resolvedCity))
+          .catch(() => {
+            // Координати все одно придатні для сортування за відстанню.
+          })
+          .finally(() => setIsLocating(false));
       },
       (positionError) => {
         setError(getErrorMessage(positionError));
@@ -52,5 +64,5 @@ export function useGeolocation() {
     );
   }, []);
 
-  return { coordinates, error, isLocating, requestLocation };
+  return { coordinates, city, error, isLocating, requestLocation };
 }

@@ -18,11 +18,11 @@ const SHIFT_DATE_FORMATTER = new Intl.DateTimeFormat("uk-UA", {
 });
 const PRICE_FORMATTER = new Intl.NumberFormat("uk-UA", { maximumFractionDigits: 0 });
 
-export function buildWeekStrip(centerOffset: number) {
+export function buildWeekStrip(startOffset: number) {
   const today = new Date();
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(today);
-    d.setDate(today.getDate() - 3 + i + centerOffset);
+    d.setDate(today.getDate() + i + startOffset);
     return d;
   });
 }
