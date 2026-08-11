@@ -4,7 +4,7 @@ WORKDIR /app
 RUN apk add --no-cache python3 make g++
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY pnpm-workspace.yaml package.json ./
 COPY backend/package.json ./backend/
 
 RUN echo 'only-built-dependencies=["bcrypt", "@scarf/scarf"]' > /app/.npmrc
