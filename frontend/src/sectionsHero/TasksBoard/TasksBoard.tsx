@@ -16,10 +16,9 @@ import {
   selectPartnerSelectionMode,
   selectShiftSort,
 } from "../../redux/shift/selectors";
-import { toggleCategory } from "../../redux/shift/slice";
+
 // maps
 import DefMap from "../../components/map/DefMap";
-
 import { clearSelectedCategories, toggleCategory } from "../../redux/shift/slice";
 import { Loader } from "../../components/ui/Loader";
 

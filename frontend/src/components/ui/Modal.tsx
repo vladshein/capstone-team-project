@@ -17,7 +17,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center sm:p-4"
+      className="fixed inset-0 z-[9999] flex items-end justify-center sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="auth-modal-title"
