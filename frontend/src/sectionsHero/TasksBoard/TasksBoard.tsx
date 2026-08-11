@@ -16,6 +16,9 @@ import {
   selectPartnerSelectionMode,
   selectShiftSort,
 } from "../../redux/shift/selectors";
+
+// maps
+import DefMap from "../../components/map/DefMap";
 import { clearSelectedCategories, toggleCategory } from "../../redux/shift/slice";
 import { Loader } from "../../components/ui/Loader";
 
@@ -142,12 +145,17 @@ export function TasksBoard() {
     }
   };
 
+  // switcher
+  const [viewMode, setViewMode] = useState(true);
+
   return (
     <section id="zavdannia" className="scroll-mt-24 mx-auto max-w-7xl px-4 py-[calc(var(--space-section)-1.5rem)] sm:px-6 sm:py-[calc(var(--space-section)-1rem)] md:px-8 md:py-[var(--space-section)]">
       <h2 className="font-heading text-3xl font-bold uppercase leading-[1.1] tracking-tight sm:text-4xl md:text-5xl">
         Більше 10 000 завдань щодня
       </h2>
-
+        <a href="#" onClick={ () => setViewMode(!viewMode) } className="border-3 p-2 border-green-500">
+          show in list 
+        </a>
       <div className="mt-8 grid gap-6 sm:mt-10 lg:grid-cols-[280px_1fr] lg:gap-8">
         <FilterSidebar
           coordinates={coordinates}
@@ -168,9 +176,12 @@ export function TasksBoard() {
           categories={categories}
         />
 
+        <div className={ (viewMode) ? 'min-w-0' : 'hidden' }>
+           <DefMap />
+        </div>
         <div
           ref={scrollContainerRef}
-          className="min-w-0"
+          className={ (viewMode) ? 'hidden' : 'min-w-0' }
         >
           {isLoadingCategories && (
             <Loader label="Завантажуємо категорії…" />

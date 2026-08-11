@@ -4,7 +4,7 @@ import { Ticker } from "../components/ui/Ticker";
 import { TasksBoard } from "./TasksBoard/TasksBoard";
 import { NearbyShifts } from "./NearbyShifts";
 import { TestimonialsSlider } from "./Testimonials";
-import { HOW_IT_WORKS } from "../constants/mockData";
+import { FEATURED_SHIFTS, HOW_IT_WORKS } from "../constants/mockData";
 import type { AuthUser } from "../redux/auth/types";
 
 interface HeroProps {
@@ -21,11 +21,10 @@ export function Hero({
   userRole,
 }: HeroProps) {
   const [audience, setAudience] = useState<"worker" | "business">("worker");
-
   const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
   };
-
+  
   return (
     <div>
       {/* Верхня секція має власний, ширший ритм (lg:+2rem), бо це hero з
@@ -93,52 +92,6 @@ export function Hero({
           </div>
 
           <div className="relative rounded-[var(--radius-card)] border border-border bg-bg p-2.5 shadow-[0_20px_60px_-30px_rgba(18,19,26,0.35)] sm:p-3">
-            <svg
-              viewBox="0 0 400 320"
-              className="aspect-[4/3] h-full w-full rounded-[var(--radius-card)] bg-map-bg sm:aspect-auto"
-            >
-              <path
-                d="M0 60 Q100 20 200 70 T400 50"
-                className="stroke-map-line"
-                strokeWidth="2"
-                fill="none"
-              />
-              <path
-                d="M0 180 Q120 140 220 190 T400 170"
-                className="stroke-map-line"
-                strokeWidth="2"
-                fill="none"
-              />
-              <path
-                d="M40 0 L60 320"
-                className="stroke-map-line"
-                strokeWidth="2"
-              />
-              <path
-                d="M300 0 L320 320"
-                className="stroke-map-line"
-                strokeWidth="2"
-              />
-              {[
-                [90, 90],
-                [220, 60],
-                [150, 180],
-                [300, 150],
-                [260, 240],
-                [60, 230],
-              ].map(([x, y], i) => (
-                <g key={i}>
-                  <circle
-                    cx={x}
-                    cy={y}
-                    r="16"
-                    className="fill-accent"
-                    opacity="0.15"
-                  />
-                  <circle cx={x} cy={y} r="7" className="fill-accent" />
-                </g>
-              ))}
-            </svg>
             <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between rounded-[var(--radius-card)] bg-white/95 px-3 py-2.5 shadow-lg backdrop-blur sm:bottom-6 sm:left-6 sm:right-6 sm:px-4 sm:py-3">
               <div>
                 <p className="text-xs text-text-muted">Найближча зміна</p>

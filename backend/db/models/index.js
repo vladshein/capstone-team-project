@@ -11,7 +11,6 @@ import Review from "./Review.js";
 import Wallet from "./Wallet.js";
 import Company from "./Company.js";
 import Transaction from "./Transaction.js";
-import seedAll from "./seedDBs.js";
 
 // --- 1. User <-> WorkerProfile (1:1) ---
 User.hasOne(WorkerProfile, {
@@ -24,7 +23,7 @@ WorkerProfile.belongsTo(User, { foreignKey: "userId" });
 User.hasMany(Company, {
   foreignKey: { name: "ownerId", allowNull: false },
   onDelete: "RESTRICT",
-  as: "OwnedCompanies", // Аліас для інклудів
+  as: "OwnedCompanies", // alias for includes
 });
 Company.belongsTo(User, { foreignKey: "ownerId", as: "Owner" });
 
@@ -50,8 +49,8 @@ JobPosition.hasMany(Shift, {
 Shift.belongsTo(JobPosition, { foreignKey: "positionId" });
 
 // --- 6. Super Many-to-Many: User(Worker) <-> Shift через ShiftApplication ---
-// Цей підхід дозволяє і отримувати зміни юзера (user.getShifts()),
-// і працювати з самими відгуками напряму (ShiftApplication.findAll()).
+// for users (user.getShifts()),
+// for reviews (ShiftApplication.findAll()).
 
 User.belongsToMany(Shift, {
   through: ShiftApplication,
@@ -64,7 +63,7 @@ Shift.belongsToMany(User, {
   otherKey: "workerId",
 });
 
-// Прямі 1:M зв'язки для таблиці-містка
+// 1:M 
 User.hasMany(ShiftApplication, { foreignKey: "workerId" });
 ShiftApplication.belongsTo(User, { foreignKey: "workerId" });
 
@@ -78,28 +77,28 @@ Category.hasMany(Shift, {
 });
 Shift.belongsTo(Category, { foreignKey: "categoryId" });
 
-// --- 8. Зв'язки для Відгуків (Reviews) ---
+// --- 8. (Reviews) ---
 Shift.hasMany(Review, {
   foreignKey: { name: "shiftId", allowNull: false },
   onDelete: "CASCADE",
 });
 Review.belongsTo(Shift, { foreignKey: "shiftId" });
 
-// Хто залишив відгук (Reviewer)
+// about users (Reviewer)
 User.hasMany(Review, {
   foreignKey: { name: "reviewerId", allowNull: false },
   as: "GivenReviews",
 });
 Review.belongsTo(User, { foreignKey: "reviewerId", as: "Reviewer" });
 
-// Кому залишили відгук (Reviewee)
+// target (Reviewee)
 User.hasMany(Review, {
   foreignKey: { name: "revieweeId", allowNull: false },
   as: "ReceivedReviews",
 });
 Review.belongsTo(User, { foreignKey: "revieweeId", as: "Reviewee" });
 
-// --- 9. Зв'язки для Фінансів (Wallets & Transactions) ---
+// --- 9. (Wallets & Transactions) ---
 User.hasOne(Wallet, {
   foreignKey: { name: "userId", allowNull: false, unique: true },
   onDelete: "CASCADE",
@@ -118,20 +117,6 @@ Transaction.belongsTo(User, { foreignKey: "receiverId", as: "Receiver" });
 Shift.hasMany(Transaction, { foreignKey: "shiftId", onDelete: "SET NULL" });
 Transaction.belongsTo(Shift, { foreignKey: "shiftId" });
 
-// Синхронізація (тільки для розробки)
-// У продакшені використовуйте міграції
-const syncDatabase = async () => {
-  try {
-    // await sequelize.sync({ force: true });
-    await sequelize.sync({ alter: true });
-    await seedAll();
-    // await seedA();
-    console.log("Database synchronized successfully");
-  } catch (error) {
-    console.error("Error synchronizing database:", error);
-  }
-};
-
 export {
   sequelize,
   User,
@@ -146,5 +131,4 @@ export {
   Review,
   Transaction,
   Wallet,
-  syncDatabase,
 };
