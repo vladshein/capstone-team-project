@@ -83,7 +83,7 @@ export default function Map({ center, zoom, markers }: MapProps) {
   return (
     <div 
       ref={mapContainerRef} 
-      className="h-[600px] w-full rounded-xl border border-slate-200 shadow-sm" 
+      className="h-[600px] w-full rounded-xl border-10 border-slate-200 shadow-sm" 
     />
   );
 }
