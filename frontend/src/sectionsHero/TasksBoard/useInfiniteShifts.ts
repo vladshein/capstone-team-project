@@ -1,6 +1,64 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useReducer } from "react";
 
 import { getAllShifts, type GetShiftsParams, type Shift } from "../../api/shifts";
+
+type PartnerOption = { label: string; count: number };
+
+type ShiftsQueryState = {
+  shifts: Shift[];
+  totalPages: number;
+  totalItems: number;
+  partnerOptions: PartnerOption[];
+  isLoading: boolean;
+  error: string | null;
+  isFallback: boolean;
+};
+
+const initialState: ShiftsQueryState = {
+  shifts: [],
+  totalPages: 0,
+  totalItems: 0,
+  partnerOptions: [],
+  isLoading: false,
+  error: null,
+  isFallback: false,
+};
+
+type ShiftsQueryAction =
+  | { type: "fetch" }
+  | {
+      type: "success";
+      payload: {
+        shifts: Shift[];
+        totalPages: number;
+        totalItems: number;
+        partnerOptions: PartnerOption[];
+        isFallback: boolean;
+      };
+    }
+  | { type: "error"; payload: string }
+  | { type: "reset"; clearPartnerOptions: boolean };
+
+function shiftsQueryReducer(
+  state: ShiftsQueryState,
+  action: ShiftsQueryAction,
+): ShiftsQueryState {
+  switch (action.type) {
+    case "fetch":
+      return { ...state, isLoading: true, error: null, isFallback: false };
+    case "success":
+      return { ...state, ...action.payload, isLoading: false, error: null };
+    case "error":
+      return { ...state, isLoading: false, error: action.payload };
+    case "reset":
+      return {
+        ...initialState,
+        partnerOptions: action.clearPartnerOptions ? [] : state.partnerOptions,
+      };
+    default:
+      return state;
+  }
+}
 
 export function useInfiniteShifts(
   params: GetShiftsParams,
@@ -8,13 +66,7 @@ export function useInfiniteShifts(
   hasEmptyPartnerSelection = false,
   fallbackWithoutCity = false,
 ) {
-  const [shifts, setShifts] = useState<Shift[]>([]);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalItems, setTotalItems] = useState(0);
-  const [partnerOptions, setPartnerOptions] = useState<{ label: string; count: number }[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isFallback, setIsFallback] = useState(false);
+  const [state, dispatch] = useReducer(shiftsQueryReducer, initialState);
 
   // Обидва мультиселекти нормалізуємо, щоб порядок кліків не змінював запит.
   const requestParams = useMemo(
@@ -31,19 +83,11 @@ export function useInfiniteShifts(
     let cancelled = false;
 
     if (!isEnabled || hasEmptyPartnerSelection) {
-      setShifts([]);
-      setTotalPages(0);
-      setTotalItems(0);
-      if (!isEnabled) setPartnerOptions([]);
-      setError(null);
-      setIsFallback(false);
-      setIsLoading(false);
+      dispatch({ type: "reset", clearPartnerOptions: !isEnabled });
       return undefined;
     }
 
-    setIsLoading(true);
-    setError(null);
-    setIsFallback(false);
+    dispatch({ type: "fetch" });
 
     void getAllShifts(requestParams)
       .then((response) => {
@@ -52,24 +96,37 @@ export function useInfiniteShifts(
         if (fallbackWithoutCity && requestParams.city && response.totalItems === 0) {
           return getAllShifts({ ...requestParams, city: undefined }).then((fallbackResponse) => {
             if (cancelled) return;
-            setShifts(fallbackResponse.data);
-            setTotalPages(fallbackResponse.totalPages);
-            setTotalItems(fallbackResponse.totalItems);
-            setPartnerOptions(fallbackResponse.partnerOptions ?? []);
-            setIsFallback(fallbackResponse.totalItems > 0);
+            dispatch({
+              type: "success",
+              payload: {
+                shifts: fallbackResponse.data,
+                totalPages: fallbackResponse.totalPages,
+                totalItems: fallbackResponse.totalItems,
+                partnerOptions: fallbackResponse.partnerOptions ?? [],
+                isFallback: fallbackResponse.totalItems > 0,
+              },
+            });
           });
         }
 
-        setShifts(response.data);
-        setTotalPages(response.totalPages);
-        setTotalItems(response.totalItems);
-        setPartnerOptions(response.partnerOptions ?? []);
+        dispatch({
+          type: "success",
+          payload: {
+            shifts: response.data,
+            totalPages: response.totalPages,
+            totalItems: response.totalItems,
+            partnerOptions: response.partnerOptions ?? [],
+            isFallback: false,
+          },
+        });
       })
       .catch(() => {
-        if (!cancelled) setError("Не вдалося завантажити завдання. Спробуйте пізніше.");
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
+        if (!cancelled) {
+          dispatch({
+            type: "error",
+            payload: "Не вдалося завантажити завдання. Спробуйте пізніше.",
+          });
+        }
       });
 
     return () => {
@@ -77,5 +134,5 @@ export function useInfiniteShifts(
     };
   }, [fallbackWithoutCity, hasEmptyPartnerSelection, isEnabled, requestKey]);
 
-  return { shifts, totalPages, totalItems, partnerOptions, isLoading, error, isFallback };
+  return state;
 }

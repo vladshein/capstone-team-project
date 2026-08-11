@@ -1,36 +1,70 @@
-import { useMemo } from 'react';
-import Map, {MapMarkerData} from './Map';
+import { useMemo } from "react";
+import type { ShiftMapMarker } from "../../api/shifts";
+import {
+  formatShiftDate,
+  formatTimeRange,
+} from "../../sectionsHero/TasksBoard/formatters";
+import Map, { type MapMarkerData } from "./Map";
 
+interface DefMapProps {
+  shifts: ShiftMapMarker[];
+  userLocation?: { latitude: number; longitude: number } | null;
+}
 
-export default function DefMap() {
-    
-    // Fixed coordinates for Kyiv mapping
-    const kyivCenter: [number, number] = [50.4501, 30.5234];
+export default function DefMap({ shifts, userLocation }: DefMapProps) {
+  const markers = useMemo<MapMarkerData[]>(() => {
+    const shiftMarkers = shifts.flatMap((shift) => {
+        const latitude = Number(shift.Location?.latitude);
+        const longitude = Number(shift.Location?.longitude);
 
-    // 1. Correctly placed high-density mock list generator directly in the Hero hook scope
-    const massiveMarkerList = useMemo(() => {
-        const list: MapMarkerData[] = [];
-        for (let i = 0; i < 100; i++) {
-        list.push({
-            id: `mass-${i}`,
-            lat: kyivCenter[0] + (Math.random() - 0.5) * 0.15,
-            lng: kyivCenter[1] + (Math.random() - 0.5) * 0.25,
-            title: `Apartment Hub Match №${i + 1}`,
-            description: `Premium location option available with high-speed internet links.`,
-            price: Math.floor(Math.random() * 2000) + 400,
-            currency: '$'
-        });
-        }
-        return list;
-    }, []);
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return [];
 
-    let toggleView = false;
-    let viewMode = 'map';
+        const title = shift.JobPosition?.title ?? "Зміна";
+        const companyName = shift.Location?.Company?.name ?? "Компанія";
+        const address = [shift.Location?.address, shift.Location?.city]
+          .filter(Boolean)
+          .join(", ");
+        const durationHours = Math.max(
+          0,
+          (new Date(shift.endTime).getTime() - new Date(shift.startTime).getTime()) /
+            (1000 * 60 * 60),
+        );
+        const totalEarnings =
+          durationHours * (Number(shift.hourlyRate) || 0) +
+          (Number(shift.bonusRate) || 0);
 
-    return (
-        <>
-        
-        <Map center={kyivCenter} zoom={11} markers={massiveMarkerList} />
-        </>
-    )
+        return [{
+          id: shift.id,
+          lat: latitude,
+          lng: longitude,
+          title,
+          description: `${companyName}${address ? ` · ${address}` : ""}`,
+          schedule: `${formatShiftDate(shift.startTime)} · ${formatTimeRange(shift.startTime, shift.endTime)}`,
+          price: totalEarnings,
+          currency: "₴",
+        }];
+      });
+    const markersByLocation = new globalThis.Map<string, MapMarkerData>();
+
+    shiftMarkers.forEach((shiftMarker) => {
+      const key = `${shiftMarker.lat.toFixed(6)},${shiftMarker.lng.toFixed(6)}`;
+      const marker = markersByLocation.get(key);
+
+      if (marker) {
+        marker.shifts = [...(marker.shifts ?? [marker]), shiftMarker];
+      } else {
+        markersByLocation.set(key, { ...shiftMarker, shifts: [shiftMarker] });
+      }
+    });
+
+    return [...markersByLocation.values()];
+  }, [shifts]);
+
+  const center: [number, number] = userLocation
+    ? [userLocation.latitude, userLocation.longitude]
+    : markers.length > 0
+      ? [markers[0].lat, markers[0].lng]
+      : [50.4501, 30.5234];
+
+  return <Map center={center} zoom={11} markers={markers} userLocation={userLocation} />;
 }

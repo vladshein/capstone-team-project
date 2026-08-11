@@ -37,7 +37,6 @@ interface FilterSidebarProps {
   manualCity: string;
   onSaveManualCity: (city: string) => void;
   isLoadingApproximateLocation: boolean;
-  hasSelectedCategory: boolean;
   selectedDate: Date | null;
   onSelectDate: (date: Date) => void;
   calendarPeriod: CalendarPeriod;
@@ -56,7 +55,6 @@ export function FilterSidebar({
   manualCity,
   onSaveManualCity,
   isLoadingApproximateLocation,
-  hasSelectedCategory,
   selectedDate,
   onSelectDate,
   calendarPeriod,
@@ -180,15 +178,7 @@ export function FilterSidebar({
             </div>
           </form>
         )}
-        {!hasSelectedCategory && (
-          <div className="rounded-[var(--radius-card)] border border-dashed border-border bg-bg-muted px-4 py-5 text-center">
-            <p className="text-sm font-semibold text-ink">Оберіть категорію</p>
-            <p className="mt-2 text-xs leading-5 text-text-muted">
-              Після цього з’являться доступні зміни та додаткові фільтри.
-            </p>
-          </div>
-        )}
-        {hasSelectedCategory && sections.map((section) => (
+        {sections.map((section) => (
           <div key={section.id}>
             <FilterAccordion
               section={section}

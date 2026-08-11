@@ -66,6 +66,7 @@ export interface GetShiftsParams {
   sort?: "relevance" | "price_desc" | "date_asc" | "date_desc" | "nearest";
   latitude?: number;
   longitude?: number;
+  radiusKm?: number;
 }
 
 export interface PaginatedShiftsResponse {
@@ -74,6 +75,22 @@ export interface PaginatedShiftsResponse {
   currentPage: number;
   data: Shift[];
   partnerOptions?: { label: string; count: number }[];
+}
+
+/** Легкий формат для карти: лише дані, потрібні для marker і popup. */
+export interface ShiftMapMarker {
+  id: number;
+  startTime: string;
+  endTime: string;
+  hourlyRate: number | string;
+  bonusRate: number | string;
+  JobPosition?: ShiftJobPosition;
+  Location: ShiftLocation;
+}
+
+export interface ShiftMapMarkersResponse {
+  data: ShiftMapMarker[];
+  isTruncated: boolean;
 }
 
 export interface CreateShiftPayload {
@@ -129,6 +146,16 @@ export async function getAllShifts(
   params: GetShiftsParams = {},
 ): Promise<PaginatedShiftsResponse> {
   const { data } = await api.get<PaginatedShiftsResponse>("/shifts", {
+    params,
+  });
+  return data;
+}
+
+/** Отримати всі маркери за поточними фільтрами; пагінація списку не застосовується. */
+export async function getShiftMapMarkers(
+  params: Omit<GetShiftsParams, "page" | "limit"> = {},
+): Promise<ShiftMapMarkersResponse> {
+  const { data } = await api.get<ShiftMapMarkersResponse>("/shifts/map", {
     params,
   });
   return data;
