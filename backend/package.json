@@ -7,7 +7,6 @@
     "dev": "cross-env NODE_ENV=development nodemon -L app.js",
     "devmon": "cross-env NODE_ENV=production nodemon app.js",
     "build-docs": "redocly bundle ./docs/openapi.yaml --ext json --output ./docs/swagger.json",
-<<<<<<< HEAD
     
     "db:m": "node db/migrator.js up",
     "db:m:undo": "node db/migrator.js down",
@@ -15,13 +14,12 @@
 
     "db:s": "node db/seeder.js up",
     "db:s:undo": "node db/seeder.js down",
-    "db:s:generate": "node db/seeder.js create"
-=======
+    "db:s:generate": "node db/seeder.js create",
+
     "db:migrate": "node ./db/migrate.js",
     "db:migrate:status": "node ./db/migrate.js --status",
-    "db:sync": "node --input-type=module -e \"import('./db/models/index.js').then(async m => { await m.sequelize.sync({ alter: true }); console.log('Synced'); process.exit(0); })\"",
+    
     "db:seed": "node --input-type=module -e \"import('./db/models/seedDBs.js').then(m => m.default()).then(() => { console.log('Seeded'); process.exit(0); })\""
->>>>>>> c012257a895cec93da7a2e25509c8a87b68eebb9
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

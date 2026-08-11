@@ -4,12 +4,8 @@ import { Ticker } from "../components/ui/Ticker";
 import { TasksBoard } from "./TasksBoard/TasksBoard";
 import { NearbyShifts } from "./NearbyShifts";
 import { TestimonialsSlider } from "./Testimonials";
-<<<<<<< HEAD
 import { FEATURED_SHIFTS, HOW_IT_WORKS } from "../constants/mockData";
-=======
-import { HOW_IT_WORKS } from "../constants/mockData";
 import type { AuthUser } from "../redux/auth/types";
->>>>>>> c012257a895cec93da7a2e25509c8a87b68eebb9
 
 interface HeroProps {
   onOpenSignUp?: () => void;
@@ -18,17 +14,12 @@ interface HeroProps {
   userRole?: AuthUser["role"];
 }
 
-<<<<<<< HEAD
-export function Hero({ onOpenSignUp }: HeroProps) {
-  
-=======
 export function Hero({
   onOpenSignUp,
   onOpenBusinessSignUp,
   isAuthenticated = false,
   userRole,
 }: HeroProps) {
->>>>>>> c012257a895cec93da7a2e25509c8a87b68eebb9
   const [audience, setAudience] = useState<"worker" | "business">("worker");
   const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
