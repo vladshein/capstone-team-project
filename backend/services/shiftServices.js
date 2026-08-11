@@ -8,6 +8,8 @@ import {
   ShiftApplication,
 } from "../db/models/index.js";
 
+const MAP_MARKERS_LIMIT = 1000;
+
 const buildShiftSearchQuery = ({
   minPrice,
   maxPrice,
@@ -239,15 +241,21 @@ export const getAllShifts = async ({
 export const getShiftMapMarkers = async (filters) => {
   const { whereCondition, locationInclude, order } = buildShiftSearchQuery(filters);
 
-  return Shift.findAll({
+  const rows = await Shift.findAll({
     attributes: ["id", "startTime", "endTime", "hourlyRate", "bonusRate"],
     where: whereCondition,
     order,
+    limit: MAP_MARKERS_LIMIT + 1,
     include: [
       { model: JobPosition, attributes: ["title"] },
       locationInclude,
     ],
   });
+
+  return {
+    data: rows.slice(0, MAP_MARKERS_LIMIT),
+    isTruncated: rows.length > MAP_MARKERS_LIMIT,
+  };
 };
 
 /**

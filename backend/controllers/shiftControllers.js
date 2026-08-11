@@ -51,11 +51,12 @@ const parseShiftFilters = (query) => {
  */
 export const getAllShifts = async (req, res, next) => {
   try {
-    // 1. Отримуємо параметри з Query рядка
-    // 2. Передаємо параметри в Service layer
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 100);
+
     const result = await shiftService.getAllShifts({
-      page: parseInt(req.query.page, 10),
-      limit: Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 100),
+      page,
+      limit,
       ...parseShiftFilters(req.query),
     });
 
@@ -72,11 +73,21 @@ export const getAllShifts = async (req, res, next) => {
  */
 export const getShiftMapMarkers = async (req, res, next) => {
   try {
-    const data = await shiftService.getShiftMapMarkers(
-      parseShiftFilters(req.query),
-    );
+    const filters = parseShiftFilters(req.query);
+    const hasRadiusSearch =
+      Number.isFinite(filters.latitude) &&
+      Number.isFinite(filters.longitude) &&
+      Boolean(filters.radiusKm);
 
-    res.status(200).json({ data });
+    if (!filters.city && !hasRadiusSearch) {
+      return res.status(400).json({
+        message: "Для карти потрібно визначити місто або локацію користувача.",
+      });
+    }
+
+    const result = await shiftService.getShiftMapMarkers(filters);
+
+    res.status(200).json(result);
   } catch (error) {
     next(error);
   }

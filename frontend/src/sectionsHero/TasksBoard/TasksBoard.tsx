@@ -44,7 +44,7 @@ export function TasksBoard() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const hasInitializedCategories = useRef(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [viewMode, setViewMode] = useState(true);
+  const [isMapView, setIsMapView] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [calendarPeriod, setCalendarPeriod] = useState<CalendarPeriod>("week");
   const [manualCity, setManualCity] = useState(() => {
@@ -90,6 +90,9 @@ export function TasksBoard() {
       : null;
   const selectedCity =
     preciseCity || manualCity || approximateLocation?.city || undefined;
+  const hasMapSearchArea = Boolean(
+    selectedCity || coordinates || approximateCoordinates,
+  );
   const shiftRequestParams = useMemo(() => {
     const now = new Date();
     const periodStart = selectedDate
@@ -140,7 +143,7 @@ export function TasksBoard() {
   const { shifts, totalPages, partnerOptions, isLoading, error, isFallback } =
     useInfiniteShifts(
       shiftRequestParams,
-      isBoardReady && !viewMode,
+      isBoardReady && !isMapView,
       partnerSelectionMode === "none",
       true,
     );
@@ -151,11 +154,12 @@ export function TasksBoard() {
   const {
     markers: mapMarkers,
     partnerOptions: mapPartnerOptions,
+    isTruncated: isMapTruncated,
     isLoading: isLoadingMap,
     error: mapError,
   } = useShiftMapMarkers(
     mapRequestParams,
-    isBoardReady && viewMode,
+    isBoardReady && isMapView && hasMapSearchArea,
     partnerSelectionMode === "none",
     true,
   );
@@ -244,10 +248,10 @@ export function TasksBoard() {
       </h2>
       <button
         type="button"
-        onClick={() => setViewMode((isMapVisible) => !isMapVisible)}
+        onClick={() => setIsMapView((isMapVisible) => !isMapVisible)}
         className="mt-4 min-h-[40px] rounded-[var(--radius-pill)] border border-border px-4 text-sm font-medium text-text transition-colors hover:border-accent hover:text-accent-text"
       >
-        {viewMode ? "Показати списком" : "Показати на мапі"}
+        {isMapView ? "Показати списком" : "Показати на мапі"}
       </button>
       <div className="mt-8 grid gap-6 sm:mt-10 lg:grid-cols-[280px_1fr] lg:gap-8">
         <FilterSidebar
@@ -265,7 +269,7 @@ export function TasksBoard() {
           calendarPeriod={calendarPeriod}
           onCalendarPeriodChange={setCalendarPeriod}
           partnerOptions={
-            viewMode
+            isMapView
               ? mapPartnerOptions
               : partnerOptions.length > 0
                 ? partnerOptions
@@ -274,21 +278,32 @@ export function TasksBoard() {
           categories={categories}
         />
 
-        <div className={viewMode ? "min-w-0" : "hidden"}>
-          {isLoadingMap ? (
+        <div className={isMapView ? "min-w-0" : "hidden"}>
+          {!hasMapSearchArea ? (
+            <p className="rounded-[var(--radius-card)] border border-border bg-bg-muted px-4 py-3 text-sm text-text-muted">
+              Визначаємо ваше місто для завантаження карти…
+            </p>
+          ) : isLoadingMap ? (
             <Loader label="Завантажуємо точки на карті…" />
           ) : mapError ? (
             <p className="text-sm text-danger">{mapError}</p>
           ) : (
-            <DefMap
-              shifts={mapMarkers}
-              userLocation={coordinates ?? approximateCoordinates}
-            />
+            <>
+              {isMapTruncated && (
+                <p className="mb-3 rounded-[var(--radius-card)] border border-highlight/30 bg-highlight/10 px-4 py-3 text-sm text-text">
+                  На карті показано перші 1 000 змін. Звузьте період або фільтри, щоб побачити решту.
+                </p>
+              )}
+              <DefMap
+                shifts={mapMarkers}
+                userLocation={coordinates ?? approximateCoordinates}
+              />
+            </>
           )}
         </div>
         <div
           ref={scrollContainerRef}
-          className={viewMode ? "hidden" : "min-w-0"}
+          className={isMapView ? "hidden" : "min-w-0"}
         >
           {isLoadingCategories && <Loader label="Завантажуємо категорії…" />}
           {categoriesError && (

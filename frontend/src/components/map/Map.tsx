@@ -34,6 +34,7 @@ export default function Map({ center, zoom, markers, userLocation }: MapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const layerGroupRef = useRef<L.LayerGroup | null>(null);
+  const hasFittedBoundsRef = useRef(false);
 
   // Effect 1: Initialize the base map with Canvas Renderer enabled
   useEffect(() => {
@@ -90,6 +91,7 @@ export default function Map({ center, zoom, markers, userLocation }: MapProps) {
 
     markers.forEach((item) => {
       const currencySymbol = item.currency || '₴';
+      const safeCurrencySymbol = escapeHtml(currencySymbol);
       const point: L.LatLngExpression = [item.lat, item.lng];
       points.push(point);
       const shiftsAtLocation = item.shifts ?? [item];
@@ -103,7 +105,7 @@ export default function Map({ center, zoom, markers, userLocation }: MapProps) {
                 <strong style="display: block; overflow: hidden; color: #12131a; font-size: 12px; line-height: 15px; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(shift.title)}</strong>
                 <span style="display: block; margin-top: 3px; color: #64748b; font-size: 10px; line-height: 13px;">${escapeHtml(shift.schedule)}</span>
                 <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 5px;">
-                  <span style="color: #0d9b75; font-size: 12px; font-weight: 700;">${shift.price.toLocaleString("uk-UA")} ${shift.currency || "₴"}</span>
+                  <span style="color: #0d9b75; font-size: 12px; font-weight: 700;">${shift.price.toLocaleString("uk-UA")} ${escapeHtml(shift.currency || "₴")}</span>
                   <a href="/shifts/${encodeURIComponent(String(shift.id))}" style="display: inline-flex; min-height: 28px; flex: none; align-items: center; justify-content: center; border-radius: var(--radius-pill); background: var(--color-accent); padding: 0 9px; color: #fff; font-size: 11px; font-weight: 600; text-decoration: none;">Детальніше</a>
                 </div>
               </div>`).join("")}
@@ -114,7 +116,7 @@ export default function Map({ center, zoom, markers, userLocation }: MapProps) {
           <p style="margin: 4px 0 7px; color: #64748b; font-size: 11px; line-height: 14px;">${escapeHtml(item.description)}</p>
           <p style="margin: -3px 0 7px; color: #64748b; font-size: 11px; line-height: 14px;">${escapeHtml(item.schedule)}</p>
           <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #e5e7eb; padding-top: 7px;">
-            <span style="color: #0d9b75; font-size: 13px; font-weight: 700; white-space: nowrap;">${item.price.toLocaleString("uk-UA")} ${currencySymbol}</span>
+            <span style="color: #0d9b75; font-size: 13px; font-weight: 700; white-space: nowrap;">${item.price.toLocaleString("uk-UA")} ${safeCurrencySymbol}</span>
             <a href="/shifts/${encodeURIComponent(String(item.id))}" style="display: inline-flex; min-height: 28px; align-items: center; justify-content: center; border-radius: var(--radius-pill); background: var(--color-accent); padding: 0 10px; color: #fff; font-size: 11px; font-weight: 600; text-decoration: none; white-space: nowrap;">Детальніше</a>
           </div>
         </div>
@@ -133,11 +135,12 @@ export default function Map({ center, zoom, markers, userLocation }: MapProps) {
       .addTo(layerGroupRef.current!);
     });
 
-    if (points.length > 1) {
+    if (!hasFittedBoundsRef.current && points.length > 1) {
       mapInstanceRef.current.fitBounds(L.latLngBounds(points), {
         padding: [36, 36],
         maxZoom: 13,
       });
+      hasFittedBoundsRef.current = true;
     }
   }, [markers, userLocation]);
 

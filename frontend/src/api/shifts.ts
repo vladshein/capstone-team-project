@@ -88,6 +88,11 @@ export interface ShiftMapMarker {
   Location: ShiftLocation;
 }
 
+export interface ShiftMapMarkersResponse {
+  data: ShiftMapMarker[];
+  isTruncated: boolean;
+}
+
 export interface CreateShiftPayload {
   locationId: number;
   positionId: number;
@@ -149,11 +154,11 @@ export async function getAllShifts(
 /** Отримати всі маркери за поточними фільтрами; пагінація списку не застосовується. */
 export async function getShiftMapMarkers(
   params: Omit<GetShiftsParams, "page" | "limit"> = {},
-): Promise<ShiftMapMarker[]> {
-  const { data } = await api.get<{ data: ShiftMapMarker[] }>("/shifts/map", {
+): Promise<ShiftMapMarkersResponse> {
+  const { data } = await api.get<ShiftMapMarkersResponse>("/shifts/map", {
     params,
   });
-  return data.data;
+  return data;
 }
 
 /**

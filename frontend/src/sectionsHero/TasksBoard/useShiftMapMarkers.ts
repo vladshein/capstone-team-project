@@ -8,6 +8,7 @@ import {
 type State = {
   markers: ShiftMapMarker[];
   partnerOptions: { label: string; count: number }[];
+  isTruncated: boolean;
   isLoading: boolean;
   error: string | null;
   isFallback: boolean;
@@ -16,6 +17,7 @@ type State = {
 const initialState: State = {
   markers: [],
   partnerOptions: [],
+  isTruncated: false,
   isLoading: false,
   error: null,
   isFallback: false,
@@ -27,6 +29,7 @@ type Action =
       type: "success";
       markers: ShiftMapMarker[];
       partnerOptions: { label: string; count: number }[];
+      isTruncated: boolean;
       isFallback: boolean;
     }
   | { type: "error" }
@@ -40,6 +43,7 @@ function reducer(state: State, action: Action): State {
       return {
         markers: action.markers,
         partnerOptions: action.partnerOptions,
+        isTruncated: action.isTruncated,
         isLoading: false,
         error: null,
         isFallback: action.isFallback,
@@ -96,28 +100,30 @@ export function useShiftMapMarkers(
     dispatch({ type: "fetch" });
 
     void getShiftMapMarkers(requestParams)
-      .then(async (markers) => {
+      .then(async (response) => {
         if (cancelled) return;
 
-        if (fallbackWithoutCity && requestParams.city && markers.length === 0) {
-          const fallbackMarkers = await getShiftMapMarkers({
+        if (fallbackWithoutCity && requestParams.city && response.data.length === 0 && requestParams.radiusKm) {
+          const fallbackResponse = await getShiftMapMarkers({
             ...requestParams,
             city: undefined,
           });
           if (cancelled) return;
           dispatch({
             type: "success",
-            markers: fallbackMarkers,
-            partnerOptions: getPartnerOptions(fallbackMarkers),
-            isFallback: fallbackMarkers.length > 0,
+            markers: fallbackResponse.data,
+            partnerOptions: getPartnerOptions(fallbackResponse.data),
+            isTruncated: fallbackResponse.isTruncated,
+            isFallback: fallbackResponse.data.length > 0,
           });
           return;
         }
 
         dispatch({
           type: "success",
-          markers,
-          partnerOptions: getPartnerOptions(markers),
+          markers: response.data,
+          partnerOptions: getPartnerOptions(response.data),
+          isTruncated: response.isTruncated,
           isFallback: false,
         });
       })
