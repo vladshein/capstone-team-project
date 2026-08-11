@@ -30,7 +30,7 @@ export function Hero({
       {/* Верхня секція має власний, ширший ритм (lg:+2rem), бо це hero з
          grid-макетом — тому 4-тіерний calc, а не стандартний 3-тіерний. */}
       <section className="relative overflow-hidden bg-bg-muted">
-        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-[calc(var(--space-section)-2.5rem)] sm:gap-10 sm:px-6 sm:py-[calc(var(--space-section)-1rem)] md:px-8 md:py-[var(--space-section)] lg:grid-cols-2 lg:items-center lg:py-[calc(var(--space-section)+2rem)]">
+        <div className="mx-auto text-center grid max-w-7xl gap-8 px-4 py-[calc(var(--space-section)-2.5rem)] sm:gap-10 sm:px-6 sm:py-[calc(var(--space-section)-1rem)] md:px-8 md:py-[var(--space-section)] lg:items-center lg:py-[calc(var(--space-section)+2rem)]">
           <div>
             <span className="inline-flex items-center gap-2 rounded-[var(--radius-pill)] border border-accent/30 bg-accent/10 px-3 py-1 text-xs font-medium text-accent-text">
               <Zap className="h-3.5 w-3.5" /> Нові зміни з’являються щохвилини
@@ -40,12 +40,14 @@ export function Hero({
               <br />
               не на місяць.
             </h1>
-            <p className="mt-4 max-w-md text-sm text-text sm:mt-5 sm:text-base lg:text-lg">
-              Зміна.ua — біржа змін: виконавці знаходять оплачувану роботу поруч
-              за годину, а бізнес закриває вакансію за хвилини.
-            </p>
-
-            <form
+            <div className="flex flex-col items-center text-center">
+              <p className="mt-4 max-w-md text-sm text-text text-center sm:text-base lg:text-lg">
+                Зміна.ua — біржа змін: виконавці знаходять оплачувану роботу поруч
+                за годину, а бізнес закриває вакансію за хвилини.
+              </p>
+            
+            {/* fixme: need remove  */}
+            {/* <form
               onSubmit={handleSearchSubmit}
               className="mt-6 flex flex-col gap-2 rounded-[var(--radius-card)] border border-border bg-bg p-2 shadow-sm sm:mt-8 sm:flex-row"
             >
@@ -72,7 +74,8 @@ export function Hero({
               >
                 Знайти зміну
               </button>
-            </form>
+            </form> */}
+            {/* fixme: end remove  */}
 
             <div className="mt-4 flex flex-col gap-3 text-sm sm:flex-row sm:flex-wrap">
               <a
@@ -89,9 +92,10 @@ export function Hero({
                 Мені потрібен персонал
               </button>
             </div>
+            </div>
           </div>
 
-          <div className="relative rounded-[var(--radius-card)] border border-border bg-bg p-2.5 shadow-[0_20px_60px_-30px_rgba(18,19,26,0.35)] sm:p-3">
+          {/* <div className="relative rounded-[var(--radius-card)] border border-border bg-bg p-2.5 shadow-[0_20px_60px_-30px_rgba(18,19,26,0.35)] sm:p-3">
             <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between rounded-[var(--radius-card)] bg-white/95 px-3 py-2.5 shadow-lg backdrop-blur sm:bottom-6 sm:left-6 sm:right-6 sm:px-4 sm:py-3">
               <div>
                 <p className="text-xs text-text-muted">Найближча зміна</p>
@@ -101,7 +105,7 @@ export function Hero({
                 220₴/год
               </span>
             </div>
-          </div>
+          </div> */}
         </div>
       </section>
 

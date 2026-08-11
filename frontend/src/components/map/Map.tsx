@@ -28,7 +28,9 @@ export default function Map({ center, zoom, markers }: MapProps) {
     if (mapContainerRef.current && !mapInstanceRef.current) {
       // CRITICAL: We enable L.canvas() to offload all marker renderings to GPU sheets
       mapInstanceRef.current = L.map(mapContainerRef.current, {
-        renderer: L.canvas()
+        renderer: L.canvas(),
+        scrollWheelZoom: false // disable scroll 
+
       }).setView(center, zoom);
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {

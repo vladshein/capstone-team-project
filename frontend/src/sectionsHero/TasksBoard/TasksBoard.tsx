@@ -153,32 +153,46 @@ export function TasksBoard() {
       <h2 className="font-heading text-3xl font-bold uppercase leading-[1.1] tracking-tight sm:text-4xl md:text-5xl">
         Більше 10 000 завдань щодня
       </h2>
-        <a href="#" onClick={ () => setViewMode(!viewMode) } className="border-3 p-2 border-green-500">
-          show in list 
+        <a href="#zavdannia" onClick={ (e) => {e.preventDefault(); setViewMode(!viewMode) }}  className="inline-block mt-2 border border-green-500 p-2 text-sm rounded">
+          {viewMode ? "show in list" : "show on map"}
         </a>
-      <div className="mt-8 grid gap-6 sm:mt-10 lg:grid-cols-[280px_1fr] lg:gap-8">
-        <FilterSidebar
-          coordinates={coordinates}
-          isLocating={isLocating}
-          locationError={locationError}
-          onRequestLocation={requestLocation}
-          approximateLocation={approximateLocation}
-          preciseCity={preciseCity}
-          manualCity={manualCity}
-          onSaveManualCity={saveManualCity}
-          isLoadingApproximateLocation={isLoadingApproximateLocation}
-          hasSelectedCategory={selectedCategories.length > 0}
-          selectedDate={selectedDate}
-          onSelectDate={setSelectedDate}
-          calendarPeriod={calendarPeriod}
-          onCalendarPeriodChange={setCalendarPeriod}
-          partnerOptions={partnerOptions.length > 0 ? partnerOptions : fallbackPartnerOptions}
-          categories={categories}
-        />
+      <div className="mt-8 grid gap-6 sm:mt-10 lg:grid-cols-[280px_1fr] lg:gap-8 items-start">
+        
+        <div className="flex flex-col gap-4">
 
-        <div className={ (viewMode) ? 'min-w-0' : 'hidden' }>
-           <DefMap />
-        </div>
+          {/* search form */}
+          <div className="h-fit rounded-1 border border-border bg-bg p-4">
+            <div className="mb-3 flex items-center rounded-1 bg-bg-muted px-3 py-2.5 text-sm text-text-muted">
+            1234
+            </div>
+          </div>  
+
+          {/* Filters sidebar */}
+          <FilterSidebar
+            coordinates={coordinates}
+            isLocating={isLocating}
+            locationError={locationError}
+            onRequestLocation={requestLocation}
+            approximateLocation={approximateLocation}
+            preciseCity={preciseCity}
+            manualCity={manualCity}
+            onSaveManualCity={saveManualCity}
+            isLoadingApproximateLocation={isLoadingApproximateLocation}
+            hasSelectedCategory={selectedCategories.length > 0}
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+            calendarPeriod={calendarPeriod}
+            onCalendarPeriodChange={setCalendarPeriod}
+            partnerOptions={partnerOptions.length > 0 ? partnerOptions : fallbackPartnerOptions}
+            categories={categories}
+          />
+          </div>
+          {/* maps */}
+          <div className={ (viewMode) ? 'min-w-0' : 'hidden' }>
+            <DefMap />
+          </div>
+
+        {/* list */}
         <div
           ref={scrollContainerRef}
           className={ (viewMode) ? 'hidden' : 'min-w-0' }
@@ -242,6 +256,7 @@ export function TasksBoard() {
             </nav>
           )}
         </div>
+       
       </div>
     </section>
   );
