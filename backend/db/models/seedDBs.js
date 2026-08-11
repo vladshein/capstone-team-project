@@ -18,7 +18,10 @@ import {
   Transaction,
   Review,
 } from "./index.js";
-import { buildExpandedShiftFixtures } from "./shiftFixtures.js";
+import {
+  buildExpandedShiftFixtures,
+  buildRegionalShiftFixtures,
+} from "./shiftFixtures.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -74,6 +77,7 @@ export default async function seedAll() {
     const reviewsJson = loadJson("json/reviews.json");
     const transactionsJson = loadJson("json/transactions.json");
     const expandedFixtures = buildExpandedShiftFixtures();
+    const regionalFixtures = buildRegionalShiftFixtures();
 
     // =========================================================================
     // 2. INSERTION ORDER IS CRITICAL (Parent tables first, then child tables)
@@ -92,7 +96,11 @@ export default async function seedAll() {
     }
 
     await safeBulkCreate(Category, categoriesJson);
-    await safeBulkCreate(JobPosition, [...jobPositionsJson, ...expandedFixtures.jobPositions]);
+    await safeBulkCreate(JobPosition, [
+      ...jobPositionsJson,
+      ...expandedFixtures.jobPositions,
+      ...regionalFixtures.jobPositions,
+    ]);
     await safeBulkCreate(User, usersJson);
 
     // LEVEL 2: Tables dependent on Users
@@ -100,16 +108,28 @@ export default async function seedAll() {
       "Seeding user-dependent tables (Profiles, Companies, Wallets)...",
     );
     await safeBulkCreate(WorkerProfile, workerProfilesJson);
-    await safeBulkCreate(Company, [...companiesJson, ...expandedFixtures.companies]);
+    await safeBulkCreate(Company, [
+      ...companiesJson,
+      ...expandedFixtures.companies,
+      ...regionalFixtures.companies,
+    ]);
     await safeBulkCreate(Wallet, walletsJson);
 
     // LEVEL 3: Tables dependent on Companies
     console.log("Seeding Locations...");
-    await safeBulkCreate(Location, [...locationsJson, ...expandedFixtures.locations]);
+    await safeBulkCreate(Location, [
+      ...locationsJson,
+      ...expandedFixtures.locations,
+      ...regionalFixtures.locations,
+    ]);
 
     // LEVEL 4: Tables dependent on Locations, Positions, and Categories
     console.log("Seeding Shifts...");
-    await safeBulkCreate(Shift, [...shiftsJson, ...expandedFixtures.shifts]);
+    await safeBulkCreate(Shift, [
+      ...shiftsJson,
+      ...expandedFixtures.shifts,
+      ...regionalFixtures.shifts,
+    ]);
 
     // LEVEL 5: Tables dependent on Shifts and Users
     console.log("Seeding Shift Applications, Reviews, and Transactions...");

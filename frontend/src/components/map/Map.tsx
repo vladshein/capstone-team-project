@@ -8,17 +8,29 @@ export interface MapMarkerData {
   lng: number;
   title: string;
   description: string;
+  schedule: string;
   price: number;
   currency?: string;
+  shifts?: MapMarkerData[];
 }
 
 interface MapProps {
   center: [number, number];
   zoom: number;
   markers: MapMarkerData[];
+  userLocation?: { latitude: number; longitude: number } | null;
 }
 
-export default function Map({ center, zoom, markers }: MapProps) {
+const escapeHtml = (value: string) =>
+  value.replace(/[&<>'"]/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "'": "&#39;",
+    '"': "&quot;",
+  })[character] ?? character);
+
+export default function Map({ center, zoom, markers, userLocation }: MapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const layerGroupRef = useRef<L.LayerGroup | null>(null);
@@ -46,29 +58,71 @@ export default function Map({ center, zoom, markers }: MapProps) {
     };
   }, []);
 
+  useEffect(() => {
+    mapInstanceRef.current?.setView(center, zoom);
+  }, [center, zoom]);
+
   // Effect 2: Ultra-fast Canvas rendering loop for thousands of markers
   useEffect(() => {
     if (!mapInstanceRef.current || !layerGroupRef.current) return;
 
     layerGroupRef.current.clearLayers();
 
+    const points: L.LatLngExpression[] = [];
+
+    if (userLocation) {
+      const userPoint: L.LatLngExpression = [
+        userLocation.latitude,
+        userLocation.longitude,
+      ];
+      points.push(userPoint);
+      L.circleMarker(userPoint, {
+        radius: 10,
+        fillColor: '#1a1c23',
+        color: '#ffffff',
+        weight: 3,
+        opacity: 1,
+        fillOpacity: 1,
+      })
+        .bindPopup('Ваша локація')
+        .addTo(layerGroupRef.current);
+    }
+
     markers.forEach((item) => {
-      const currencySymbol = item.currency || '$';
-      
-      const popupHtml = `
-        <div class="p-1 max-w-[220px] font-sans">
-          <h3 class="font-bold text-base text-slate-900 m-0 leading-tight">${item.title}</h3>
-          <p class="text-xs text-slate-600 my-1.5 leading-snug">${item.description}</p>
-          <div class="flex items-center justify-between border-t border-slate-100 pt-1.5 mt-1.5">
-            <span class="text-xs text-slate-400 font-medium">Price</span>
-            <span class="text-sm font-bold text-emerald-600">${currencySymbol}${item.price.toLocaleString()}</span>
+      const currencySymbol = item.currency || '₴';
+      const point: L.LatLngExpression = [item.lat, item.lng];
+      points.push(point);
+      const shiftsAtLocation = item.shifts ?? [item];
+      const popupHtml = shiftsAtLocation.length > 1
+        ? `
+          <div style="width: 230px; max-height: 260px; overflow-y: auto; padding: 2px; font-family: Inter, Arial, sans-serif;">
+            <h3 style="margin: 0; color: #12131a; font-size: 13px; line-height: 17px; font-weight: 700;">Зміни на локації (${shiftsAtLocation.length})</h3>
+            <p style="margin: 3px 0 5px; color: #64748b; font-size: 11px; line-height: 14px;">${escapeHtml(item.description)}</p>
+            ${shiftsAtLocation.map((shift) => `
+              <div style="border-top: 1px solid #e5e7eb; padding: 7px 0;">
+                <strong style="display: block; overflow: hidden; color: #12131a; font-size: 12px; line-height: 15px; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(shift.title)}</strong>
+                <span style="display: block; margin-top: 3px; color: #64748b; font-size: 10px; line-height: 13px;">${escapeHtml(shift.schedule)}</span>
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 5px;">
+                  <span style="color: #0d9b75; font-size: 12px; font-weight: 700;">${shift.price.toLocaleString("uk-UA")} ${shift.currency || "₴"}</span>
+                  <a href="/shifts/${encodeURIComponent(String(shift.id))}" style="display: inline-flex; min-height: 28px; flex: none; align-items: center; justify-content: center; border-radius: var(--radius-pill); background: var(--color-accent); padding: 0 9px; color: #fff; font-size: 11px; font-weight: 600; text-decoration: none;">Детальніше</a>
+                </div>
+              </div>`).join("")}
+          </div>`
+        : `
+        <div style="width: 210px; padding: 2px; font-family: Inter, Arial, sans-serif;">
+          <h3 style="margin: 0; color: #12131a; font-size: 13px; line-height: 17px; font-weight: 700;">${escapeHtml(item.title)}</h3>
+          <p style="margin: 4px 0 7px; color: #64748b; font-size: 11px; line-height: 14px;">${escapeHtml(item.description)}</p>
+          <p style="margin: -3px 0 7px; color: #64748b; font-size: 11px; line-height: 14px;">${escapeHtml(item.schedule)}</p>
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #e5e7eb; padding-top: 7px;">
+            <span style="color: #0d9b75; font-size: 13px; font-weight: 700; white-space: nowrap;">${item.price.toLocaleString("uk-UA")} ${currencySymbol}</span>
+            <a href="/shifts/${encodeURIComponent(String(item.id))}" style="display: inline-flex; min-height: 28px; align-items: center; justify-content: center; border-radius: var(--radius-pill); background: var(--color-accent); padding: 0 10px; color: #fff; font-size: 11px; font-weight: 600; text-decoration: none; white-space: nowrap;">Детальніше</a>
           </div>
         </div>
       `;
 
       // Use circleMarker for extreme high performance on canvas pipelines
-      L.circleMarker([item.lat, item.lng], {
-        radius: 8,              // Size of the marker circle point
+      L.circleMarker(point, {
+        radius: shiftsAtLocation.length > 1 ? 10 : 8,
         fillColor: '#10b981',   // Emerald green fill (matches your tailwind setups)
         color: '#ffffff',       // Pure white outer border line
         weight: 2,              // Thickness of border
@@ -78,12 +132,19 @@ export default function Map({ center, zoom, markers }: MapProps) {
       .bindPopup(popupHtml, { maxWidth: 250 })
       .addTo(layerGroupRef.current!);
     });
-  }, [markers]);
+
+    if (points.length > 1) {
+      mapInstanceRef.current.fitBounds(L.latLngBounds(points), {
+        padding: [36, 36],
+        maxZoom: 13,
+      });
+    }
+  }, [markers, userLocation]);
 
   return (
     <div 
       ref={mapContainerRef} 
-      className="h-[600px] w-full rounded-xl border-10 border-slate-200 shadow-sm" 
+      className="relative z-0 h-[600px] w-full max-w-full overflow-hidden rounded-[var(--radius-card)] border border-border shadow-sm"
     />
   );
 }

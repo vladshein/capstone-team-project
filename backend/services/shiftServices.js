@@ -8,13 +8,7 @@ import {
   ShiftApplication,
 } from "../db/models/index.js";
 
-/**
- * Отримує зміни з бази даних на основі фільтрів та пагінації.
- * Містить всю логіку запитів до БД.
- */
-export const getAllShifts = async ({
-  page,
-  limit,
+const buildShiftSearchQuery = ({
   minPrice,
   maxPrice,
   categoryId,
@@ -27,51 +21,19 @@ export const getAllShifts = async ({
   sort = "relevance",
   latitude,
   longitude,
+  radiusKm,
 }) => {
-  console.log("[shiftsService] getAllShifts called with params:", {
-    page,
-    limit,
-    minPrice,
-    maxPrice,
-    categoryId,
-    categoryIds,
-    partners,
-    city,
-    dateFrom,
-    dateTo,
-    durationFilters,
-    sort,
-  });
-
-  // Приводимо page/limit до чисел і підстраховуємось дефолтами,
-  // бо з query-стрінги вони завжди приходять як string або undefined
-  const parsedPage = Number.parseInt(page, 10) || 1;
-  const parsedLimit = Number.parseInt(limit, 10) || 20;
-  const offset = (parsedPage - 1) * parsedLimit;
-
-  console.log("[shiftsService] parsed pagination:", {
-    parsedPage,
-    parsedLimit,
-    offset,
-  });
-
-  // Базова умова: показувати тільки відкриті зміни
   const whereCondition = {
     status: "open",
-    // Відкритою для відгуку може бути лише зміна, яка ще не почалася.
-    // Це прибирає прострочені записи з біржі, карток «поруч» і фасетів фільтрів.
     startTime: { [Op.gt]: new Date() },
   };
 
-  // Фільтрація за категорією
   if (categoryIds?.length) {
     whereCondition.categoryId = { [Op.in]: categoryIds.map(String) };
   } else if (categoryId) {
-    // categoryId успадковує тип TEXT від Category.id у поточній схемі БД.
     whereCondition.categoryId = String(categoryId);
   }
 
-  // Фільтрація за ціною
   if (minPrice !== undefined && maxPrice !== undefined) {
     whereCondition.hourlyRate = { [Op.between]: [minPrice, maxPrice] };
   } else if (minPrice !== undefined) {
@@ -81,7 +43,6 @@ export const getAllShifts = async ({
   }
 
   if (dateFrom || dateTo) {
-    // Базове обмеження startTime > now зберігаємо й додаємо межі календаря.
     if (dateFrom) whereCondition.startTime[Op.gte] = dateFrom;
     if (dateTo) whereCondition.startTime[Op.lt] = dateTo;
   }
@@ -121,13 +82,90 @@ export const getAllShifts = async ({
   }
 
   const earnings = `(${durationHours} * "Shift"."hourlyRate" + "Shift"."bonusRate")`;
+  const hasCoordinates = Number.isFinite(latitude) && Number.isFinite(longitude);
+  const distance = hasCoordinates
+    ? `6371 * acos(least(1, greatest(-1, cos(radians(${latitude})) * cos(radians("Location"."latitude")) * cos(radians("Location"."longitude") - radians(${longitude})) + sin(radians(${latitude})) * sin(radians("Location"."latitude")))))`
+    : null;
+
+  if (radiusKm && distance) {
+    whereCondition[Op.and] = [
+      where(literal(distance), { [Op.lte]: radiusKm }),
+    ];
+  }
+
   let order = [["startTime", "ASC"]];
   if (sort === "date_desc") order = [["startTime", "DESC"]];
   if (sort === "price_desc") order = [[literal(earnings), "DESC"], ["startTime", "ASC"]];
-  if (sort === "nearest" && Number.isFinite(latitude) && Number.isFinite(longitude)) {
-    const distance = `6371 * acos(least(1, greatest(-1, cos(radians(${latitude})) * cos(radians("Location"."latitude")) * cos(radians("Location"."longitude") - radians(${longitude})) + sin(radians(${latitude})) * sin(radians("Location"."latitude")))))`;
+  if (sort === "nearest" && distance) {
     order = [[literal(distance), "ASC"], ["startTime", "ASC"]];
   }
+
+  return { whereCondition, locationInclude, order };
+};
+
+/**
+ * Отримує зміни з бази даних на основі фільтрів та пагінації.
+ * Містить всю логіку запитів до БД.
+ */
+export const getAllShifts = async ({
+  page,
+  limit,
+  minPrice,
+  maxPrice,
+  categoryId,
+  categoryIds,
+  partners,
+  city,
+  dateFrom,
+  dateTo,
+  durationFilters,
+  sort = "relevance",
+  latitude,
+  longitude,
+  radiusKm,
+}) => {
+  console.log("[shiftsService] getAllShifts called with params:", {
+    page,
+    limit,
+    minPrice,
+    maxPrice,
+    categoryId,
+    categoryIds,
+    partners,
+    city,
+    dateFrom,
+    dateTo,
+    durationFilters,
+    sort,
+  });
+
+  // Приводимо page/limit до чисел і підстраховуємось дефолтами,
+  // бо з query-стрінги вони завжди приходять як string або undefined
+  const parsedPage = Number.parseInt(page, 10) || 1;
+  const parsedLimit = Number.parseInt(limit, 10) || 20;
+  const offset = (parsedPage - 1) * parsedLimit;
+
+  console.log("[shiftsService] parsed pagination:", {
+    parsedPage,
+    parsedLimit,
+    offset,
+  });
+
+  const { whereCondition, locationInclude, order } = buildShiftSearchQuery({
+    minPrice,
+    maxPrice,
+    categoryId,
+    categoryIds,
+    partners,
+    city,
+    dateFrom,
+    dateTo,
+    durationFilters,
+    sort,
+    latitude,
+    longitude,
+    radiusKm,
+  });
 
   console.log("[shiftsService] whereCondition:", whereCondition);
 
@@ -195,6 +233,21 @@ export const getAllShifts = async ({
     });
     throw error;
   }
+};
+
+/** Повертає лише поля, потрібні для маркерів карти, без пагінації карток. */
+export const getShiftMapMarkers = async (filters) => {
+  const { whereCondition, locationInclude, order } = buildShiftSearchQuery(filters);
+
+  return Shift.findAll({
+    attributes: ["id", "startTime", "endTime", "hourlyRate", "bonusRate"],
+    where: whereCondition,
+    order,
+    include: [
+      { model: JobPosition, attributes: ["title"] },
+      locationInclude,
+    ],
+  });
 };
 
 /**

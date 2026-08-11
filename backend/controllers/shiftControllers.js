@@ -1,5 +1,50 @@
 import * as shiftService from "../services/shiftServices.js";
 
+const parseList = (value) =>
+  typeof value === "string"
+    ? value.split(",").map((item) => item.trim()).filter(Boolean)
+    : Array.isArray(value)
+      ? value.map(String).map((item) => item.trim()).filter(Boolean)
+      : undefined;
+
+const parseShiftFilters = (query) => {
+  const {
+    minPrice,
+    maxPrice,
+    categoryId,
+    categoryIds,
+    partners,
+    city,
+    dateFrom,
+    dateTo,
+    durationFilters,
+    sort,
+    latitude,
+    longitude,
+    radiusKm,
+  } = query;
+
+  return {
+    minPrice: minPrice ? parseFloat(minPrice) : undefined,
+    maxPrice: maxPrice ? parseFloat(maxPrice) : undefined,
+    categoryId: categoryId ? parseInt(categoryId, 10) : undefined,
+    categoryIds: parseList(categoryIds),
+    partners: parseList(partners),
+    city: typeof city === "string" ? city.trim() || undefined : undefined,
+    dateFrom: typeof dateFrom === "string" && !Number.isNaN(Date.parse(dateFrom)) ? dateFrom : undefined,
+    dateTo: typeof dateTo === "string" && !Number.isNaN(Date.parse(dateTo)) ? dateTo : undefined,
+    durationFilters: parseList(durationFilters),
+    sort: ["relevance", "price_desc", "date_asc", "date_desc", "nearest"].includes(sort)
+      ? sort
+      : "relevance",
+    latitude: Number.isFinite(Number(latitude)) ? Number(latitude) : undefined,
+    longitude: Number.isFinite(Number(longitude)) ? Number(longitude) : undefined,
+    radiusKm: Number.isFinite(Number(radiusKm))
+      ? Math.min(Math.max(Number(radiusKm), 1), 50)
+      : undefined,
+  };
+};
+
 /**
  * Обробляє запит на отримання всіх змін.
  * Витягує параметри запиту та формує HTTP-відповідь.
@@ -7,54 +52,33 @@ import * as shiftService from "../services/shiftServices.js";
 export const getAllShifts = async (req, res, next) => {
   try {
     // 1. Отримуємо параметри з Query рядка
-    const {
-      page = 1,
-      limit = 10,
-      minPrice,
-      maxPrice,
-      categoryId,
-      categoryIds,
-      partners,
-      city,
-      dateFrom,
-      dateTo,
-      durationFilters,
-      sort,
-      latitude,
-      longitude,
-    } = req.query;
-
-    const parseList = (value) =>
-      typeof value === "string"
-        ? value.split(",").map((item) => item.trim()).filter(Boolean)
-        : Array.isArray(value)
-          ? value.map(String).map((item) => item.trim()).filter(Boolean)
-          : undefined;
-
     // 2. Передаємо параметри в Service layer
     const result = await shiftService.getAllShifts({
-      page: parseInt(page, 10),
-      limit: Math.min(Math.max(parseInt(limit, 10) || 10, 1), 100),
-      minPrice: minPrice ? parseFloat(minPrice) : undefined,
-      maxPrice: maxPrice ? parseFloat(maxPrice) : undefined,
-      categoryId: categoryId ? parseInt(categoryId, 10) : undefined,
-      categoryIds: parseList(categoryIds),
-      partners: parseList(partners),
-      city: typeof city === "string" ? city.trim() || undefined : undefined,
-      dateFrom: typeof dateFrom === "string" && !Number.isNaN(Date.parse(dateFrom)) ? dateFrom : undefined,
-      dateTo: typeof dateTo === "string" && !Number.isNaN(Date.parse(dateTo)) ? dateTo : undefined,
-      durationFilters: parseList(durationFilters),
-      sort: ["relevance", "price_desc", "date_asc", "date_desc", "nearest"].includes(sort)
-        ? sort
-        : "relevance",
-      latitude: Number.isFinite(Number(latitude)) ? Number(latitude) : undefined,
-      longitude: Number.isFinite(Number(longitude)) ? Number(longitude) : undefined,
+      page: parseInt(req.query.page, 10),
+      limit: Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 100),
+      ...parseShiftFilters(req.query),
     });
 
     // 3. Відправляємо успішну відповідь
     res.status(200).json(result);
   } catch (error) {
     next(error); // Передаємо помилку в центральний errorHandler
+  }
+};
+
+/**
+ * Повертає мінімальні дані для маркерів на карті за тими самими фільтрами,
+ * що й список змін. Пагінація списку на цей endpoint не впливає.
+ */
+export const getShiftMapMarkers = async (req, res, next) => {
+  try {
+    const data = await shiftService.getShiftMapMarkers(
+      parseShiftFilters(req.query),
+    );
+
+    res.status(200).json({ data });
+  } catch (error) {
+    next(error);
   }
 };
 
