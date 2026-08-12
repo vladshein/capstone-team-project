@@ -1,0 +1,20 @@
+tags:
+  - Users
+summary: Private endpoint to obtain information about users followed by an authorized user (subscription)
+operationId: getFollowing
+description: Returns information about user following.
+security:
+  - bearerAuth: []
+responses:
+  '200':
+    description: Successfully retrieved following info
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            followingCount:
+              type: integer
+              example: 58
+  '401':
+    $ref: ./../../../components/responses/401-common.yaml

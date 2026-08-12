@@ -1,0 +1,15 @@
+tags:
+  - Recipes
+summary: Public endpoint for searching recipes by category, ingredient, and region of origin of the dish (taking into account pagination logic)
+operationId: searchRecipes
+description: Search recipes by category, indigriens, areas
+security: []
+responses:
+  '200':
+    description: Successfully list of recipes
+    content:
+      application/json:
+        schema:
+          type: object
+  '401':
+    $ref: ./../../components/responses/401-common.yaml

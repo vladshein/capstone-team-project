@@ -1,0 +1,54 @@
+tags:
+  - Recipes
+summary: Private endpoint to create your own recipe
+operationId: addRecipes
+description: Add new recipes
+security:
+  - bearerAuth: []
+requestBody:
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          title:
+            type: string
+            example: Test Chocolate Cake
+          category:
+            type: string
+            example: Dessert
+          area:
+            type: string
+            example: British
+          instructions:
+            type: string
+            example: Mix ingredients and bake at 180°C for 30 minutes.
+          description:
+            type: string
+            example: Delicious chocolate cake perfect for any occasion.
+          thumb:
+            type: string
+            example: http://example.com/chocolate-cake.jpg
+          time:
+            type: string
+            example: '45'
+          ingredients:
+            type: array
+            example:
+              - id: 640c2dd963a319ea671e37aa
+                measure: 200g
+              - id: 640c2dd963a319ea671e37f5
+                measure: '3 pcs'
+              - id: 640c2dd963a319ea671e3665
+                measure: 150ml
+responses:
+  '200':
+    description: Successfully add new recipes
+    content:
+      application/json:
+        schema:
+          type: object
+  '400':
+    $ref: ./../../components/responses/400.yaml
+  '401':
+    $ref: ./../../components/responses/401-common.yaml

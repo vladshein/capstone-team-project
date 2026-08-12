@@ -1,0 +1,41 @@
+tags:
+  - Auth
+summary: Public user registration endpoint
+operationId: authRegister
+security: []
+description: 'Register new user'
+requestBody:
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            example: examplename
+          email:
+            type: string
+            example: example@example.com
+          password:
+            type: string
+            example: examplepass
+responses:
+  '201':
+    description: Created
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            user:
+              type: object
+              properties:
+                email:
+                  type: string
+                  example: example@example.com
+  '400':
+    $ref: './../../../components/responses/400.yaml'
+  '401':
+    $ref: './../../../components/responses/401.yaml'
+  '409':
+    $ref: './../../../components/responses/409.yaml'

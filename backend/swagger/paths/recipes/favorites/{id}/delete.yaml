@@ -1,0 +1,21 @@
+tags:
+  - Recipes
+summary: Private endpoint to remove a recipe from the favorites list
+operationId: deleteFavoriteRecipe
+description: ADelete recipe from favorite
+security:
+  - bearerAuth: []
+parameters:
+  - in: path
+    name: id
+    schema:
+      example: 7
+responses:
+  '200':
+    description: Successfully delete
+    content:
+      application/json:
+        schema:
+          type: object
+  '401':
+    $ref: ./../../../../components/responses/401-common.yaml

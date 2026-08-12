@@ -1,0 +1,24 @@
+type: object
+properties:
+  id:
+    type: string
+    description: The testimonial ID
+    example: 647495d0c825f1570b04182d
+  testimonial:
+    type: string
+    description: Comment text
+    example: Foodies has transformed my cooking experience! With its diverse recipe collection and user-friendly interface, I can easily find, save, and cook delicious meals for any occasion. From quick dinners to elaborate feasts, this app has become my go-to kitchen companion. Highly recommended!
+  ownerId:
+    type: string
+    description: The owner (creator) ID
+    example: 64c8d958249fae54bae90bb9
+  createdAt:
+    type: string
+    format: date-time
+    description: Created datetime
+    example: 2025-12-11T16:27:08.933Z
+  updatedAt:
+    type: string
+    format: date-time
+    description: Updated datetime
+    example: 2025-12-11T16:27:08.933Z

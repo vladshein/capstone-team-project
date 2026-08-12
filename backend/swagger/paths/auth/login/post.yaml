@@ -1,0 +1,44 @@
+tags:
+  - Auth
+summary: Public user login endpoint
+operationId: authLogin
+description: 'Allow users to sign in and receive authentication tokens for accessing restricted content.'
+security: []
+requestBody:
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          email:
+            type: string
+            format: email
+            example: example@example.com
+          password:
+            type: string
+            example: examplepass
+responses:
+  '200':
+    description: OK
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            token:
+              type: string
+              example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+            user:
+              type: object
+              properties:
+                username:
+                  type: string
+                  example: example
+                email:
+                  type: string
+                  format: email
+                  example: example@example.com
+  '400':
+    $ref: './../../../components/responses/400.yaml'
+  '401':
+    $ref: './../../../components/responses/401.yaml'

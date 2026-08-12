@@ -1,0 +1,48 @@
+tags:
+  - Recipes
+summary: Private endpoint to receive your own recipes
+operationId: getRecipes
+description: Get list of user recipes
+security:
+  - bearerAuth: []
+parameters:
+  - in: query
+    name: page
+    schema:
+      default: 1
+    description: Page number to retrieve
+  - in: query
+    name: limit
+    schema:
+      default: 10
+    description: Number of items per page
+responses:
+  '200':
+    description: Successfully add
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            page:
+              type: integer
+            limit:
+              type: integer
+            total:
+              type: integer
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  title:
+                    type: string
+                  body:
+                    type: string
+                  createdAt:
+                    type: string
+                    format: date-time
+  '401':
+    $ref: ./../../../components/responses/401-common.yaml

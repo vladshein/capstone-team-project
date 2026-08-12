@@ -1,0 +1,17 @@
+tags:
+  - Testimonials
+summary: Public endpoint to get a list of reviews
+operationId: getTestimonials
+description: Get comment list
+security: []
+responses:
+  '200':
+    description: Successfully get list of testimonials
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            $ref: ./../../components/schemas/testimonials.yaml
+  '401':
+    $ref: ./../../components/responses/401-common.yaml

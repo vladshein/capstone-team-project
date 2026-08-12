@@ -1,0 +1,18 @@
+type: object
+properties:
+  id:
+    type: string
+    description: The areas ID
+    example: 6462a6f04c3d0ddd28897f9b
+  name:
+    type: string
+    description: The areas name
+    example: Ukrainian
+  desc:
+    type: string
+    description: The description of ingredients
+    example: A type of cephalopod with a soft, cylindrical body and long tentacles, often used in seafood dishes such as calamari or grilled squid.
+  img:
+    type: string
+    description: Image path
+    example: https://ftp.goit.study/img/so-yummy/ingredients/640c2dd963a319ea671e37aa.png

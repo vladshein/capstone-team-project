@@ -1,0 +1,42 @@
+tags:
+  - Users
+summary: Private endpoint for obtaining detailed information about another user
+operationId: getUserById
+description: 'Get user by id'
+security:
+  - bearerAuth: []
+parameters:
+  - in: path
+    name: id
+    required: true
+    schema:
+      type: string
+      example: '65ca67e7ae7f10c88b598384'
+responses:
+  '200':
+    description: 'Get user by id'
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            avatar:
+              type: string
+              example: 'avatars/user123.png'
+            name:
+              type: string
+              example: 'example'
+            email:
+              type: string
+              format: email
+              example: 'example@example.com'
+            recipesCount:
+              type: integer
+              example: 12
+            followersCount:
+              type: integer
+              example: 102
+  '401':
+    $ref: ./../../../components/responses/401-common.yaml
+  '404':
+    $ref: ./../../../components/responses/404-user.yaml

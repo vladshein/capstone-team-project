@@ -1,0 +1,17 @@
+tags:
+  - Areas
+summary: Public endpoint to get a list of regions of origin of dishes
+operationId: getAreas
+description: ''
+security: []
+responses:
+  '200':
+    description: Successfully get a list of areas
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            $ref: ./../../components/schemas/areas.yaml
+  '401':
+    $ref: ./../../components/responses/401-common.yaml

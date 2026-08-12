@@ -1,0 +1,10 @@
+type: object
+properties:
+  id:
+    type: string
+    description: The category ID
+    example: 6462a6cd4c3d0ddd28897f8a
+  name:
+    type: string
+    description: The category name
+    example: Seafood

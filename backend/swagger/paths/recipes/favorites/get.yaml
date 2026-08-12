@@ -1,0 +1,16 @@
+tags:
+  - Recipes
+summary: Private endpoint to retrieve your favorite recipes
+operationId: favoritesRecipes
+description: get list of favorites recipes
+security:
+  - bearerAuth: []
+responses:
+  '200':
+    description: Successfully list of favorites recipes
+    content:
+      application/json:
+        schema:
+          type: object
+  '401':
+    $ref: ./../../../components/responses/401-common.yaml

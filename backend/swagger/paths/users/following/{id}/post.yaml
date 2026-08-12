@@ -1,0 +1,22 @@
+tags:
+  - Users
+summary: Private endpoint for adding a user to the list of profiles followed by an authorized user (subscribe)
+operationId: followUser
+description: ''
+security:
+  - bearerAuth: []
+parameters:
+  - in: path
+    name: id
+    schema:
+      type: string
+      example: '65ca67e7ae7f10c88b598384'
+responses:
+  '200':
+    description: Successfully add
+    content:
+      application/json:
+        schema:
+          type: object
+  '401':
+    $ref: ./../../../../components/responses/401-common.yaml

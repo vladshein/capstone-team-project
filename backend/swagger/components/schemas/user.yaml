@@ -1,0 +1,25 @@
+type: object
+properties:
+  id:
+    type: string
+    example: '64f30dc2f1a5a34a2c9b12e4'
+  name:
+    type: string
+    example: 'John Doe'
+  email:
+    type: string
+    example: 'john@example.com'
+  avatarUrl:
+    type: string
+    nullable: true
+    example: 'https://res.cloudinary.com/.../avatar.webp'
+  followersCount:
+    type: integer
+    example: 120
+  followingCount:
+    type: integer
+    example: 58
+required:
+  - id
+  - name
+  - email
