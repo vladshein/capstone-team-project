@@ -49,6 +49,8 @@ export function TasksBoard() {
   const [isMapView, setIsMapView] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [calendarPeriod, setCalendarPeriod] = useState<CalendarPeriod>("week");
+  const [selectedCityLocation, setSelectedCityLocation] =
+    useState<CityLocation | null>(null);
   const [manualCity, setManualCity] = useState(() => {
     try {
       return window.localStorage.getItem("zmina.manual-city") ?? "";
@@ -90,8 +92,13 @@ export function TasksBoard() {
           longitude: approximateLocation.longitude,
         }
       : null;
-  const selectedCity =
-    preciseCity || manualCity || approximateLocation?.city || undefined;
+  // Місто, обране у пошуковій формі, є явним вибором користувача,
+  // тому має вищий пріоритет за IP та браузерну геолокацію.
+  const selectedCity = manualCity
+    ? manualCity
+    : coordinates
+      ? preciseCity || undefined
+      : approximateLocation?.city || undefined;
   const hasMapSearchArea = Boolean(
     selectedCity || coordinates || approximateCoordinates,
   );
@@ -109,7 +116,11 @@ export function TasksBoard() {
       periodStart.getDate() +
         (calendarPeriod === "day" ? 1 : calendarPeriod === "week" ? 7 : 30),
     );
-    const locationOrigin = coordinates ?? approximateCoordinates;
+    // Ручний пошук міста не можна поєднувати з радіусом навколо поточної
+    // локації: це дало б умову на кшталт «Одеса в 15 км від Києва».
+    const locationOrigin = manualCity
+      ? null
+      : coordinates ?? approximateCoordinates;
 
     return {
       page: currentPage,
@@ -134,6 +145,7 @@ export function TasksBoard() {
     calendarPeriod,
     coordinates,
     currentPage,
+    manualCity,
     partnerSelectionMode,
     selectedCategories,
     selectedCity,
@@ -174,6 +186,24 @@ export function TasksBoard() {
       // Збереження в браузері — лише зручність, форма має працювати й без нього.
     }
   };
+
+  useEffect(() => {
+    if (!coordinates) return;
+
+    // Успішна точна геолокація — новий явний вибір користувача. Вона скасовує
+    // раніше введене місто, а reverse-geocoding підставить актуальну назву.
+    setManualCity((currentCity) => {
+      if (!currentCity) return currentCity;
+
+      try {
+        window.localStorage.removeItem("zmina.manual-city");
+      } catch {
+        // Збереження в localStorage не впливає на сам пошук.
+      }
+      return "";
+    });
+    setSelectedCityLocation(null);
+  }, [coordinates]);
 
   const fallbackPartnerOptions = useMemo(() => {
     const counts = new Map<string, number>();
@@ -240,8 +270,6 @@ export function TasksBoard() {
     }
   };
 
-  // Map
-  const [selectedCityLocation, setSelectedCityLocation] = useState<CityLocation | null>(null);
   const handleCitySearch = (location: CityLocation) => {
     setSelectedCityLocation(location); // (lat, lng, bbox) for map 
     saveManualCity(location.name); // refresh city for API
@@ -317,7 +345,7 @@ export function TasksBoard() {
   
               <DefMap
                 shifts={mapMarkers}
-                userLocation={coordinates ?? approximateCoordinates}
+                userLocation={manualCity ? null : coordinates ?? approximateCoordinates}
                 selectedCity={selectedCityLocation} 
               />
             </>
