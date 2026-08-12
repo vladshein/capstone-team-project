@@ -9,6 +9,9 @@ import {
 import * as companyController from "../controllers/companyControllers.js";
 const companyRouter = express.Router();
 
+// Публічний — доступний гостям (для картки компанії на сторінці зміни)
+companyRouter.get("/:id", companyController.getCompanyById);
+
 // Всі ці маршрути вимагають авторизації
 companyRouter.use(authenticate);
 

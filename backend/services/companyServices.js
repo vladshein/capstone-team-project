@@ -1,6 +1,29 @@
 import { Company, Location, User } from "../db/models/index.js";
 
 /**
+ * Отримує компанію за ID разом з локаціями.
+ * Публічний метод (без перевірки власника) — для MVP.
+ */
+export const getCompanyById = async (companyId) => {
+  const company = await Company.findByPk(companyId, {
+    include: [
+      {
+        model: Location,
+        attributes: ["id", "title", "city", "address"],
+      },
+    ],
+  });
+
+  if (!company) {
+    const error = new Error("Компанію не знайдено");
+    error.status = 404;
+    throw error;
+  }
+
+  return company;
+};
+
+/**
  * Отримує всі компанії, які належать конкретному користувачу (власнику).
  * Повертає список разом з їхніми локаціями для кабінету бізнесу.
  */

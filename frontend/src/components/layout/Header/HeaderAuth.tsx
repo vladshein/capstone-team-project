@@ -7,6 +7,14 @@ import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
 import { selectIsLoggedIn, selectUserInfo } from "../../../redux/auth/selectors";
 import { logout, refreshUser } from "../../../redux/auth/actions";
 import { getDashboardPath } from "../../../redux/auth/helpers";
+import { USER_ROLES } from "../../../constants/navigation";
+import { selectHasWorkerProfile } from "../../../redux/auth/selectors";
+import {
+  selectCompanies,
+  selectCompaniesCount,
+  selectCompaniesStatus,
+} from "../../../redux/companies-profile/selectors";
+import { fetchMyCompanies } from "../../../redux/companies-profile/actions";
 
 export interface HeaderAuthProps {
   onOpenSignIn?: () => void;
@@ -21,25 +29,47 @@ export function HeaderAuth({ onOpenSignIn, onOpenSignUp, mobile = false }: Heade
   const isAuthenticated = useAppSelector(selectIsLoggedIn);
   const user = useAppSelector(selectUserInfo);
 
+  const hasWorkerProfile = useAppSelector(selectHasWorkerProfile);
+  const companies = useAppSelector(selectCompanies);
+  const companiesCount = useAppSelector(selectCompaniesCount);
+  const companiesStatus = useAppSelector(selectCompaniesStatus);
+
+  const isWorker = user?.role === USER_ROLES.WORKER;
+  const isBusiness = user?.role === USER_ROLES.BUSINESS;
+
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isCompanyMenuOpen, setIsCompanyMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const companyMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!isMenuOpen) return;
+    if (!isMenuOpen && !isCompanyMenuOpen) return;
     const onClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setIsMenuOpen(false);
       }
+      if (companyMenuRef.current && !companyMenuRef.current.contains(e.target as Node)) {
+        setIsCompanyMenuOpen(false);
+      }
     };
     document.addEventListener("mousedown", onClickOutside);
     return () => document.removeEventListener("mousedown", onClickOutside);
-  }, [isMenuOpen]);
+  }, [isMenuOpen, isCompanyMenuOpen]);
 
   useEffect(() => {
     if (isAuthenticated && !user) {
       void dispatch(refreshUser());
     }
   }, [isAuthenticated, user, dispatch]);
+
+  // Business clients own a 1:M set of companies — the bootstrap payload only
+  // carries the count, so fetch the list lazily once the role is known and
+  // the header actually needs to render the picker.
+  useEffect(() => {
+    if (isBusiness && companiesStatus === "idle") {
+      void dispatch(fetchMyCompanies());
+    }
+  }, [isBusiness, companiesStatus, dispatch]);
 
   const handleLogout = async () => {
     try {
@@ -53,17 +83,107 @@ export function HeaderAuth({ onOpenSignIn, onOpenSignUp, mobile = false }: Heade
 
   const profileLink = getDashboardPath(user?.role);
 
+  // ---- role-specific menu items -------------------------------------
+  const workerLinks = isWorker && (
+    <>
+      <Link to="/profile" role="menuitem" className="block rounded-[var(--radius-card)] px-3 py-2.5 text-sm hover:bg-bg-muted">
+        {hasWorkerProfile ? "Профіль" : "Створити профіль"}
+      </Link>
+      <Link to={profileLink} role="menuitem" className="block rounded-[var(--radius-card)] px-3 py-2.5 text-sm hover:bg-bg-muted">
+        Кабінет виконавця
+      </Link>
+    </>
+  );
+
+  const businessLinks = isBusiness && (
+    <>
+      <Link to={profileLink} role="menuitem" className="block rounded-[var(--radius-card)] px-3 py-2.5 text-sm hover:bg-bg-muted">
+        Кабінет замовника
+      </Link>
+
+      {companiesCount === 0 ? (
+        <Link to="/dashboard/companies/create" role="menuitem" className="block rounded-[var(--radius-card)] px-3 py-2.5 text-sm hover:bg-bg-muted">
+          Додати компанію
+        </Link>
+      ) : (
+        <div ref={companyMenuRef} className="relative">
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => setIsCompanyMenuOpen((open) => !open)}
+            className="flex w-full items-center justify-between rounded-[var(--radius-card)] px-3 py-2.5 text-left text-sm hover:bg-bg-muted"
+          >
+            Мої компанії ({companiesCount})
+            <ChevronDown className="h-4 w-4 text-text-subtle" />
+          </button>
+
+          {isCompanyMenuOpen && (
+            <div className="mt-1 space-y-0.5 border-l border-border pl-2">
+              {companies.map((company) => (
+                <Link
+                  key={company.id}
+                  to={`/dashboard/companies/${company.id}`}
+                  role="menuitem"
+                  className="block truncate rounded-[var(--radius-card)] px-3 py-2 text-sm hover:bg-bg-muted"
+                  onClick={() => setIsCompanyMenuOpen(false)}
+                >
+                  {company.name}
+                </Link>
+              ))}
+              <Link
+                to="/dashboard/companies/create"
+                role="menuitem"
+                className="block rounded-[var(--radius-card)] px-3 py-2 text-sm text-text-subtle hover:bg-bg-muted"
+                onClick={() => setIsCompanyMenuOpen(false)}
+              >
+                + Додати компанію
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  );
+
   if (mobile) {
     return (
       <div className="mt-auto flex flex-col gap-3">
         {isAuthenticated && user ? (
           <>
-            <Link to="/profile" className="flex min-h-[44px] items-center justify-center rounded-[var(--radius-pill)] border border-border px-5 text-sm font-medium">
-              Профіль
-            </Link>
-            <Link to={profileLink} className="flex min-h-[44px] items-center justify-center rounded-[var(--radius-pill)] border border-border px-5 text-sm font-medium">
-              Кабінет
-            </Link>
+            {isWorker && (
+              <>
+                <Link to="/profile" className="flex min-h-[44px] items-center justify-center rounded-[var(--radius-pill)] border border-border px-5 text-sm font-medium">
+                  {hasWorkerProfile ? "Профіль" : "Створити профіль"}
+                </Link>
+                <Link to={profileLink} className="flex min-h-[44px] items-center justify-center rounded-[var(--radius-pill)] border border-border px-5 text-sm font-medium">
+                  Кабінет виконавця
+                </Link>
+              </>
+            )}
+
+            {isBusiness && (
+              <>
+                <Link to={profileLink} className="flex min-h-[44px] items-center justify-center rounded-[var(--radius-pill)] border border-border px-5 text-sm font-medium">
+                  Кабінет замовника
+                </Link>
+                {companiesCount === 0 ? (
+                  <Link to="/dashboard/companies/create" className="flex min-h-[44px] items-center justify-center rounded-[var(--radius-pill)] border border-border px-5 text-sm font-medium">
+                    Додати компанію
+                  </Link>
+                ) : (
+                  companies.map((company) => (
+                    <Link
+                      key={company.id}
+                      to={`/dashboard/companies/${company.id}`}
+                      className="flex min-h-[44px] items-center justify-center rounded-[var(--radius-pill)] border border-border px-5 text-sm font-medium"
+                    >
+                      {company.name}
+                    </Link>
+                  ))
+                )}
+              </>
+            )}
+
             <LogoutButton onLogout={handleLogout} variant="mobile" />
           </>
         ) : (
@@ -102,13 +222,9 @@ export function HeaderAuth({ onOpenSignIn, onOpenSignUp, mobile = false }: Heade
           </button>
 
           {isMenuOpen && (
-            <div role="menu" className="absolute right-0 top-[calc(100%+0.5rem)] w-48 rounded-[var(--radius-card)] border border-border bg-bg p-1.5 shadow-lg">
-              <Link to="/profile" role="menuitem" className="block rounded-[var(--radius-card)] px-3 py-2.5 text-sm hover:bg-bg-muted">
-                Профіль
-              </Link>
-              <Link to={profileLink} role="menuitem" className="block rounded-[var(--radius-card)] px-3 py-2.5 text-sm hover:bg-bg-muted">
-                Кабінет
-              </Link>
+            <div role="menu" className="absolute right-0 top-[calc(100%+0.5rem)] w-56 rounded-[var(--radius-card)] border border-border bg-bg p-1.5 shadow-lg">
+              {workerLinks}
+              {businessLinks}
               <LogoutButton onLogout={handleLogout} />
             </div>
           )}

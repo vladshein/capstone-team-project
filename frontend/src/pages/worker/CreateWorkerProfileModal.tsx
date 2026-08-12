@@ -1,26 +1,18 @@
 import { useState, type FormEvent } from "react";
 import { X } from "lucide-react";
-
-export interface CreateWorkerProfilePayload {
-  firstName: string;
-  lastName: string;
-  birthDate: string; // ISO "YYYY-MM-DD"
-  phone: string;
-  city: string;
-}
+import type { CreateWorkerProfilePayload } from "../../redux/worker-profile/types";
+export type { CreateWorkerProfilePayload };
 
 interface CreateWorkerProfileModalProps {
   isOpen: boolean;
   isSubmitting: boolean;
+  phone: string;
   onClose: () => void;
   onSubmit: (payload: CreateWorkerProfilePayload) => void;
+  serverError?: string;
 }
 
-// Мінімальний легальний вік для виходу на зміни. Уточнити з бекенд-командою —
-// в Backend_TZ вікове обмеження явно не прописане.
 const MIN_AGE = 18;
-
-const PHONE_REGEX = /^\+380\d{9}$/; // той самий формат, що й у SignUpModal
 
 function calculateAge(isoDate: string): number {
   const birth = new Date(isoDate);
@@ -39,14 +31,16 @@ function calculateAge(isoDate: string): number {
 export function CreateWorkerProfileModal({
   isOpen,
   isSubmitting,
+  phone,
   onClose,
   onSubmit,
+  serverError,
 }: CreateWorkerProfileModalProps) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [birthDate, setBirthDate] = useState("");
-  const [phone, setPhone] = useState("+380");
-  const [city, setCity] = useState("");
+  const [taxNumber, setTaxNumber] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   if (!isOpen) return null;
@@ -54,7 +48,7 @@ export function CreateWorkerProfileModal({
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
 
-    if (!firstName.trim() || !lastName.trim() || !city.trim()) {
+    if (!firstName.trim() || !lastName.trim()) {
       setError("Заповніть, будь ласка, усі поля.");
       return;
     }
@@ -66,8 +60,17 @@ export function CreateWorkerProfileModal({
       setError(`Мінімальний вік для реєстрації — ${MIN_AGE} років.`);
       return;
     }
-    if (!PHONE_REGEX.test(phone.trim())) {
-      setError("Телефон має бути у форматі +380XXXXXXXXX.");
+
+    // validation — Joi: length(10), pattern /^[0-9]+$/, required
+    const TAX_NUMBER_REGEX = /^[0-9]{10}$/;
+
+    // inside handleSubmit, alongside existing checks
+    if (!TAX_NUMBER_REGEX.test(taxNumber.trim())) {
+      setError("ІПН повинен складатися рівно з 10 цифр.");
+      return;
+    }
+    if (avatarUrl.trim() && !/^https?:\/\/.+/.test(avatarUrl.trim())) {
+      setError("Посилання на аватар має бути коректною URL-адресою.");
       return;
     }
 
@@ -76,8 +79,8 @@ export function CreateWorkerProfileModal({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       birthDate,
-      phone: phone.trim(),
-      city: city.trim(),
+      taxNumber: taxNumber.trim(),
+      ...(avatarUrl.trim() ? { avatarUrl: avatarUrl.trim() } : {}),
     });
   };
 
@@ -128,27 +131,44 @@ export function CreateWorkerProfileModal({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-text-muted">Телефон</label>
+            <label className="block text-xs font-medium text-text-muted">ІПН</label>
             <input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              inputMode="tel"
+              value={taxNumber}
+              onChange={(e) => setTaxNumber(e.target.value)}
+              inputMode="numeric"
+              maxLength={10}
               className="mt-1 w-full rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-accent"
-              placeholder="+380XXXXXXXXX"
+              placeholder="1234567890"
+            />
+          </div>
+
+          // TODO змінити на завантаження фото
+          <div>
+            <label className="block text-xs font-medium text-text-muted">
+              Аватар (посилання) <span className="text-text-subtle">— необов'язково</span>
+            </label>
+            <input
+              value={avatarUrl}
+              onChange={(e) => setAvatarUrl(e.target.value)}
+              className="mt-1 w-full rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-accent"
+              placeholder="https://..."
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-text-muted">Місто</label>
+            <label className="block text-xs font-medium text-text-muted">Телефон</label>
             <input
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              className="mt-1 w-full rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-accent"
-              placeholder="Київ"
+              value={phone}
+              disabled
+              className="mt-1 w-full rounded-md border border-border bg-bg-muted px-3 py-2 text-sm text-text-muted"
             />
+            <p className="mt-1 text-xs text-text-subtle">Змінити номер можна в налаштуваннях акаунта.</p>
           </div>
 
           {error && <p className="text-sm text-danger">{error}</p>}
+          {!error && serverError && (
+            <p className="text-sm text-danger">{serverError}</p>
+          )}
 
           <button
             type="submit"

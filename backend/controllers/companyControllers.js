@@ -1,5 +1,19 @@
 import * as companyService from "../services/companyServices.js";
 
+export const getCompanyById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const company = await companyService.getCompanyById(id);
+
+    res.status(200).json({
+      message: "Компанію успішно отримано",
+      data: company,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getMyCompanies = async (req, res, next) => {
   try {
     const ownerId = req.user.id;

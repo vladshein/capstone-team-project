@@ -1,12 +1,13 @@
 import { useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "../../redux/hooks";
 import { selectUserInfo } from "../../redux/auth/selectors";
-import { fetchMyProfile } from "../../redux/profile/actions";
+import { fetchMyProfile } from "../../redux/auth/actions";
 import {
   selectWorkerProfile,
   selectWorkerProfileError,
-  selectWorkerProfileLoading,
-} from "../../redux/profile/selectors";
+  selectWorkerProfileStatus,
+  selectHasWorkerProfile,
+} from "../../redux/worker-profile/selectors";
 import { Loader } from "../../components/ui/Loader";
 import {
   WorkerDashboard,
@@ -38,7 +39,8 @@ export function WorkerDashboardPage() {
   const dispatch = useAppDispatch();
   const user = useAppSelector(selectUserInfo);
   const profile = useAppSelector(selectWorkerProfile);
-  const isLoading = useAppSelector(selectWorkerProfileLoading);
+  const status = useAppSelector(selectWorkerProfileStatus);
+  const isLoading = status === "loading";
   const error = useAppSelector(selectWorkerProfileError);
 
   // TODO: замінити на реальні useAppSelector виклики, наведені вище,
@@ -56,14 +58,14 @@ export function WorkerDashboardPage() {
   }
 
   if (error) {
-    return <p className="p-8 text-center text-sm text-danger">{error}</p>;
+    return <p className="p-8 text-center text-sm text-danger">{error.message}</p>;
   }
 
-  if (!user || !profile) {
+  if (!user) {
     return null;
   }
 
-  const workerData = profile.WorkerProfile;
+  const workerData = profile;
 
   return (
     <WorkerDashboard

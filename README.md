@@ -28,7 +28,7 @@ VITE_API_URL=http://localhost:5000/api
 
 ```
 # SERVER
-PORT=3000
+PORT=5000
 
 # DB
 DATABASE_DIALECT=postgres

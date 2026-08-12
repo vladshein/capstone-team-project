@@ -1,6 +1,7 @@
-import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import { login, logout, refreshUser, register } from "./actions";
-import type { ApiError, AuthState } from "./types";
+import { createSlice } from "@reduxjs/toolkit";
+import { login, logout, refreshUser, register, fetchMyProfile } from "./actions";
+import type { AuthState } from "./types";
+import type { ApiError } from "../types";
 
 const initialState: AuthState = {
   user: null,
@@ -9,6 +10,10 @@ const initialState: AuthState = {
   isRefreshing: false,
   isLoading: false,
   error: null,
+  hasWorkerProfile: null,
+  companiesCount: 0,
+  isProfileLoading: false,
+  profileError: null,
 };
 
 const getErrorMessage = (payload: unknown) =>
@@ -21,6 +26,12 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     clearAuth: () => initialState,
+    incrementCompaniesCount: (state) => {
+      state.companiesCount += 1;
+    },
+    decrementCompaniesCount: (state) => {
+      state.companiesCount = Math.max(0, state.companiesCount - 1);
+    },
   },
   extraReducers: (builder) =>
     builder
@@ -67,8 +78,24 @@ const authSlice = createSlice({
         state.isLoggedIn = true;
         state.isRefreshing = false;
       })
-      .addCase(refreshUser.rejected, () => initialState),
+      .addCase(refreshUser.rejected, () => initialState)
+
+      // --- bootstrap профіль: окремі прапорці, не чіпають isLoading/error логіну ---
+      .addCase(fetchMyProfile.pending, (state) => {
+        state.isProfileLoading = true;
+        state.profileError = null;
+      })
+      .addCase(fetchMyProfile.fulfilled, (state, { payload }) => {
+        state.isProfileLoading = false;
+        state.hasWorkerProfile = payload.hasWorkerProfile ?? null;
+        state.companiesCount = payload.companiesCount ?? 0;
+      })
+      .addCase(fetchMyProfile.rejected, (state, { payload }) => {
+        state.isProfileLoading = false;
+        state.profileError = getErrorMessage(payload);
+      }),
 });
 
-export const { clearAuth } = authSlice.actions;
+export const { clearAuth, incrementCompaniesCount, decrementCompaniesCount } =
+  authSlice.actions;
 export const authReducer = authSlice.reducer;
