@@ -38,7 +38,7 @@ const WorkerProfilePage = lazy(
   () => import("./pages/worker/WorkerProfilePage"),
 );
 const BusinessProfilePage = lazy(
-  () => import("./pages/business/BusinessProfilePage"),
+  () => import("./pages/business/CompanyProfilePage"),
 );
 
 const getApiError = (error: unknown): ApiError => {
