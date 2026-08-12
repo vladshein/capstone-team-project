@@ -160,12 +160,20 @@ export function TasksBoard() {
         
         <div className="flex flex-col gap-4">
 
-          {/* search form */}
-          <div className="h-fit rounded-1 border border-border bg-bg p-4">
-            <div className="mb-3 flex items-center rounded-1 bg-bg-muted px-3 py-2.5 text-sm text-text-muted">
-            1234
-            </div>
-          </div>  
+          <form onSubmit={(e) => e.preventDefault()} className="flex gap-2">
+            <input
+              id="geos"
+              type="text"
+              placeholder="Misto..."
+              className="min-w-0 flex-1 rounded-[var(--radius-card)] border border-border bg-bg px-3 py-2 text-sm outline-none placeholder:text-text-subtle focus:border-accent focus:ring-1 focus:ring-accent"
+            />
+            <button
+              type="submit"
+              className="rounded-[var(--radius-card)] bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90"
+            >
+              Пошук
+            </button>
+          </form>
 
           {/* Filters sidebar */}
           <FilterSidebar
