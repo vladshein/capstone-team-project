@@ -4,14 +4,15 @@ import {
   formatShiftDate,
   formatTimeRange,
 } from "../../sectionsHero/TasksBoard/formatters";
-import Map, { type MapMarkerData } from "./Map";
+import Map, { type MapMarkerData, type CityLocation } from "./Map";
 
 interface DefMapProps {
   shifts: ShiftMapMarker[];
   userLocation?: { latitude: number; longitude: number } | null;
+  selectedCity?: CityLocation | null;
 }
 
-export default function DefMap({ shifts, userLocation }: DefMapProps) {
+export default function DefMap({ shifts, userLocation, selectedCity }: DefMapProps) {
   const markers = useMemo<MapMarkerData[]>(() => {
     const shiftMarkers = shifts.flatMap((shift) => {
         const latitude = Number(shift.Location?.latitude);
@@ -60,11 +61,21 @@ export default function DefMap({ shifts, userLocation }: DefMapProps) {
     return [...markersByLocation.values()];
   }, [shifts]);
 
-  const center: [number, number] = userLocation
-    ? [userLocation.latitude, userLocation.longitude]
-    : markers.length > 0
-      ? [markers[0].lat, markers[0].lng]
-      : [50.4501, 30.5234];
+  const center: [number, number] = selectedCity
+    ? [selectedCity.lat, selectedCity.lng]
+    : userLocation
+      ? [userLocation.latitude, userLocation.longitude]
+      : markers.length > 0
+        ? [markers[0].lat, markers[0].lng]
+        : [50.4501, 30.5234];
 
-  return <Map center={center} zoom={11} markers={markers} userLocation={userLocation} />;
+  return (
+    <Map 
+      center={center} 
+      zoom={11} 
+      markers={markers} 
+      userLocation={userLocation} 
+      selectedCity={selectedCity}
+    />
+  );
 }

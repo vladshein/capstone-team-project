@@ -18,6 +18,8 @@ import {
 
 // maps
 import DefMap from "../../components/map/DefMap";
+import { MapSearchForm } from "../../components/map/search/MapSearchForm";
+import type { CityLocation } from "../../components/map/search/MapCitySearch";
 import { setSelectedCategories } from "../../redux/shift/slice";
 import { Loader } from "../../components/ui/Loader";
 
@@ -238,6 +240,13 @@ export function TasksBoard() {
     }
   };
 
+  // Map
+  const [selectedCityLocation, setSelectedCityLocation] = useState<CityLocation | null>(null);
+  const handleCitySearch = (location: CityLocation) => {
+    setSelectedCityLocation(location); // (lat, lng, bbox) for map 
+    saveManualCity(location.name); // refresh city for API
+  };
+
   return (
     <section
       id="zavdannia"
@@ -253,31 +262,42 @@ export function TasksBoard() {
       >
         {isMapView ? "Показати списком" : "Показати на мапі"}
       </button>
+   
+      
       <div className="mt-8 grid gap-6 sm:mt-10 lg:grid-cols-[280px_1fr] lg:gap-8">
-        <FilterSidebar
-          coordinates={coordinates}
-          isLocating={isLocating}
-          locationError={locationError}
-          onRequestLocation={requestLocation}
-          approximateLocation={approximateLocation}
-          preciseCity={preciseCity}
-          manualCity={manualCity}
-          onSaveManualCity={saveManualCity}
-          isLoadingApproximateLocation={isLoadingApproximateLocation}
-          selectedDate={selectedDate}
-          onSelectDate={setSelectedDate}
-          calendarPeriod={calendarPeriod}
-          onCalendarPeriodChange={setCalendarPeriod}
-          partnerOptions={
-            isMapView
-              ? mapPartnerOptions
-              : partnerOptions.length > 0
-                ? partnerOptions
-                : fallbackPartnerOptions
-          }
-          categories={categories}
-        />
+        
+        <div className="flex flex-col gap-6">
+        
+          {/* city quick search */}
+          <div className={isMapView ? "" : "hidden"}>
+            <MapSearchForm onSearch={handleCitySearch} />
+          </div>
 
+          <FilterSidebar
+            coordinates={coordinates}
+            isLocating={isLocating}
+            locationError={locationError}
+            onRequestLocation={requestLocation}
+            approximateLocation={approximateLocation}
+            preciseCity={preciseCity}
+            manualCity={manualCity}
+            onSaveManualCity={saveManualCity}
+            isLoadingApproximateLocation={isLoadingApproximateLocation}
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+            calendarPeriod={calendarPeriod}
+            onCalendarPeriodChange={setCalendarPeriod}
+            partnerOptions={
+              isMapView
+                ? mapPartnerOptions
+                : partnerOptions.length > 0
+                  ? partnerOptions
+                  : fallbackPartnerOptions
+            }
+            categories={categories}
+          />
+        </div>
+        
         <div className={isMapView ? "min-w-0" : "hidden"}>
           {!hasMapSearchArea ? (
             <p className="rounded-[var(--radius-card)] border border-border bg-bg-muted px-4 py-3 text-sm text-text-muted">
@@ -294,9 +314,11 @@ export function TasksBoard() {
                   На карті показано перші 1 000 змін. Звузьте період або фільтри, щоб побачити решту.
                 </p>
               )}
+  
               <DefMap
                 shifts={mapMarkers}
                 userLocation={coordinates ?? approximateCoordinates}
+                selectedCity={selectedCityLocation} 
               />
             </>
           )}
@@ -379,6 +401,7 @@ export function TasksBoard() {
             </nav>
           )}
         </div>
+       
       </div>
     </section>
   );

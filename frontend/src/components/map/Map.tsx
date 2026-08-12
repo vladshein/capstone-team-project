@@ -2,6 +2,13 @@ import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
+export interface CityLocation {
+  name: string;
+  lat: number;
+  lng: number;
+  bbox?: [[number, number], [number, number]];
+}
+
 export interface MapMarkerData {
   id: string | number;
   lat: number;
@@ -19,6 +26,7 @@ interface MapProps {
   zoom: number;
   markers: MapMarkerData[];
   userLocation?: { latitude: number; longitude: number } | null;
+  selectedCity?: CityLocation | null; 
 }
 
 const escapeHtml = (value: string) =>
@@ -30,7 +38,7 @@ const escapeHtml = (value: string) =>
     '"': "&quot;",
   })[character] ?? character);
 
-export default function Map({ center, zoom, markers, userLocation }: MapProps) {
+export default function Map({ center, zoom, markers, userLocation, selectedCity }: MapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const layerGroupRef = useRef<L.LayerGroup | null>(null);
@@ -39,9 +47,9 @@ export default function Map({ center, zoom, markers, userLocation }: MapProps) {
   // Effect 1: Initialize the base map with Canvas Renderer enabled
   useEffect(() => {
     if (mapContainerRef.current && !mapInstanceRef.current) {
-      // CRITICAL: We enable L.canvas() to offload all marker renderings to GPU sheets
       mapInstanceRef.current = L.map(mapContainerRef.current, {
-        renderer: L.canvas()
+        renderer: L.canvas(),
+        scrollWheelZoom: false,
       }).setView(center, zoom);
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -63,7 +71,25 @@ export default function Map({ center, zoom, markers, userLocation }: MapProps) {
     mapInstanceRef.current?.setView(center, zoom);
   }, [center, zoom]);
 
-  // Effect 2: Ultra-fast Canvas rendering loop for thousands of markers
+  // fly on
+  useEffect(() => {
+    if (!mapInstanceRef.current || !selectedCity) return;
+
+    if (selectedCity.bbox) {
+      mapInstanceRef.current.fitBounds(selectedCity.bbox, {
+        padding: [36, 36],
+        maxZoom: 13,
+        animate: true,
+        duration: 1.5,
+      });
+    } else {
+      mapInstanceRef.current.flyTo([selectedCity.lat, selectedCity.lng], 12, {
+        duration: 1.5,
+      });
+    }
+  }, [selectedCity]);
+
+  // Ultra-fast Canvas rendering loop for thousands of markers
   useEffect(() => {
     if (!mapInstanceRef.current || !layerGroupRef.current) return;
 
@@ -95,6 +121,8 @@ export default function Map({ center, zoom, markers, userLocation }: MapProps) {
       const point: L.LatLngExpression = [item.lat, item.lng];
       points.push(point);
       const shiftsAtLocation = item.shifts ?? [item];
+
+      {/* fixme: wtf? */}
       const popupHtml = shiftsAtLocation.length > 1
         ? `
           <div style="width: 230px; max-height: 260px; overflow-y: auto; padding: 2px; font-family: Inter, Arial, sans-serif;">
@@ -122,14 +150,13 @@ export default function Map({ center, zoom, markers, userLocation }: MapProps) {
         </div>
       `;
 
-      // Use circleMarker for extreme high performance on canvas pipelines
       L.circleMarker(point, {
         radius: shiftsAtLocation.length > 1 ? 10 : 8,
-        fillColor: '#10b981',   // Emerald green fill (matches your tailwind setups)
-        color: '#ffffff',       // Pure white outer border line
-        weight: 2,              // Thickness of border
-        opacity: 1,             // Border transparency 
-        fillOpacity: 0.85       // Marker inside transparency
+        fillColor: '#10b981',
+        color: '#ffffff',
+        weight: 2,
+        opacity: 1,
+        fillOpacity: 0.85
       })
       .bindPopup(popupHtml, { maxWidth: 250 })
       .addTo(layerGroupRef.current!);
