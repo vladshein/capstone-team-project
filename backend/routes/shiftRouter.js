@@ -17,6 +17,12 @@ const shiftRouter = express.Router();
 shiftRouter.get("/", shiftController.getAllShifts);
 
 /**
+ * @route GET /api/shifts/map
+ * @desc Мінімальні дані для маркерів карти без пагінації списку.
+ */
+shiftRouter.get("/map", shiftController.getShiftMapMarkers);
+
+/**
  * @route GET /api/shifts/worker/my-jobs
  * @desc Отримати історію взятих робіт робітником (актуальні та завершені).
  * Важливо: має стояти ПЕРЕД /:id, щоб 'worker' не сприйнялось як параметр ID
