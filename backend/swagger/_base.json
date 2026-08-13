@@ -1,0 +1,14 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Backend API",
+    "version": "1.0.0",
+    "description": "API documentation built with pure JSDoc JSON blocks."
+  },
+  "servers": [
+    {
+      "url": "http://0.0.0.0:5000",
+      "description": "Development Server"
+    }
+  ]
+}
