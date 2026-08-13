@@ -81,7 +81,17 @@ export function BusinessDashboardPage() {
     return <Navigate to="/profile" replace />;
   }
 
-  return <BusinessDashboard companies={companies} />;
+  const company = companies[0];
+
+  return (
+    <BusinessDashboard
+      companyProfile={{
+        name: company.name,
+        edrpou: company.edrpou,
+        legalAddress: company.legalAddress ?? "",
+      }}
+    />
+  );
 }
 
 export default BusinessDashboardPage;

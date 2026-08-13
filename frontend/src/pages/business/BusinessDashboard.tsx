@@ -1,10 +1,8 @@
 import { useState } from "react";
 import { Plus, Users, Briefcase, Archive } from "lucide-react";
 import { Link } from "react-router-dom";
-import type { AuthUser } from "../../redux/auth/types";
 
 interface BusinessDashboardProps {
-  user: AuthUser;
   companyProfile: {
     name: string;
     edrpou: string;
