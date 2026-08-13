@@ -34,6 +34,8 @@ export interface ShiftJobPosition {
 
 export interface Shift {
   id: number;
+  categoryId?: number;
+  positionId?: number;
   startTime: string;
   endTime: string;
   // Sequelize може серіалізувати DECIMAL як рядок, тому API допускає обидва формати.
@@ -202,6 +204,20 @@ export async function createShift(
 ): Promise<Shift> {
   const { data } = await api.post<{ data: Shift }>("/shifts", payload);
   return data.data;
+}
+
+/** Оновлює відкриту зміну її власником. */
+export async function updateShift(
+  shiftId: number,
+  payload: CreateShiftPayload,
+): Promise<Shift> {
+  const { data } = await api.patch<{ data: Shift }>(`/shifts/${shiftId}`, payload);
+  return data.data;
+}
+
+/** Скасовує зміну її власником. */
+export async function cancelBusinessShift(shiftId: number): Promise<void> {
+  await api.patch(`/shifts/${shiftId}/cancel`);
 }
 
 /** Відгукнутися на відкриту зміну. */

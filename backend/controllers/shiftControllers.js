@@ -229,6 +229,11 @@ export const applyToShift = async (req, res, next) => {
       error.status = 400;
       throw error;
     }
+    if (new Date(shift.startTime) <= new Date()) {
+      const error = new Error("Не можна редагувати зміну після її початку.");
+      error.status = 400;
+      throw error;
+    }
 
     if (new Date(shift.startTime) <= new Date()) {
       const error = new Error("Відгукнутися можна лише до початку зміни.");
@@ -364,6 +369,11 @@ export const cancelShift = async (req, res, next) => {
       const error = new Error(
         "Цю зміну не можна скасувати, вона вже завершена або скасована раніше.",
       );
+      error.status = 400;
+      throw error;
+    }
+    if (new Date(shift.startTime) <= new Date()) {
+      const error = new Error("Не можна скасувати зміну після її початку.");
       error.status = 400;
       throw error;
     }

@@ -319,13 +319,22 @@ export const getBusinessShifts = async ({ companyId, ownerId, scope }) => {
     throw error;
   }
 
-  const statuses =
+  const now = new Date();
+  const shiftWhere =
     scope === "archive"
-      ? ["completed", "cancelled"]
-      : ["open", "booked", "in_progress"];
+      ? {
+          [Op.or]: [
+            { status: { [Op.in]: ["completed", "cancelled"] } },
+            { endTime: { [Op.lt]: now } },
+          ],
+        }
+      : {
+          status: { [Op.in]: ["open", "booked", "in_progress"] },
+          endTime: { [Op.gte]: now },
+        };
 
   return Shift.findAll({
-    where: { status: { [Op.in]: statuses } },
+    where: shiftWhere,
     include: [
       { model: JobPosition, attributes: ["id", "title"] },
       { model: Category, attributes: ["id", "name"] },
@@ -398,7 +407,20 @@ export const updateShift = async (shiftId, updateData) => {
 export const cancelShift = async (shiftId) => {
   const shift = await Shift.findByPk(shiftId);
   if (!shift) return null;
-  return await shift.update({ status: "cancelled" });
+  await Shift.sequelize.transaction(async (transaction) => {
+    await shift.update({ status: "cancelled" }, { transaction });
+    await ShiftApplication.update(
+      { status: "rejected" },
+      {
+        where: {
+          shiftId,
+          status: { [Op.in]: ["pending", "approved"] },
+        },
+        transaction,
+      },
+    );
+  });
+  return shift;
 };
 
 export const findShiftApplication = async (shiftId, workerId) => {

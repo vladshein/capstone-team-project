@@ -35,6 +35,12 @@ const FavoriteShiftsTab = lazy(
 const BusinessDashboardPage = lazy(
   () => import("./pages/business/BusinessDashboardPage"),
 );
+const BusinessShiftsTab = lazy(
+  () => import("./pages/business/BusinessShiftsTab").then((module) => ({ default: module.BusinessShiftsTab })),
+);
+const BusinessApplicationsTab = lazy(
+  () => import("./pages/business/BusinessApplicationsTab").then((module) => ({ default: module.BusinessApplicationsTab })),
+);
 const WorkerProfilePage = lazy(
   () => import("./pages/worker/WorkerProfilePage"),
 );
@@ -133,6 +139,14 @@ export default function App() {
     return <WorkerDashboardPage />;
   };
 
+  const renderBusinessDashboard = () => {
+    if (!isAuthenticated) return <Navigate to="/" replace />;
+    if (getDashboardPath(user?.role) !== "/dashboard") {
+      return <Navigate to={getDashboardPath(user?.role)} replace />;
+    }
+    return <BusinessDashboardPage />;
+  };
+
   if (!isAuthInitialized || isRefreshing || isReduxLoading) {
     return <Loader fullScreen />;
   }
@@ -184,18 +198,12 @@ export default function App() {
               <Route path="favorites" element={<FavoriteShiftsTab />} />
             </Route>
 
-            <Route
-              path="/dashboard"
-              element={
-                !isAuthenticated ? (
-                  <Navigate to="/" replace />
-                ) : getDashboardPath(user?.role) !== "/dashboard" ? (
-                  <Navigate to={getDashboardPath(user?.role)} replace />
-                ) : (
-                  <BusinessDashboardPage />
-                )
-              }
-            />
+            <Route path="/dashboard" element={renderBusinessDashboard()}>
+              <Route index element={<Navigate to="shifts" replace />} />
+              <Route path="shifts" element={<BusinessShiftsTab scope="active" />} />
+              <Route path="applications" element={<BusinessApplicationsTab />} />
+              <Route path="archive" element={<BusinessShiftsTab scope="archive" />} />
+            </Route>
 
             <Route path="*" element={<NotFoundPage />} />
           </Routes>

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { MapPin, Plus } from "lucide-react";
 import { getCategories, type Category } from "../../api/categories";
 import { getJobPositions, type JobPositionOption } from "../../api/positions";
-import type { CreateShiftPayload } from "../../api/shifts";
+import type { BusinessShift, CreateShiftPayload } from "../../api/shifts";
 import { Modal } from "../../components/ui/Modal";
 import { companiesProfileService } from "../../services/companiesProfileService";
 import type { Location } from "../../redux/companies-profile/types";
@@ -17,6 +17,7 @@ interface CreateShiftModalProps {
   onClose: () => void;
   onSubmit: (payload: CreateShiftPayload) => Promise<void>;
   onLocationCreated: () => Promise<void>;
+  initialShift?: BusinessShift | null;
 }
 
 const inputClass =
@@ -57,6 +58,7 @@ export function CreateShiftModal({
   onClose,
   onSubmit,
   onLocationCreated,
+  initialShift = null,
 }: CreateShiftModalProps) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [positions, setPositions] = useState<JobPositionOption[]>([]);
@@ -85,9 +87,26 @@ export function CreateShiftModal({
     if (!isOpen) return;
 
     setFormError(null);
-    setIsNewLocation(locations.length === 0);
-    if (locations.length > 0) {
-      setLocationId((currentLocationId) => currentLocationId || String(locations[0].id));
+    if (initialShift) {
+      const start = new Date(initialShift.startTime);
+      const end = new Date(initialShift.endTime);
+      const initialCategoryId =
+        initialShift.Category?.id ?? initialShift.category?.id ?? initialShift.categoryId;
+      setIsNewLocation(false);
+      setLocationId(String(initialShift.Location.id));
+      setCategoryId(initialCategoryId ? String(initialCategoryId) : "");
+      setPositionId(String(initialShift.JobPosition?.id ?? initialShift.positionId ?? ""));
+      setDate(start.toISOString().slice(0, 10));
+      setStartTime(start.toISOString().slice(11, 16));
+      setEndTime(end.toISOString().slice(11, 16));
+      setHourlyRate(String(initialShift.hourlyRate));
+      setBonusRate(String(initialShift.bonusRate));
+      setDescription(initialShift.description ?? "");
+    } else {
+      setIsNewLocation(locations.length === 0);
+      if (locations.length > 0) {
+        setLocationId((currentLocationId) => currentLocationId || String(locations[0].id));
+      }
     }
 
     let cancelled = false;
@@ -109,7 +128,7 @@ export function CreateShiftModal({
     return () => {
       cancelled = true;
     };
-  }, [isOpen, locations]);
+  }, [initialShift, isOpen, locations]);
 
   const availablePositions = useMemo(() => {
     const categoryPositions = positionTitlesByCategory[Number(categoryId)] ?? [];
@@ -216,7 +235,7 @@ export function CreateShiftModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Створити зміну">
+    <Modal isOpen={isOpen} onClose={onClose} title={initialShift ? "Редагувати зміну" : "Створити зміну"}>
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="text-sm font-medium">
@@ -245,7 +264,7 @@ export function CreateShiftModal({
 
         <fieldset className="rounded-[var(--radius-card)] border border-border p-4">
           <legend className="px-1 text-sm font-medium">Робоча локація</legend>
-          {locations.length > 0 && (
+          {locations.length > 0 && !initialShift && (
             <label className="flex cursor-pointer items-center gap-2 text-sm text-text-muted">
               <input type="checkbox" checked={isNewLocation} onChange={(event) => setIsNewLocation(event.target.checked)} className="accent-accent" />
               <Plus className="h-4 w-4" />
@@ -296,7 +315,7 @@ export function CreateShiftModal({
         {(formError || serverError) && <p className="text-sm text-danger">{formError || serverError}</p>}
         <button type="submit" disabled={!canSubmit} className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--radius-pill)] bg-accent px-5 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60">
           <MapPin className="h-4 w-4" />
-          {isSubmitting || isCreatingLocation ? "Зберігаємо…" : "Опублікувати зміну"}
+          {isSubmitting || isCreatingLocation ? "Зберігаємо…" : initialShift ? "Зберегти зміни" : "Опублікувати зміну"}
         </button>
       </form>
     </Modal>
