@@ -30,10 +30,11 @@ function BusinessDashboardPage() {
         </div>
         <Link
           to="/profile"
+          state={companies.length > 0 ? { openCreate: true } : undefined}
           className="flex items-center gap-2 rounded-[var(--radius-pill)] bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-hover transition-colors"
         >
           <Plus className="h-4 w-4" />
-          Створити профіль компанії
+          {companies.length > 0 ? "Додати компанію" : "Створити профіль компанії"}
         </Link>
       </div>
 

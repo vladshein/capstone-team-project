@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { X } from "lucide-react";
+import { Modal } from "../../components/ui/Modal";
 
 export interface CreateCompanyPayload {
   name: string;
@@ -12,7 +12,7 @@ interface CreateCompanyModalProps {
   isSubmitting: boolean;
   mode?: "create" | "edit";
   initialValues?: CreateCompanyPayload;
-  serverError?: string;
+  serverError?: string | null;
   onClose: () => void;
   onSubmit: (payload: CreateCompanyPayload) => void;
 }
@@ -46,36 +46,33 @@ export function CreateCompanyModal({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: FormEvent) => {
-  e.preventDefault();
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
 
-  if (!name.trim()) {
-    setError("Вкажіть назву компанії.");
-    return;
-  }
-  if (!EDRPOU_REGEX.test(edrpou.trim())) {
-    setError("ЄДРПОУ повинен складатися рівно з 8 цифр.");
-    return;
-  }
-  // legalAddress більше не обов'язкове — перевірку прибираємо
+    if (name.trim().length < 3) {
+      setError("Назва компанії має містити щонайменше 3 символи.");
+      return;
+    }
+    if (!EDRPOU_REGEX.test(edrpou.trim())) {
+      setError("ЄДРПОУ повинен складатися рівно з 8 цифр.");
+      return;
+    }
 
-  setError(null);
-  onSubmit({ name: name.trim(), edrpou: edrpou.trim(), legalAddress: legalAddress.trim() });
-};
+    setError(null);
+    onSubmit({
+      name: name.trim(),
+      edrpou: edrpou.trim(),
+      legalAddress: legalAddress.trim(),
+    });
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-4">
-      <div className="w-full max-w-md rounded-[var(--radius-card)] bg-bg p-6 shadow-lg">
-        <div className="flex items-center justify-between">
-          <h2 className="font-heading text-lg font-semibold">
-            {mode === "edit" ? "Редагування компанії" : "Дані компанії"}
-          </h2>
-          <button onClick={onClose} className="text-text-subtle hover:text-text">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={mode === "edit" ? "Редагування компанії" : "Дані компанії"}
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-text-muted">Назва компанії</label>
             <input
@@ -118,8 +115,7 @@ export function CreateCompanyModal({
           >
             {isSubmitting ? "Збереження..." : mode === "edit" ? "Зберегти зміни" : "Створити компанію"}
           </button>
-        </form>
-      </div>
-    </div>
+      </form>
+    </Modal>
   );
 }

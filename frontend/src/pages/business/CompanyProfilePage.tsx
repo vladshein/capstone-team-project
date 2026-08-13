@@ -1,12 +1,16 @@
 import { useEffect, useState } from "react";
 import { Building2, ArrowLeft } from "lucide-react";
+import { useLocation } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../redux/hooks";
 import { fetchMyCompanies, createCompany, updateCompany } from "../../redux/companies-profile/actions";
 import {
   selectCompanies,
   selectCompaniesStatus,
   selectCompaniesError,
+  selectCompanyMutationError,
 } from "../../redux/companies-profile/selectors";
+import { clearCompanyMutationError } from "../../redux/companies-profile/slice";
+import { incrementCompaniesCount } from "../../redux/auth/slice";
 import { CreateCompanyModal, type CreateCompanyPayload } from "./CreateCompanyModal";
 import { Loader } from "../../components/ui/Loader";
 
@@ -23,14 +27,20 @@ function ProfileField({ label, value }: { label: string; value?: string }) {
 
 export function BusinessProfilePage() {
   const dispatch = useAppDispatch();
+  const location = useLocation();
   const companies = useAppSelector(selectCompanies);
   const status = useAppSelector(selectCompaniesStatus);
   const error = useAppSelector(selectCompaniesError);
+  const mutationError = useAppSelector(selectCompanyMutationError);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+
+  const navigationState = location.state as
+    | { companyId?: number; openCreate?: boolean }
+    | null;
 
   useEffect(() => {
     if (status === "idle") {
@@ -38,16 +48,35 @@ export function BusinessProfilePage() {
     }
   }, [status, dispatch]);
 
+  // Посилання з кабінету та меню одразу відкривають обрану компанію.
+  useEffect(() => {
+    const companyId = navigationState?.companyId;
+    if (companyId && companies.some((company) => company.id === companyId)) {
+      setSelectedId(companyId);
+    }
+  }, [companies, navigationState?.companyId]);
+
+  // Посилання «Додати компанію» відкриває форму одразу, а не лишає користувача
+  // на сторінці вже створеного профілю.
+  useEffect(() => {
+    if (!navigationState?.openCreate) return;
+    dispatch(clearCompanyMutationError());
+    setModalMode("create");
+    setIsModalOpen(true);
+  }, [dispatch, navigationState?.openCreate]);
+
   // компанія, що показана в профілі зараз: для 1 — єдина, для >1 — обрана
   const activeCompany =
     companies.length === 1 ? companies[0] : companies.find((c) => c.id === selectedId);
 
   const openCreateModal = () => {
+    dispatch(clearCompanyMutationError());
     setModalMode("create");
     setIsModalOpen(true);
   };
 
   const openEditModal = () => {
+    dispatch(clearCompanyMutationError());
     setModalMode("edit");
     setIsModalOpen(true);
   };
@@ -56,27 +85,54 @@ export function BusinessProfilePage() {
     setIsSubmitting(true);
     try {
       const created = await dispatch(createCompany(payload)).unwrap();
+      // Header використовує bootstrap-лічильник, тому синхронізуємо його
+      // одразу після успішного створення, не чекаючи повторної авторизації.
+      dispatch(incrementCompaniesCount());
       setSelectedId(created.id);
       setIsModalOpen(false);
     } catch {
-      // помилка (напр. дублікат ЄДРПОУ, 409) вже потрапить у selectCompaniesError
+      // Помилка (наприклад, дубльований ЄДРПОУ) відобразиться в модалці.
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleUpdateCompany = async (payload: CreateCompanyPayload) => {
-  if (!activeCompany) return;
-  setIsSubmitting(true);
-  try {
-    await dispatch(updateCompany({ id: activeCompany.id, payload })).unwrap();
-    setIsModalOpen(false);
-  } catch {
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+    if (!activeCompany) return;
+
+    setIsSubmitting(true);
+    try {
+      await dispatch(updateCompany({ id: activeCompany.id, payload })).unwrap();
+      setIsModalOpen(false);
+    } catch {
+      // Помилка вже збережена в Redux і відображається під час наступного рендеру.
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
   const handleModalSubmit = modalMode === "create" ? handleCreateCompany : handleUpdateCompany;
+
+  // Один екземпляр модалки для всіх станів сторінки — так не розходяться
+  // пропси, валідація й відображення серверної помилки.
+  const companyModal = (
+    <CreateCompanyModal
+      isOpen={isModalOpen}
+      isSubmitting={isSubmitting}
+      mode={modalMode}
+      initialValues={
+        modalMode === "edit" && activeCompany
+          ? {
+              name: activeCompany.name,
+              edrpou: activeCompany.edrpou,
+              legalAddress: activeCompany.legalAddress,
+            }
+          : undefined
+      }
+      serverError={mutationError?.message}
+      onClose={() => setIsModalOpen(false)}
+      onSubmit={handleModalSubmit}
+    />
+  );
 
   if (status === "loading" || status === "idle") {
     return <Loader label="Завантажуємо профіль компанії…" size="lg" fullScreen />;
@@ -116,13 +172,7 @@ export function BusinessProfilePage() {
           </div>
         </div>
 
-        <CreateCompanyModal
-          isOpen={isModalOpen}
-          isSubmitting={isSubmitting}
-          mode={modalMode}
-          onClose={() => setIsModalOpen(false)}
-          onSubmit={handleModalSubmit}
-        />
+        {companyModal}
       </div>
     );
   }
@@ -155,13 +205,7 @@ export function BusinessProfilePage() {
           </button>
         </div>
 
-        <CreateCompanyModal
-          isOpen={isModalOpen}
-          isSubmitting={isSubmitting}
-          mode={modalMode}
-          onClose={() => setIsModalOpen(false)}
-          onSubmit={handleModalSubmit}
-        />
+        {companyModal}
       </div>
     );
   }
@@ -185,14 +229,24 @@ export function BusinessProfilePage() {
           </h1>
           <p className="mt-1 text-sm text-text-muted">Дані вашої компанії</p>
         </div>
-        <button
-          type="button"
-          onClick={openEditModal}
-          className="flex items-center gap-2 rounded-[var(--radius-pill)] bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-hover transition-colors"
-        >
-          <Building2 className="h-4 w-4" />
-          Редагувати компанію
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={openCreateModal}
+            className="flex items-center gap-2 rounded-[var(--radius-pill)] border border-border px-5 py-2.5 text-sm font-medium hover:border-accent transition-colors"
+          >
+            <Building2 className="h-4 w-4" />
+            Додати компанію
+          </button>
+          <button
+            type="button"
+            onClick={openEditModal}
+            className="flex items-center gap-2 rounded-[var(--radius-pill)] bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-hover transition-colors"
+          >
+            <Building2 className="h-4 w-4" />
+            Редагувати компанію
+          </button>
+        </div>
       </div>
 
       <div className="rounded-[var(--radius-card)] border border-border bg-bg p-6 shadow-sm">
@@ -205,22 +259,7 @@ export function BusinessProfilePage() {
         </div>
       </div>
 
-      <CreateCompanyModal
-        isOpen={isModalOpen}
-        isSubmitting={isSubmitting}
-        mode={modalMode}
-        initialValues={
-          modalMode === "edit" && activeCompany
-            ? {
-                name: activeCompany.name,
-                edrpou: activeCompany.edrpou,
-                legalAddress: activeCompany.legalAddress,
-              }
-            : undefined
-        }
-        onClose={() => setIsModalOpen(false)}
-        onSubmit={handleModalSubmit}
-      />
+      {companyModal}
     </div>
   );
 }
