@@ -41,6 +41,14 @@ shiftRouter.get(
   shiftController.getBusinessShifts,
 );
 
+/** @route GET /api/shifts/business/applications?companyId=:id */
+shiftRouter.get(
+  "/business/applications",
+  authenticate,
+  checkRole("business_client", "admin"),
+  shiftController.getBusinessShiftApplications,
+);
+
 /** @route DELETE /api/shifts/applications/:applicationId */
 shiftRouter.delete(
   "/applications/:applicationId",

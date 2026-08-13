@@ -6,6 +6,8 @@ import {
   JobPosition,
   Category,
   ShiftApplication,
+  User,
+  WorkerProfile,
 } from "../db/models/index.js";
 
 const MAP_MARKERS_LIMIT = 1000;
@@ -323,16 +325,61 @@ export const getBusinessShifts = async ({ companyId, ownerId, scope }) => {
       : ["open", "booked", "in_progress"];
 
   return Shift.findAll({
-    where: { companyId: company.id, status: { [Op.in]: statuses } },
+    where: { status: { [Op.in]: statuses } },
     include: [
       { model: JobPosition, attributes: ["id", "title"] },
       { model: Category, attributes: ["id", "name"] },
       {
         model: Location,
         attributes: ["id", "title", "city", "address"],
+        where: { companyId: company.id },
+        required: true,
       },
     ],
     order: [["startTime", scope === "archive" ? "DESC" : "ASC"]],
+  });
+};
+
+/** Повертає активні заявки на зміни конкретної компанії лише її власнику. */
+export const getBusinessShiftApplications = async ({ companyId, ownerId }) => {
+  const company = await Company.findOne({ where: { id: companyId, ownerId } });
+
+  if (!company) {
+    const error = new Error("У вас немає доступу до заявок цієї компанії");
+    error.status = 403;
+    throw error;
+  }
+
+  return ShiftApplication.findAll({
+    where: { status: { [Op.in]: ["pending", "approved"] } },
+    include: [
+      {
+        model: Shift,
+        attributes: ["id", "startTime", "endTime", "status"],
+        required: true,
+        include: [
+          { model: JobPosition, attributes: ["id", "title"] },
+          {
+            model: Location,
+            attributes: ["id", "title", "city", "address"],
+            where: { companyId: company.id },
+            required: true,
+          },
+        ],
+      },
+      {
+        model: User,
+        attributes: ["id", "phone", "avatar"],
+        include: [
+          {
+            model: WorkerProfile,
+            attributes: ["firstName", "lastName", "rating", "avatarUrl"],
+          },
+        ],
+      },
+    ],
+    order: [["appliedAt", "DESC"]],
+    limit: 50,
   });
 };
 

@@ -6,6 +6,7 @@ import type { CreateShiftPayload } from "../../api/shifts";
 import { Modal } from "../../components/ui/Modal";
 import { companiesProfileService } from "../../services/companiesProfileService";
 import type { Location } from "../../redux/companies-profile/types";
+import { AddressSearch, type AddressLocation } from "../../components/map/search/AddressSearch";
 
 interface CreateShiftModalProps {
   isOpen: boolean;
@@ -22,6 +23,30 @@ const inputClass =
   "mt-1 min-h-[44px] w-full rounded-[var(--radius-card)] border border-border bg-bg px-3 text-sm outline-none transition-colors focus:border-accent";
 
 const today = () => new Date().toISOString().slice(0, 10);
+
+// У поточній БД тестові посади дублюються для різних міст у форматі
+// «Посада (Київ)». Для форми показуємо одну читабельну назву без міста.
+const getPositionTitle = (title: string) => title.replace(/\s*\([^)]*\)\s*$/, "").trim();
+
+// Тимчасове зіставлення, доки JobPosition не має власного categoryId.
+// Після додавання зв'язку фільтрація має переїхати на бекенд.
+const positionTitlesByCategory: Record<number, string[]> = {
+  1: ["Продавець-консультант", "Касир торговельного залу", "Касир"],
+  2: ["Офіціант", "Кухар-помічник", "Бариста"],
+  3: ["Комплектувальник", "Вантажник"],
+  4: ["Кур'єр", "Водій-кур'єр"],
+  5: ["Прибиральник", "Працівник клінінгу"],
+  6: ["Пакувальник", "Оператор виробництва"],
+  7: ["Промоутер", "Хостес"],
+  8: ["Підсобний робітник", "Монтажник"],
+  9: ["Охоронець", "Контролер залу"],
+  10: ["Працівник теплиці", "Збирач урожаю"],
+  11: ["Оператор кол-центру", "Оператор підтримки", "Адміністратор"],
+  12: ["Помічник по дому", "Няня"],
+  13: ["Помічник майстра", "Адміністратор салону"],
+  14: ["Водій-експедитор", "Працівник автомийки"],
+  15: ["Доглядальник за тваринами", "Помічник грумера"],
+};
 
 export function CreateShiftModal({
   isOpen,
@@ -51,6 +76,10 @@ export function CreateShiftModal({
   const [locationTitle, setLocationTitle] = useState("");
   const [locationCity, setLocationCity] = useState("");
   const [locationAddress, setLocationAddress] = useState("");
+  const [locationCoordinates, setLocationCoordinates] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -82,13 +111,29 @@ export function CreateShiftModal({
     };
   }, [isOpen, locations]);
 
+  const availablePositions = useMemo(() => {
+    const categoryPositions = positionTitlesByCategory[Number(categoryId)] ?? [];
+    const uniquePositions = new Map<string, JobPositionOption>();
+
+    positions.forEach((position) => {
+      const title = getPositionTitle(position.title);
+      if (!uniquePositions.has(title)) {
+        uniquePositions.set(title, { ...position, title });
+      }
+    });
+
+    return [...uniquePositions.values()].filter((position) =>
+      categoryId ? categoryPositions.includes(position.title) : true,
+    );
+  }, [categoryId, positions]);
+
   const canSubmit = useMemo(
     () =>
       !isSubmitting &&
       !isCreatingLocation &&
       !isLoadingOptions &&
       Boolean(categoryId && positionId && hourlyRate) &&
-      (isNewLocation || Boolean(locationId)),
+      (isNewLocation ? Boolean(locationCoordinates) : Boolean(locationId)),
     [
       categoryId,
       hourlyRate,
@@ -97,6 +142,7 @@ export function CreateShiftModal({
       isNewLocation,
       isSubmitting,
       locationId,
+      locationCoordinates,
       positionId,
     ],
   );
@@ -127,11 +173,17 @@ export function CreateShiftModal({
           setFormError("Заповніть назву, місто й адресу робочої локації.");
           return;
         }
+        if (!locationCoordinates) {
+          setFormError("Оберіть адресу з підказок, щоб зберегти точку на карті.");
+          return;
+        }
         setIsCreatingLocation(true);
         const { data } = await companiesProfileService.createCompanyLocation(companyId, {
           title: locationTitle.trim(),
           city: locationCity.trim(),
           address: locationAddress.trim(),
+          latitude: locationCoordinates.latitude,
+          longitude: locationCoordinates.longitude,
         });
         selectedLocationId = data.data.id;
         await onLocationCreated();
@@ -154,22 +206,39 @@ export function CreateShiftModal({
     }
   };
 
+  const handleAddressSelect = (location: AddressLocation) => {
+    setLocationCity(location.city);
+    setLocationAddress(location.address);
+    setLocationCoordinates({
+      latitude: location.latitude,
+      longitude: location.longitude,
+    });
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Створити зміну">
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="text-sm font-medium">
             Категорія
-            <select value={categoryId} onChange={(event) => setCategoryId(event.target.value)} className={inputClass} disabled={isLoadingOptions}>
+            <select
+              value={categoryId}
+              onChange={(event) => {
+                setCategoryId(event.target.value);
+                setPositionId("");
+              }}
+              className={inputClass}
+              disabled={isLoadingOptions}
+            >
               <option value="">Оберіть категорію</option>
               {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
             </select>
           </label>
           <label className="text-sm font-medium">
             Посада
-            <select value={positionId} onChange={(event) => setPositionId(event.target.value)} className={inputClass} disabled={isLoadingOptions}>
-              <option value="">Оберіть посаду</option>
-              {positions.map((position) => <option key={position.id} value={position.id}>{position.title}</option>)}
+            <select value={positionId} onChange={(event) => setPositionId(event.target.value)} className={inputClass} disabled={isLoadingOptions || !categoryId}>
+              <option value="">{categoryId ? "Оберіть посаду" : "Спершу оберіть категорію"}</option>
+              {availablePositions.map((position) => <option key={position.id} value={position.id}>{position.title}</option>)}
             </select>
           </label>
         </div>
@@ -186,9 +255,17 @@ export function CreateShiftModal({
 
           {isNewLocation ? (
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <AddressSearch onSelect={handleAddressSelect} />
+                <p className={`mt-1 text-xs ${locationCoordinates ? "text-accent-text" : "text-text-subtle"}`}>
+                  {locationCoordinates
+                    ? "Адресу знайдено — координати буде збережено для карти."
+                    : "Оберіть адресу з підказок, щоб додати точку на карту."}
+                </p>
+              </div>
               <label className="text-sm font-medium">Назва точки<input value={locationTitle} onChange={(event) => setLocationTitle(event.target.value)} className={inputClass} placeholder="Напр. Магазин на Подолі" /></label>
-              <label className="text-sm font-medium">Місто<input value={locationCity} onChange={(event) => setLocationCity(event.target.value)} className={inputClass} placeholder="Київ" /></label>
-              <label className="text-sm font-medium sm:col-span-2">Адреса<input value={locationAddress} onChange={(event) => setLocationAddress(event.target.value)} className={inputClass} placeholder="вул. Хрещатик, 1" /></label>
+              <label className="text-sm font-medium">Місто<input value={locationCity} onChange={(event) => { setLocationCity(event.target.value); setLocationCoordinates(null); }} className={inputClass} placeholder="Київ" /></label>
+              <label className="text-sm font-medium sm:col-span-2">Адреса<input value={locationAddress} onChange={(event) => { setLocationAddress(event.target.value); setLocationCoordinates(null); }} className={inputClass} placeholder="вул. Хрещатик, 1" /></label>
             </div>
           ) : (
             <label className="mt-3 block text-sm font-medium">

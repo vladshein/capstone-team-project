@@ -4,6 +4,7 @@ import {
   BriefcaseBusiness,
   CalendarDays,
   ClipboardList,
+  Clock3,
   MapPin,
   Plus,
   Users,
@@ -20,7 +21,12 @@ import { CreateShiftModal } from "./CreateShiftModal";
 import { createNewShift } from "../../redux/shift/actions";
 import { clearShiftError } from "../../redux/shift/slice";
 import type { CreateShiftPayload } from "../../api/shifts";
-import { getBusinessShifts, type BusinessShift } from "../../api/shifts";
+import {
+  getBusinessShiftApplications,
+  getBusinessShifts,
+  type BusinessShift,
+  type BusinessShiftApplication,
+} from "../../api/shifts";
 
 type BusinessTab = "shifts" | "applications" | "archive";
 
@@ -53,7 +59,9 @@ function BusinessDashboardPage() {
   const [activeCompanyId, setActiveCompanyId] = useState<number | null>(null);
   const [isCreateShiftOpen, setIsCreateShiftOpen] = useState(false);
   const [businessShifts, setBusinessShifts] = useState<BusinessShift[]>([]);
+  const [applications, setApplications] = useState<BusinessShiftApplication[]>([]);
   const [isLoadingShifts, setIsLoadingShifts] = useState(false);
+  const [isLoadingApplications, setIsLoadingApplications] = useState(false);
   const [shiftsError, setShiftsError] = useState<string | null>(null);
   const isCreatingShift = useAppSelector((state) => state.shift.isCreating);
   const shiftError = useAppSelector((state) => state.shift.error);
@@ -85,6 +93,30 @@ function BusinessDashboardPage() {
       })
       .finally(() => {
         if (!cancelled) setIsLoadingShifts(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeCompanyId, activeTab]);
+
+  useEffect(() => {
+    if (activeCompanyId === null || activeTab !== "applications") return;
+
+    let cancelled = false;
+    setIsLoadingApplications(true);
+    setShiftsError(null);
+    void getBusinessShiftApplications(activeCompanyId)
+      .then((nextApplications) => {
+        if (!cancelled) setApplications(nextApplications);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setShiftsError(error instanceof Error ? error.message : "Не вдалося завантажити заявки.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingApplications(false);
       });
 
     return () => {
@@ -155,6 +187,9 @@ function BusinessDashboardPage() {
     return `${dateLabel} · ${start}–${end}`;
   };
 
+  const formatApplicationSchedule = (application: BusinessShiftApplication) =>
+    formatSchedule(application.Shift as BusinessShift);
+
   return (
     <section className="mx-auto max-w-7xl px-4 py-[var(--space-section)] sm:px-6 md:px-8">
       <header className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
@@ -221,7 +256,48 @@ function BusinessDashboardPage() {
           ))}
         </div>
 
-        {activeTab !== "applications" && businessShifts.length > 0 ? (
+        {activeTab === "applications" ? (
+          applications.length > 0 ? (
+            <div className="divide-y divide-border">
+              {applications.map((application) => {
+                const profile = application.User.WorkerProfile;
+                const workerName = profile
+                  ? `${profile.firstName} ${profile.lastName}`
+                  : "Виконавець";
+                const isApproved = application.status === "approved";
+
+                return (
+                  <article key={application.id} className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-heading font-semibold">{workerName}</p>
+                        <span className={`rounded-[var(--radius-pill)] px-3 py-1 text-xs font-medium ${isApproved ? "bg-accent/10 text-accent-text" : "bg-warning/10 text-warning"}`}>
+                          {isApproved ? "Підтверджено" : "Нова заявка"}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-sm text-text-muted">
+                        На зміну: {application.Shift.JobPosition.title}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm text-text-muted">
+                        <span className="flex items-center gap-1.5"><CalendarDays className="h-4 w-4" />{formatApplicationSchedule(application)}</span>
+                        <span className="flex items-center gap-1.5"><Clock3 className="h-4 w-4" />Рейтинг: {profile?.rating ?? "—"}</span>
+                        <span className="flex items-center gap-1.5"><MapPin className="h-4 w-4" />{application.Shift.Location.city}, {application.Shift.Location.address}</span>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex min-h-52 flex-col items-center justify-center px-6 py-10 text-center">
+              <ClipboardList className="h-8 w-8 text-accent/80" />
+              <h2 className="mt-4 font-heading text-lg font-semibold">
+                {isLoadingApplications ? "Завантажуємо заявки…" : currentEmptyState.title}
+              </h2>
+              <p className="mt-2 max-w-md text-sm text-text-muted">{shiftsError ?? currentEmptyState.description}</p>
+            </div>
+          )
+        ) : businessShifts.length > 0 ? (
           <div className="divide-y divide-border">
             {businessShifts.map((shift) => (
               <article key={shift.id} className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between">

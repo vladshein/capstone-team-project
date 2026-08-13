@@ -136,6 +136,25 @@ export const getBusinessShifts = async (req, res, next) => {
   }
 };
 
+/** Повертає заявки виконавців на зміни вказаної компанії. */
+export const getBusinessShiftApplications = async (req, res, next) => {
+  try {
+    const companyId = Number(req.query.companyId);
+    if (!Number.isInteger(companyId) || companyId < 1) {
+      return res.status(400).json({ message: "Потрібно вказати коректну компанію." });
+    }
+
+    const applications = await shiftService.getBusinessShiftApplications({
+      companyId,
+      ownerId: req.user.id,
+    });
+
+    res.status(200).json({ data: applications });
+  } catch (error) {
+    next(error);
+  }
+};
+
 /**
  * Обробляє запит на створення нової зміни (тільки для замовників/бізнесу).
  */
@@ -156,11 +175,11 @@ export const createShift = async (req, res, next) => {
     } = req.body;
 
     // 1. Перевірка безпеки: чи належить ця локація цьому користувачу?
-    const companyId = await shiftService.verifyLocationOwnership(
+    const hasLocationAccess = await shiftService.verifyLocationOwnership(
       locationId,
       userId,
     );
-    if (!companyId) {
+    if (!hasLocationAccess) {
       const error = new Error(
         "У вас немає прав створювати зміну на цій локації.",
       );
@@ -170,7 +189,6 @@ export const createShift = async (req, res, next) => {
 
     // 2. Створення зміни
     const newShift = await shiftService.createShift({
-      companyId,
       locationId,
       positionId,
       categoryId,

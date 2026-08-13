@@ -14,6 +14,8 @@ export interface CreateCompanyLocationPayload {
   title: string;
   city: string;
   address: string;
+  latitude: number;
+  longitude: number;
 }
 
 export interface CompanyProfile {

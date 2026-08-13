@@ -116,6 +116,24 @@ export interface BusinessShift extends Omit<Shift, "Location"> {
   Location: Pick<ShiftLocation, "id" | "title" | "city" | "address">;
 }
 
+export interface BusinessShiftApplication extends ShiftApplication {
+  Shift: Pick<Shift, "id" | "startTime" | "endTime" | "status"> & {
+    JobPosition: ShiftJobPosition;
+    Location: Pick<ShiftLocation, "id" | "title" | "city" | "address">;
+  };
+  User: {
+    id: number;
+    phone: string;
+    avatar: string | null;
+    WorkerProfile: {
+      firstName: string;
+      lastName: string;
+      rating: number | string;
+      avatarUrl: string | null;
+    } | null;
+  };
+}
+
 export interface WorkerShiftApplication {
   id: number;
   shiftId: number;
@@ -217,5 +235,15 @@ export async function getBusinessShifts(
   const { data } = await api.get<{ data: BusinessShift[] }>("/shifts/business/my-shifts", {
     params: { companyId, scope },
   });
+  return data.data;
+}
+
+export async function getBusinessShiftApplications(
+  companyId: number,
+): Promise<BusinessShiftApplication[]> {
+  const { data } = await api.get<{ data: BusinessShiftApplication[] }>(
+    "/shifts/business/applications",
+    { params: { companyId } },
+  );
   return data.data;
 }

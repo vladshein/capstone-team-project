@@ -9,7 +9,7 @@ export const getCompanyById = async (companyId) => {
     include: [
       {
         model: Location,
-        attributes: ["id", "title", "city", "address"],
+        attributes: ["id", "title", "city", "address", "latitude", "longitude"],
       },
     ],
   });
@@ -33,7 +33,7 @@ export const getUserCompanies = async (ownerId) => {
     include: [
       {
         model: Location,
-        attributes: ["id", "title", "city", "address"],
+        attributes: ["id", "title", "city", "address", "latitude", "longitude"],
       },
     ],
     order: [["created_at", "DESC"]],

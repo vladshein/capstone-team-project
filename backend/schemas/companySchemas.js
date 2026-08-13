@@ -29,6 +29,6 @@ export const createCompanyLocationSchema = Joi.object({
   title: Joi.string().min(2).max(100).required(),
   city: Joi.string().min(2).max(50).required(),
   address: Joi.string().min(3).max(255).required(),
-  latitude: Joi.number().min(-90).max(90).optional(),
-  longitude: Joi.number().min(-180).max(180).optional(),
+  latitude: Joi.number().min(-90).max(90).required(),
+  longitude: Joi.number().min(-180).max(180).required(),
 });
