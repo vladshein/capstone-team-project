@@ -144,7 +144,7 @@ export function BusinessProfilePage() {
 
   if (companies.length === 0) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-[var(--space-section)] sm:px-6 md:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-[var(--space-section)] sm:px-6 md:px-8">
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
           <div>
             <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">
@@ -179,7 +179,7 @@ export function BusinessProfilePage() {
 
   if (companies.length > 1 && selectedId === null) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-[var(--space-section)] sm:px-6 md:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-[var(--space-section)] sm:px-6 md:px-8">
         <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl mb-6">
           Оберіть компанію
         </h1>
@@ -211,7 +211,7 @@ export function BusinessProfilePage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-[var(--space-section)] sm:px-6 md:px-8">
+    <div className="mx-auto max-w-7xl px-4 py-[var(--space-section)] sm:px-6 md:px-8">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
         <div>
           {companies.length > 1 && (

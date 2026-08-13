@@ -1,6 +1,7 @@
 import {
   getCategories,
   getAreas,
+  getJobPositions,
   // getIngredients,
   // getTestimonials,
 } from "../services/commonServices.js";
@@ -14,6 +15,11 @@ export const categoriesController = async (req, res) => {
 export const areasController = async (req, res) => {
   const contacts = await getAreas();
   res.json(contacts);
+};
+
+export const jobPositionsController = async (req, res) => {
+  const positions = await getJobPositions();
+  res.json(positions);
 };
 
 // export const ingredientsController = async (req, res) => {

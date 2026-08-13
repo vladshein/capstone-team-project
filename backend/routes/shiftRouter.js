@@ -33,6 +33,14 @@ shiftRouter.get(
   shiftController.getWorkerShifts,
 );
 
+// Має бути перед /:id, інакше "business" стане значенням параметра id.
+shiftRouter.get(
+  "/business/my-shifts",
+  authenticate,
+  checkRole("business_client", "admin"),
+  shiftController.getBusinessShifts,
+);
+
 /** @route DELETE /api/shifts/applications/:applicationId */
 shiftRouter.delete(
   "/applications/:applicationId",

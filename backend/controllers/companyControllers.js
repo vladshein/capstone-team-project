@@ -52,6 +52,23 @@ export const createCompany = async (req, res, next) => {
   }
 };
 
+export const createCompanyLocation = async (req, res, next) => {
+  try {
+    const location = await companyService.createCompanyLocation(
+      Number(req.params.id),
+      req.user.id,
+      req.body,
+    );
+
+    res.status(201).json({
+      message: "Робочу локацію успішно додано",
+      data: location,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const updateCompany = async (req, res, next) => {
   try {
     const ownerId = req.user.id;

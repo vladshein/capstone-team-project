@@ -115,6 +115,27 @@ export const getShiftById = async (req, res, next) => {
   }
 };
 
+/** Повертає активні або архівні зміни конкретної компанії-власника. */
+export const getBusinessShifts = async (req, res, next) => {
+  try {
+    const companyId = Number(req.query.companyId);
+    if (!Number.isInteger(companyId) || companyId < 1) {
+      return res.status(400).json({ message: "Потрібно вказати коректну компанію." });
+    }
+
+    const scope = req.query.scope === "archive" ? "archive" : "active";
+    const shifts = await shiftService.getBusinessShifts({
+      companyId,
+      ownerId: req.user.id,
+      scope,
+    });
+
+    res.status(200).json({ data: shifts });
+  } catch (error) {
+    next(error);
+  }
+};
+
 /**
  * Обробляє запит на створення нової зміни (тільки для замовників/бізнесу).
  */

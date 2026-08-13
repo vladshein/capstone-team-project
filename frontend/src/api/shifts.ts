@@ -112,6 +112,10 @@ export interface ShiftApplication {
   appliedAt: string;
 }
 
+export interface BusinessShift extends Omit<Shift, "Location"> {
+  Location: Pick<ShiftLocation, "id" | "title" | "city" | "address">;
+}
+
 export interface WorkerShiftApplication {
   id: number;
   shiftId: number;
@@ -178,8 +182,8 @@ export async function getShiftById(id: number): Promise<Shift> {
 export async function createShift(
   payload: CreateShiftPayload,
 ): Promise<Shift> {
-  const { data } = await api.post<Shift>("/shifts", payload);
-  return data;
+  const { data } = await api.post<{ data: Shift }>("/shifts", payload);
+  return data.data;
 }
 
 /** Відгукнутися на відкриту зміну. */
@@ -204,4 +208,14 @@ export async function getMyShiftApplications(
 
 export async function cancelShiftApplication(applicationId: number): Promise<void> {
   await api.delete(`/shifts/applications/${applicationId}`);
+}
+
+export async function getBusinessShifts(
+  companyId: number,
+  scope: "active" | "archive" = "active",
+): Promise<BusinessShift[]> {
+  const { data } = await api.get<{ data: BusinessShift[] }>("/shifts/business/my-shifts", {
+    params: { companyId, scope },
+  });
+  return data.data;
 }

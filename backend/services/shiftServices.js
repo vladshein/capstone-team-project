@@ -307,6 +307,35 @@ export const createShift = async (shiftData) => {
   return await Shift.create(shiftData);
 };
 
+/** Повертає зміни однієї компанії лише її власнику. */
+export const getBusinessShifts = async ({ companyId, ownerId, scope }) => {
+  const company = await Company.findOne({ where: { id: companyId, ownerId } });
+
+  if (!company) {
+    const error = new Error("У вас немає доступу до змін цієї компанії");
+    error.status = 403;
+    throw error;
+  }
+
+  const statuses =
+    scope === "archive"
+      ? ["completed", "cancelled"]
+      : ["open", "booked", "in_progress"];
+
+  return Shift.findAll({
+    where: { companyId: company.id, status: { [Op.in]: statuses } },
+    include: [
+      { model: JobPosition, attributes: ["id", "title"] },
+      { model: Category, attributes: ["id", "name"] },
+      {
+        model: Location,
+        attributes: ["id", "title", "city", "address"],
+      },
+    ],
+    order: [["startTime", scope === "archive" ? "DESC" : "ASC"]],
+  });
+};
+
 /**
  * Оновлює існуючу зміну
  */

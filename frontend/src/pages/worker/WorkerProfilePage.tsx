@@ -72,7 +72,7 @@ export function WorkerProfilePage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-[var(--space-section)] sm:px-6 md:px-8">
+    <div className="mx-auto max-w-7xl px-4 py-[var(--space-section)] sm:px-6 md:px-8">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
         <div className="flex items-center gap-4">
           {profile?.avatarUrl && (

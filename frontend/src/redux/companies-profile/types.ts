@@ -2,6 +2,15 @@ import { ApiError } from "../types";
 
 export interface Location {
   id: number;
+  companyId: number;
+  title: string;
+  city: string;
+  address: string;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
+}
+
+export interface CreateCompanyLocationPayload {
   title: string;
   city: string;
   address: string;

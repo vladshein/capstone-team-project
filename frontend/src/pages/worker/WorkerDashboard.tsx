@@ -144,7 +144,7 @@ export function WorkerDashboard({
       : "Ім'я не вказано";
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-[var(--space-section)] sm:px-6 md:px-8">
+    <div className="mx-auto max-w-7xl px-4 py-[var(--space-section)] sm:px-6 md:px-8">
       <div className="flex flex-col gap-8 md:flex-row">
         {/* ---------------------------------------------------------- */}
         {/* Sidebar: профіль, верифікація, бонуси                      */}
