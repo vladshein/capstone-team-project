@@ -5,7 +5,17 @@ import type { CompanyProfile, CreateCompanyPayload, UpdateCompanyPayload } from 
 import type { ApiError } from "../types";
 import { toApiError } from "../utils";
 
-export const fetchMyCompanies = createAsyncThunk<CompanyProfile[], void, { rejectValue: ApiError }>(
+// Не імпортуємо RootState сюди: store залежить від цього slice, тому такий
+// імпорт створює циклічний тип під час виведення configureStore.
+type CompaniesRequestState = {
+  companiesProfile: { status: "idle" | "loading" | "succeeded" | "failed" };
+};
+
+export const fetchMyCompanies = createAsyncThunk<
+  CompanyProfile[],
+  void,
+  { state: CompaniesRequestState; rejectValue: ApiError }
+>(
   companiesActions.FETCH_MY_COMPANIES,
   async (_, { rejectWithValue }) => {
     try {
@@ -14,6 +24,11 @@ export const fetchMyCompanies = createAsyncThunk<CompanyProfile[], void, { rejec
     } catch (error) {
       return rejectWithValue(toApiError(error));
     }
+  },
+  {
+    // Header і сторінки кабінету можуть монтуватися одночасно. Захист тут
+    // прибирає дубльований GET незалежно від порядку виконання useEffect.
+    condition: (_, { getState }) => getState().companiesProfile.status !== "loading",
   },
 );
 

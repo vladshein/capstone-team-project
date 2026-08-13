@@ -74,7 +74,8 @@ export const fetchMyProfile = createAsyncThunk<
   { rejectValue: ApiError }
 >("auth/fetchMyProfile", async (_, { rejectWithValue }) => {
   try {
-    const { data } = await authService.getMyProfile(); // GET /users/me/profile
+    const { data } = await authService.getMyProfile();
+    
     return data;
   } catch (error) {
     return rejectWithValue(toApiError(error));

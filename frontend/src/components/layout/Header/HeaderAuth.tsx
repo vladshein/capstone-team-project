@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ChevronDown } from "lucide-react";
-import toast from "react-hot-toast";
 import { LogoutButton } from "../../ui/LogoutButton";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
 import { selectIsLoggedIn, selectUserInfo } from "../../../redux/auth/selectors";
-import { logout, refreshUser } from "../../../redux/auth/actions";
+import { refreshUser } from "../../../redux/auth/actions";
 import { getDashboardPath } from "../../../redux/auth/helpers";
 import { USER_ROLES } from "../../../constants/navigation";
 import { selectHasWorkerProfile } from "../../../redux/auth/selectors";
@@ -21,9 +20,16 @@ export interface HeaderAuthProps {
   onOpenSignUp?: () => void;
   onLogout: () => void;
   mobile?: boolean;
+  isMobileMenuOpen?: boolean;
 }
 
-export function HeaderAuth({ onOpenSignIn, onOpenSignUp, mobile = false }: HeaderAuthProps) {
+export function HeaderAuth({
+  onOpenSignIn,
+  onOpenSignUp,
+  onLogout,
+  mobile = false,
+  isMobileMenuOpen = false,
+}: HeaderAuthProps) {
   const dispatch = useAppDispatch();
 
   const isAuthenticated = useAppSelector(selectIsLoggedIn);
@@ -62,23 +68,20 @@ export function HeaderAuth({ onOpenSignIn, onOpenSignUp, mobile = false }: Heade
     }
   }, [isAuthenticated, user, dispatch]);
 
-  // Business clients own a 1:M set of companies — the bootstrap payload only
-  // carries the count, so fetch the list lazily once the role is known and
-  // the header actually needs to render the picker.
+  // Bootstrap already містить кількість компаній. Повний список потрібен лише
+  // у відкритому меню — не завантажуємо його на кожній сторінці бізнес-акаунта.
   useEffect(() => {
-    if (isBusiness && companiesStatus === "idle") {
+    const needsCompanyList = isMenuOpen || isMobileMenuOpen;
+    if (isBusiness && needsCompanyList && companiesStatus === "idle") {
       void dispatch(fetchMyCompanies());
     }
-  }, [isBusiness, companiesStatus, dispatch]);
+  }, [isBusiness, isMenuOpen, isMobileMenuOpen, companiesStatus, dispatch]);
 
-  const handleLogout = async () => {
-    try {
-      await dispatch(logout()).unwrap();
-      toast.success("Ви вийшли з акаунта");
-      setIsMenuOpen(false);
-    } catch {
-      toast.error("Не вдалося вийти");
-    }
+  const handleLogout = () => {
+    // Єдиний logout-обробник живе в App: там очищуються всі залежні стани.
+    setIsMenuOpen(false);
+    setIsCompanyMenuOpen(false);
+    onLogout?.();
   };
 
   const profileLink = getDashboardPath(user?.role);
@@ -102,7 +105,7 @@ export function HeaderAuth({ onOpenSignIn, onOpenSignUp, mobile = false }: Heade
       </Link>
 
       {companiesCount === 0 ? (
-        <Link to="/dashboard/companies/create" role="menuitem" className="block rounded-[var(--radius-card)] px-3 py-2.5 text-sm hover:bg-bg-muted">
+        <Link to={profileLink} role="menuitem" className="block rounded-[var(--radius-card)] px-3 py-2.5 text-sm hover:bg-bg-muted">
           Додати компанію
         </Link>
       ) : (
@@ -122,7 +125,8 @@ export function HeaderAuth({ onOpenSignIn, onOpenSignUp, mobile = false }: Heade
               {companies.map((company) => (
                 <Link
                   key={company.id}
-                  to={`/dashboard/companies/${company.id}`}
+                  to="/profile"
+                  state={{ companyId: company.id }}
                   role="menuitem"
                   className="block truncate rounded-[var(--radius-card)] px-3 py-2 text-sm hover:bg-bg-muted"
                   onClick={() => setIsCompanyMenuOpen(false)}
@@ -131,7 +135,8 @@ export function HeaderAuth({ onOpenSignIn, onOpenSignUp, mobile = false }: Heade
                 </Link>
               ))}
               <Link
-                to="/dashboard/companies/create"
+                to="/profile"
+                state={{ openCreate: true }}
                 role="menuitem"
                 className="block rounded-[var(--radius-card)] px-3 py-2 text-sm text-text-subtle hover:bg-bg-muted"
                 onClick={() => setIsCompanyMenuOpen(false)}
@@ -167,14 +172,19 @@ export function HeaderAuth({ onOpenSignIn, onOpenSignUp, mobile = false }: Heade
                   Кабінет замовника
                 </Link>
                 {companiesCount === 0 ? (
-                  <Link to="/dashboard/companies/create" className="flex min-h-[44px] items-center justify-center rounded-[var(--radius-pill)] border border-border px-5 text-sm font-medium">
+                  <Link
+                    to="/profile"
+                    state={{ openCreate: true }}
+                    className="flex min-h-[44px] items-center justify-center rounded-[var(--radius-pill)] border border-border px-5 text-sm font-medium"
+                  >
                     Додати компанію
                   </Link>
                 ) : (
                   companies.map((company) => (
                     <Link
                       key={company.id}
-                      to={`/dashboard/companies/${company.id}`}
+                      to="/profile"
+                      state={{ companyId: company.id }}
                       className="flex min-h-[44px] items-center justify-center rounded-[var(--radius-pill)] border border-border px-5 text-sm font-medium"
                     >
                       {company.name}

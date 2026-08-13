@@ -57,6 +57,7 @@ export function MobileMenu({
         {/* Auth actions */}
         <HeaderAuth
           mobile
+          isMobileMenuOpen={isOpen}
           onLogout={() => {
             onClose();
             onLogout?.();

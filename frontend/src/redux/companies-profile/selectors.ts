@@ -3,6 +3,8 @@ import type { RootState } from "../store";
 export const selectCompanies = (state: RootState) => state.companiesProfile.items;
 export const selectCompaniesStatus = (state: RootState) => state.companiesProfile.status;
 export const selectCompaniesError = (state: RootState) => state.companiesProfile.error;
+export const selectCompanyMutationError = (state: RootState) =>
+  state.companiesProfile.mutationError;
 
 export const selectSelectedCompany = (state: RootState) => state.companiesProfile.selected;
 export const selectSelectedCompanyStatus = (state: RootState) => state.companiesProfile.selectedStatus;

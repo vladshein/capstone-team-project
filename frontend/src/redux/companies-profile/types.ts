@@ -25,4 +25,5 @@ export interface CompaniesProfileState {
   status: "idle" | "loading" | "succeeded" | "failed";
   selectedStatus: "idle" | "loading" | "succeeded" | "failed";
   error: ApiError | null;
+  mutationError: ApiError | null;
 }

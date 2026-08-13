@@ -16,6 +16,7 @@ import {
 import { useAppDispatch, useAppSelector } from "./redux/hooks";
 import type { ApiError } from "./redux/types";
 import { getDashboardPath } from "./redux/auth/helpers";
+import { clearCompaniesProfile } from "./redux/companies-profile/slice";
 
 const HomePage = lazy(() => import("./pages/HomePage"));
 const AboutPage = lazy(() => import("./pages/AboutPage"));
@@ -79,6 +80,9 @@ export default function App() {
   const handleSignIn = async (payload: SignInPayload) => {
     try {
       await dispatch(login(payload)).unwrap();
+      dispatch(clearCompaniesProfile());
+      // refreshUser повертає тільки користувача; прапорці профілів завантажуємо окремо.
+      void dispatch(fetchMyProfile());
       setAuthModal(null);
     } catch (error) {
       const { status, message } = getApiError(error);
@@ -94,6 +98,8 @@ export default function App() {
   const handleSignUp = async (payload: SignUpPayload) => {
     try {
       await dispatch(register(payload)).unwrap();
+      dispatch(clearCompaniesProfile());
+      void dispatch(fetchMyProfile());
       setAuthModal(null);
       toast.success("Реєстрація успішна!");
     } catch (error) {
@@ -106,6 +112,7 @@ export default function App() {
   const handleLogout = async () => {
     try {
       await dispatch(logout()).unwrap();
+      dispatch(clearCompaniesProfile());
       toast.success("Ви вийшли з акаунта");
     } catch (error) {
       const { message } = getApiError(error);
