@@ -29,9 +29,14 @@ export function buildWeekStrip(startOffset: number) {
 
 export function formatTimeRange(startTime: string, endTime: string) {
   try {
-    return `${TIME_FORMATTER.format(new Date(startTime))}–${TIME_FORMATTER.format(
-      new Date(endTime),
-    )}`;
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+    const endsNextDay =
+      end.getFullYear() !== start.getFullYear() ||
+      end.getMonth() !== start.getMonth() ||
+      end.getDate() !== start.getDate();
+
+    return `${TIME_FORMATTER.format(start)}–${TIME_FORMATTER.format(end)}${endsNextDay ? " (+1 день)" : ""}`;
   } catch {
     return "";
   }

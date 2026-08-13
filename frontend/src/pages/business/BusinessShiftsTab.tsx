@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { CalendarDays, ClipboardList, MapPin, Pencil, X } from "lucide-react";
-import { useOutletContext } from "react-router-dom";
+import { Link, useOutletContext } from "react-router-dom";
 
 import {
   cancelBusinessShift,
@@ -10,6 +10,7 @@ import {
 } from "../../api/shifts";
 import { Loader } from "../../components/ui/Loader";
 import { Modal } from "../../components/ui/Modal";
+import { formatTimeRange } from "../../sectionsHero/TasksBoard/formatters";
 import type { BusinessDashboardOutletContext } from "./BusinessDashboardPage";
 import { CreateShiftModal } from "./CreateShiftModal";
 
@@ -27,6 +28,14 @@ const emptyState = {
     description: "Завершені та скасовані зміни з'являться тут.",
   },
 };
+
+const shiftStatus = {
+  open: { label: "Відкрита", className: "bg-accent/10 text-accent-text" },
+  booked: { label: "Заброньована", className: "bg-bg-muted text-text-muted" },
+  in_progress: { label: "В роботі", className: "bg-warning/10 text-warning" },
+  completed: { label: "Завершена", className: "bg-bg-muted text-text-muted" },
+  cancelled: { label: "Скасована", className: "bg-danger/10 text-danger" },
+} as const;
 
 export function BusinessShiftsTab({ scope }: BusinessShiftsTabProps) {
   const { company, shiftsRefreshKey } = useOutletContext<BusinessDashboardOutletContext>();
@@ -58,9 +67,7 @@ export function BusinessShiftsTab({ scope }: BusinessShiftsTabProps) {
   const formatSchedule = (shift: BusinessShift) => {
     const date = new Date(shift.startTime);
     const dateLabel = date.toLocaleDateString("uk-UA", { day: "numeric", month: "long" });
-    const start = date.toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" });
-    const end = new Date(shift.endTime).toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" });
-    return `${dateLabel} · ${start}–${end}`;
+    return `${dateLabel} · ${formatTimeRange(shift.startTime, shift.endTime)}`;
   };
 
   if (isLoading) return <Loader label="Завантажуємо зміни…" />;
@@ -114,16 +121,26 @@ export function BusinessShiftsTab({ scope }: BusinessShiftsTabProps) {
       {shifts.map((shift) => (
         <article key={shift.id} className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="font-heading font-semibold">{shift.JobPosition.title}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                to={`/shifts/${shift.id}`}
+                className="font-heading font-semibold transition-colors hover:text-accent-text hover:underline"
+              >
+                {shift.JobPosition.title}
+              </Link>
+              <span className={`w-fit rounded-[var(--radius-pill)] px-2.5 py-1 text-xs font-medium ${shiftStatus[shift.status]?.className ?? "bg-bg-muted text-text-muted"}`}>
+                {shiftStatus[shift.status]?.label ?? shift.status}
+              </span>
+            </div>
             <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-sm text-text-muted">
               <span className="flex items-center gap-1.5"><CalendarDays className="h-4 w-4" />{formatSchedule(shift)}</span>
               <span className="flex items-center gap-1.5"><MapPin className="h-4 w-4" />{shift.Location.title}, {shift.Location.city}</span>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className={`w-fit rounded-[var(--radius-pill)] px-3 py-1 text-xs font-medium ${shift.status === "open" ? "bg-accent/10 text-accent-text" : "bg-bg-muted text-text-muted"}`}>
-              {shift.status === "open" ? "Відкрита" : shift.status}
-            </span>
+            <Link to={`/shifts/${shift.id}`} className="inline-flex min-h-[40px] items-center justify-center rounded-[var(--radius-pill)] border border-border px-3 text-sm font-medium text-text transition-colors hover:border-accent hover:text-accent-text">
+              Детальніше
+            </Link>
             {scope === "active" && canManage(shift) && (
               <>
                 {shift.status === "open" && (

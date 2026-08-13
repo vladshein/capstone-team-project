@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Archive, BriefcaseBusiness, Plus, Users } from "lucide-react";
-import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { Loader } from "../../components/ui/Loader";
 import { useAppDispatch, useAppSelector } from "../../redux/hooks";
@@ -28,6 +28,7 @@ const tabs = [
 
 function BusinessDashboardPage() {
   const dispatch = useAppDispatch();
+  const location = useLocation();
   const navigate = useNavigate();
   const companies = useAppSelector(selectCompanies);
   const status = useAppSelector(selectCompaniesStatus);
@@ -36,6 +37,9 @@ function BusinessDashboardPage() {
   const [activeCompanyId, setActiveCompanyId] = useState<number | null>(null);
   const [isCreateShiftOpen, setIsCreateShiftOpen] = useState(false);
   const [shiftsRefreshKey, setShiftsRefreshKey] = useState(0);
+  const navigationState = location.state as
+    | { companyId?: number; openCreateShift?: boolean }
+    | null;
 
   useEffect(() => {
     if (status === "idle") void dispatch(fetchMyCompanies());
@@ -46,6 +50,17 @@ function BusinessDashboardPage() {
       setActiveCompanyId(companies[0].id);
     }
   }, [activeCompanyId, companies]);
+
+  // Кнопка з профілю компанії відкриває форму саме для вибраної компанії.
+  useEffect(() => {
+    if (!navigationState?.openCreateShift || companies.length === 0) return;
+
+    const requestedCompany = companies.find((company) => company.id === navigationState.companyId);
+    if (requestedCompany) setActiveCompanyId(requestedCompany.id);
+    dispatch(clearShiftError());
+    setIsCreateShiftOpen(true);
+    navigate(location.pathname, { replace: true, state: null });
+  }, [companies, dispatch, location.pathname, navigate, navigationState?.companyId, navigationState?.openCreateShift]);
 
   if (status === "loading" || status === "idle") {
     return <Loader label="Завантажуємо кабінет…" size="lg" fullScreen />;

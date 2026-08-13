@@ -130,6 +130,9 @@ export const getBusinessShifts = async (req, res, next) => {
       scope,
     });
 
+    // Дані кабінету залежать від поточного часу: кеш може залишити
+    // завершену зміну в активному списку після зміни дати.
+    res.set("Cache-Control", "no-store");
     res.status(200).json({ data: shifts });
   } catch (error) {
     next(error);
@@ -149,7 +152,85 @@ export const getBusinessShiftApplications = async (req, res, next) => {
       ownerId: req.user.id,
     });
 
+    res.set("Cache-Control", "no-store");
     res.status(200).json({ data: applications });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** Підтверджує або відхиляє заявку виконавця на зміну власника компанії. */
+export const decideBusinessShiftApplication = async (req, res, next) => {
+  try {
+    const applicationId = Number(req.params.applicationId);
+    const decision = req.body?.status;
+    if (!Number.isInteger(applicationId) || applicationId < 1) {
+      return res.status(400).json({ message: "Некоректний ідентифікатор заявки." });
+    }
+    if (!["approved", "rejected"].includes(decision)) {
+      return res.status(400).json({ message: "Оберіть: підтвердити або відхилити заявку." });
+    }
+
+    const result = await shiftService.decideBusinessShiftApplication({
+      applicationId,
+      ownerId: req.user.id,
+      decision,
+    });
+    if (result.reason === "not_found") return res.status(404).json({ message: "Заявку не знайдено." });
+    if (result.reason === "forbidden") return res.status(403).json({ message: "У вас немає доступу до цієї заявки." });
+    if (result.reason === "status") return res.status(400).json({ message: "Цю заявку вже розглянуто." });
+    if (result.reason === "unavailable") return res.status(400).json({ message: "Зміна вже недоступна для призначення виконавця." });
+
+    res.set("Cache-Control", "no-store");
+    res.status(200).json({ message: decision === "approved" ? "Заявку підтверджено." : "Заявку відхилено.", data: result.application });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** Підтверджує, що виконавець завершив підтверджену зміну. */
+export const completeBusinessShiftApplication = async (req, res, next) => {
+  try {
+    const applicationId = Number(req.params.applicationId);
+    if (!Number.isInteger(applicationId) || applicationId < 1) {
+      return res.status(400).json({ message: "Некоректний ідентифікатор заявки." });
+    }
+
+    const result = await shiftService.completeBusinessShiftApplication({
+      applicationId,
+      ownerId: req.user.id,
+    });
+    if (result.reason === "not_found") return res.status(404).json({ message: "Заявку не знайдено." });
+    if (result.reason === "forbidden") return res.status(403).json({ message: "У вас немає доступу до цієї заявки." });
+    if (result.reason === "status") return res.status(400).json({ message: "Можна завершити лише підтверджену зміну." });
+    if (result.reason === "not_finished") return res.status(400).json({ message: "Підтвердити виконання можна після завершення зміни." });
+
+    res.set("Cache-Control", "no-store");
+    res.status(200).json({ message: "Виконання зміни підтверджено.", data: result.application });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** Позначає підтвердженого виконавця як такого, що не з'явився. */
+export const markBusinessShiftApplicationNoShow = async (req, res, next) => {
+  try {
+    const applicationId = Number(req.params.applicationId);
+    if (!Number.isInteger(applicationId) || applicationId < 1) {
+      return res.status(400).json({ message: "Некоректний ідентифікатор заявки." });
+    }
+
+    const result = await shiftService.markBusinessShiftApplicationNoShow({
+      applicationId,
+      ownerId: req.user.id,
+    });
+    if (result.reason === "not_found") return res.status(404).json({ message: "Заявку не знайдено." });
+    if (result.reason === "forbidden") return res.status(403).json({ message: "У вас немає доступу до цієї заявки." });
+    if (result.reason === "status") return res.status(400).json({ message: "Неявку можна позначити лише для підтвердженої зміни." });
+    if (result.reason === "not_finished") return res.status(400).json({ message: "Позначити неявку можна після завершення зміни." });
+
+    res.set("Cache-Control", "no-store");
+    res.status(200).json({ message: "Неявку виконавця зафіксовано.", data: result.application });
   } catch (error) {
     next(error);
   }
@@ -173,6 +254,12 @@ export const createShift = async (req, res, next) => {
       bonusRate,
       description,
     } = req.body;
+
+    if (new Date(startTime) <= new Date()) {
+      const error = new Error("Час початку зміни має бути в майбутньому.");
+      error.status = 400;
+      throw error;
+    }
 
     // 1. Перевірка безпеки: чи належить ця локація цьому користувачу?
     const hasLocationAccess = await shiftService.verifyLocationOwnership(
@@ -231,6 +318,11 @@ export const applyToShift = async (req, res, next) => {
     }
     if (new Date(shift.startTime) <= new Date()) {
       const error = new Error("Не можна редагувати зміну після її початку.");
+      error.status = 400;
+      throw error;
+    }
+    if (req.body.startTime && new Date(req.body.startTime) <= new Date()) {
+      const error = new Error("Час початку зміни має бути в майбутньому.");
       error.status = 400;
       throw error;
     }
@@ -405,7 +497,7 @@ export const getWorkerShifts = async (req, res, next) => {
       limit: limit ? parseInt(limit, 10) : 10,
       status, // Можна передавати '?status=approved' для актуальних або '?status=completed' для завершених
       shiftId: shiftId ? parseInt(shiftId, 10) : undefined,
-      scope: scope === "archive" ? "archive" : "active",
+      scope: ["active", "completed", "archive"].includes(scope) ? scope : "active",
     });
 
     res.status(200).json({

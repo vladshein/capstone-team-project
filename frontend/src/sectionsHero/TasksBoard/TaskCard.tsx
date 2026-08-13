@@ -21,7 +21,9 @@ export function TaskCard({ shift }: { shift: Shift }) {
       <div>
         <div className="flex items-start justify-between gap-3">
           <h3 className="font-heading text-base font-semibold leading-snug">
-            {title}
+            <Link to={`/shifts/${shift.id}`} className="transition-colors hover:text-accent-text hover:underline">
+              {title}
+            </Link>
           </h3>
           <div className="flex shrink-0 items-center gap-1.5">
             <span className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-pill)] bg-bg-muted font-heading text-sm font-semibold text-ink">
@@ -56,10 +58,7 @@ export function TaskCard({ shift }: { shift: Shift }) {
           </p>
           <p className="text-xs text-text-subtle">ви отримаєте за завдання</p>
         </div>
-        <Link
-          to={`/shifts/${shift.id}`}
-          className="inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-[var(--radius-pill)] bg-accent px-5 text-sm font-medium text-white hover:bg-accent-hover"
-        >
+        <Link to={`/shifts/${shift.id}`} className="inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-[var(--radius-pill)] bg-accent px-5 text-sm font-medium text-white hover:bg-accent-hover">
           Детальніше
         </Link>
       </div>

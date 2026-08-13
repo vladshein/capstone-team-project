@@ -29,7 +29,7 @@ export function Footer({ onOpenBusinessSignUp }: FooterProps) {
             </li>
             <li>
               <a href="/cabinet/bookings" className="hover:text-accent">
-                Мої бронювання
+                Мої зміни
               </a>
             </li>
           </ul>

@@ -232,7 +232,7 @@ export async function getMyShiftApplications(
   page = 1,
   limit = 8,
   shiftId?: number,
-  scope: "active" | "archive" = "active",
+  scope: "active" | "completed" | "archive" = "active",
 ): Promise<WorkerShiftApplicationsResponse> {
   const { data } = await api.get<WorkerShiftApplicationsResponse>("/shifts/worker/my-jobs", {
     params: { page, limit, shiftId, scope },
@@ -242,6 +242,21 @@ export async function getMyShiftApplications(
 
 export async function cancelShiftApplication(applicationId: number): Promise<void> {
   await api.delete(`/shifts/applications/${applicationId}`);
+}
+
+export async function decideBusinessShiftApplication(
+  applicationId: number,
+  status: "approved" | "rejected",
+): Promise<void> {
+  await api.patch(`/shifts/applications/${applicationId}/status`, { status });
+}
+
+export async function completeBusinessShiftApplication(applicationId: number): Promise<void> {
+  await api.patch(`/shifts/applications/${applicationId}/complete`);
+}
+
+export async function markBusinessShiftApplicationNoShow(applicationId: number): Promise<void> {
+  await api.patch(`/shifts/applications/${applicationId}/no-show`);
 }
 
 export async function getBusinessShifts(

@@ -7,6 +7,8 @@ import { Modal } from "../../components/ui/Modal";
 import { companiesProfileService } from "../../services/companiesProfileService";
 import type { Location } from "../../redux/companies-profile/types";
 import { AddressSearch, type AddressLocation } from "../../components/map/search/AddressSearch";
+import { MapPointPicker } from "../../components/map/search/MapPointPicker";
+import { TimePicker } from "../../components/ui/TimePicker";
 
 interface CreateShiftModalProps {
   isOpen: boolean;
@@ -23,7 +25,15 @@ interface CreateShiftModalProps {
 const inputClass =
   "mt-1 min-h-[44px] w-full rounded-[var(--radius-card)] border border-border bg-bg px-3 text-sm outline-none transition-colors focus:border-accent";
 
-const today = () => new Date().toISOString().slice(0, 10);
+// Використовуємо локальну дату, а не UTC із toISOString(): після опівночі
+// в Україні UTC ще може показувати вчора, відкриваючи минулу дату в календарі.
+const earliestShiftDate = () => {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 // У поточній БД тестові посади дублюються для різних міст у форматі
 // «Посада (Київ)». Для форми показуємо одну читабельну назву без міста.
@@ -68,7 +78,7 @@ export function CreateShiftModal({
   const [locationId, setLocationId] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [positionId, setPositionId] = useState("");
-  const [date, setDate] = useState(today());
+  const [date, setDate] = useState(earliestShiftDate());
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("17:00");
   const [hourlyRate, setHourlyRate] = useState("");
@@ -82,6 +92,7 @@ export function CreateShiftModal({
     latitude: number;
     longitude: number;
   } | null>(null);
+  const [isMapPickerOpen, setIsMapPickerOpen] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -173,6 +184,11 @@ export function CreateShiftModal({
     const start = new Date(`${date}T${startTime}`);
     const end = new Date(`${date}T${endTime}`);
     if (end <= start) end.setDate(end.getDate() + 1);
+
+    if (start <= new Date()) {
+      setFormError("Час початку зміни має бути в майбутньому.");
+      return;
+    }
 
     const rate = Number(hourlyRate);
     const bonus = Number(bonusRate || 0);
@@ -276,15 +292,30 @@ export function CreateShiftModal({
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <AddressSearch onSelect={handleAddressSelect} />
-                <p className={`mt-1 text-xs ${locationCoordinates ? "text-accent-text" : "text-text-subtle"}`}>
+                <div className="mt-2 flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsMapPickerOpen((isOpen) => !isOpen)}
+                    className="inline-flex min-h-[36px] items-center gap-1.5 rounded-[var(--radius-pill)] border border-border px-3 text-xs font-medium text-text transition-colors hover:border-accent hover:text-accent-text"
+                  >
+                    <MapPin className="h-3.5 w-3.5" />
+                    {isMapPickerOpen ? "Сховати мапу" : "Вказати точку на мапі"}
+                  </button>
+                  <p className={`text-xs ${locationCoordinates ? "text-accent-text" : "text-text-subtle"}`}>
                   {locationCoordinates
-                    ? "Адресу знайдено — координати буде збережено для карти."
-                    : "Оберіть адресу з підказок, щоб додати точку на карту."}
-                </p>
+                    ? "Точку обрано — координати буде збережено для карти."
+                    : "Оберіть адресу з підказок або поставте точку на мапі."}
+                  </p>
+                </div>
+                {isMapPickerOpen && (
+                  <div className="mt-3">
+                    <MapPointPicker value={locationCoordinates} onChange={setLocationCoordinates} />
+                  </div>
+                )}
               </div>
               <label className="text-sm font-medium">Назва точки<input value={locationTitle} onChange={(event) => setLocationTitle(event.target.value)} className={inputClass} placeholder="Напр. Магазин на Подолі" /></label>
-              <label className="text-sm font-medium">Місто<input value={locationCity} onChange={(event) => { setLocationCity(event.target.value); setLocationCoordinates(null); }} className={inputClass} placeholder="Київ" /></label>
-              <label className="text-sm font-medium sm:col-span-2">Адреса<input value={locationAddress} onChange={(event) => { setLocationAddress(event.target.value); setLocationCoordinates(null); }} className={inputClass} placeholder="вул. Хрещатик, 1" /></label>
+              <label className="text-sm font-medium">Місто<input value={locationCity} onChange={(event) => setLocationCity(event.target.value)} className={inputClass} placeholder="Київ" /></label>
+              <label className="text-sm font-medium sm:col-span-2">Адреса<input value={locationAddress} onChange={(event) => setLocationAddress(event.target.value)} className={inputClass} placeholder="вул. Хрещатик, 1" /></label>
             </div>
           ) : (
             <label className="mt-3 block text-sm font-medium">
@@ -297,9 +328,9 @@ export function CreateShiftModal({
         </fieldset>
 
         <div className="grid gap-4 sm:grid-cols-3">
-          <label className="text-sm font-medium">Дата<input type="date" min={today()} value={date} onChange={(event) => setDate(event.target.value)} className={inputClass} /></label>
-          <label className="text-sm font-medium">Початок<input type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} className={inputClass} /></label>
-          <label className="text-sm font-medium">Кінець<input type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} className={inputClass} /></label>
+          <label className="text-sm font-medium">Дата<input type="date" min={earliestShiftDate()} value={date} onChange={(event) => setDate(event.target.value)} className={inputClass} /></label>
+          <label className="text-sm font-medium">Початок<TimePicker value={startTime} onChange={setStartTime} ariaLabel="Час початку" /></label>
+          <label className="text-sm font-medium">Кінець<TimePicker value={endTime} onChange={setEndTime} ariaLabel="Час завершення" /></label>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">

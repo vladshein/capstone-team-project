@@ -392,6 +392,126 @@ export const getBusinessShiftApplications = async ({ companyId, ownerId }) => {
   });
 };
 
+/** Приймає або відхиляє заявку на зміну від імені власника компанії. */
+export const decideBusinessShiftApplication = async ({ applicationId, ownerId, decision }) => {
+  return Shift.sequelize.transaction(async (transaction) => {
+    const application = await ShiftApplication.findByPk(applicationId, {
+      include: [
+        {
+          model: Shift,
+          required: true,
+          include: [{
+            model: Location,
+            required: true,
+            include: [{ model: Company, required: true }],
+          }],
+        },
+      ],
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+
+    if (!application) return { application: null, reason: "not_found" };
+    if (application.Shift.Location.Company.ownerId !== ownerId) {
+      return { application: null, reason: "forbidden" };
+    }
+    if (application.status !== "pending") {
+      return { application: null, reason: "status" };
+    }
+    if (application.Shift.status !== "open" || new Date(application.Shift.startTime) <= new Date()) {
+      return { application: null, reason: "unavailable" };
+    }
+
+    if (decision === "approved") {
+      await application.update({ status: "approved" }, { transaction });
+      await application.Shift.update({ status: "booked" }, { transaction });
+      // Одна зміна — один виконавець: інші нерозглянуті заявки закриваємо.
+      await ShiftApplication.update(
+        { status: "rejected" },
+        {
+          where: { shiftId: application.shiftId, status: "pending", id: { [Op.ne]: application.id } },
+          transaction,
+        },
+      );
+    } else {
+      await application.update({ status: "rejected" }, { transaction });
+    }
+
+    return { application, reason: null };
+  });
+};
+
+/** Підтверджує виконання зміни її власником після завершення робочого часу. */
+export const completeBusinessShiftApplication = async ({ applicationId, ownerId }) => {
+  return Shift.sequelize.transaction(async (transaction) => {
+    const application = await ShiftApplication.findByPk(applicationId, {
+      include: [
+        {
+          model: Shift,
+          required: true,
+          include: [{
+            model: Location,
+            required: true,
+            include: [{ model: Company, required: true }],
+          }],
+        },
+      ],
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+
+    if (!application) return { application: null, reason: "not_found" };
+    if (application.Shift.Location.Company.ownerId !== ownerId) {
+      return { application: null, reason: "forbidden" };
+    }
+    if (application.status !== "approved" || application.Shift.status !== "booked") {
+      return { application: null, reason: "status" };
+    }
+    if (new Date(application.Shift.endTime) > new Date()) {
+      return { application: null, reason: "not_finished" };
+    }
+
+    await application.update({ status: "completed" }, { transaction });
+    await application.Shift.update({ status: "completed" }, { transaction });
+    return { application, reason: null };
+  });
+};
+
+/** Позначає підтвердженого виконавця як такого, що не з'явився на зміну. */
+export const markBusinessShiftApplicationNoShow = async ({ applicationId, ownerId }) => {
+  return Shift.sequelize.transaction(async (transaction) => {
+    const application = await ShiftApplication.findByPk(applicationId, {
+      include: [{
+        model: Shift,
+        required: true,
+        include: [{
+          model: Location,
+          required: true,
+          include: [{ model: Company, required: true }],
+        }],
+      }],
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+
+    if (!application) return { application: null, reason: "not_found" };
+    if (application.Shift.Location.Company.ownerId !== ownerId) {
+      return { application: null, reason: "forbidden" };
+    }
+    if (application.status !== "approved" || application.Shift.status !== "booked") {
+      return { application: null, reason: "status" };
+    }
+    if (new Date(application.Shift.endTime) > new Date()) {
+      return { application: null, reason: "not_finished" };
+    }
+
+    await application.update({ status: "no_show" }, { transaction });
+    // У Shift.status поки немає no_show, тому закриваємо зміну як фінальну.
+    await application.Shift.update({ status: "completed" }, { transaction });
+    return { application, reason: null };
+  });
+};
+
 /**
  * Оновлює існуючу зміну
  */
@@ -442,7 +562,9 @@ export const cancelWorkerShiftApplication = async (applicationId, workerId) => {
   });
 
   if (!application) return { application: null, reason: "not_found" };
-  if (!["pending", "approved"].includes(application.status)) {
+  // Після підтвердження компанією зміна вже заброньована за виконавцем,
+  // тому відкликати можна лише заявку, яка ще перебуває на розгляді.
+  if (application.status !== "pending") {
     return { application: null, reason: "status" };
   }
   if (new Date(application.Shift.startTime) <= new Date()) {
@@ -463,12 +585,18 @@ export const getWorkerShiftHistory = async (
   const offset = (page - 1) * limit;
   const whereCondition = { workerId };
   const now = new Date();
+  const isCompleted = scope === "completed";
   const isArchive = scope === "archive";
 
-  if (isArchive) {
+  if (isCompleted) {
+    whereCondition.status = "completed";
+  } else if (isArchive) {
     whereCondition[Op.or] = [
-      { status: { [Op.in]: ["rejected", "completed", "no_show"] } },
-      where(col("Shift.endTime"), { [Op.lt]: now }),
+      { status: { [Op.in]: ["rejected", "no_show"] } },
+      {
+        status: { [Op.in]: ["pending", "approved"] },
+        [Op.and]: [where(col("Shift.endTime"), { [Op.lt]: now })],
+      },
     ];
   } else {
     whereCondition.status = { [Op.in]: ["pending", "approved"] };
@@ -490,7 +618,7 @@ export const getWorkerShiftHistory = async (
       {
         model: Shift,
         attributes: ["id", "startTime", "endTime", "hourlyRate", "bonusRate", "description", "status"],
-        ...(isArchive ? {} : { where: { endTime: { [Op.gte]: now } }, required: true }),
+        ...(isCompleted || isArchive ? {} : { where: { endTime: { [Op.gte]: now } }, required: true }),
         include: [
           { model: JobPosition, attributes: ["id", "title"] },
           {
@@ -502,7 +630,7 @@ export const getWorkerShiftHistory = async (
       },
     ],
     order: [
-      [Shift, "startTime", isArchive ? "DESC" : "ASC"],
+      [Shift, "startTime", isCompleted || isArchive ? "DESC" : "ASC"],
     ],
   });
 

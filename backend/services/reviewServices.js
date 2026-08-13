@@ -64,12 +64,12 @@ const getReviewContext = async ({ userId, shiftId, rating }) => {
     );
   }
 
-  const completedApplication = applications.find(
-    (application) => application.status === "completed",
+  const terminalApplication = applications.find(
+    (application) => ["completed", "no_show"].includes(application.status),
   );
 
-  if (!completedApplication) {
-    throw HTTPError(404, "Виконавця, який завершив цю зміну, не знайдено.");
+  if (!terminalApplication) {
+    throw HTTPError(404, "Для цієї зміни ще немає фінального статусу виконавця.");
   }
 
   const companyOwnerId = shift.Location?.Company?.ownerId;
@@ -81,7 +81,7 @@ const getReviewContext = async ({ userId, shiftId, rating }) => {
     user,
     shift,
     companyOwnerId,
-    workerId: completedApplication.workerId,
+    workerId: terminalApplication.workerId,
   };
 };
 
@@ -142,6 +142,11 @@ export const createReview = async ({ userId, shiftId, rating, comment }) => {
     companyOwnerId,
     workerId,
   });
+
+  const existingReview = await Review.findOne({ where: { shiftId, reviewerId } });
+  if (existingReview) {
+    throw HTTPError(409, "Ви вже залишили відгук для цієї зміни.");
+  }
 
   const newReview = await Review.create({
     reviewerId,
