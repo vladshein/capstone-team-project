@@ -128,8 +128,8 @@ export function FilterSidebar({
           <MapPin className="h-4 w-4 shrink-0 text-accent" />
           {isLoadingApproximateLocation
             ? "Визначаємо ваше місто…"
-            : preciseCity || manualCity || approximateLocation?.city
-              ? `Ваше місто: ${preciseCity || manualCity || approximateLocation?.city}`
+            : manualCity || preciseCity || approximateLocation?.city
+              ? `Ваше місто: ${manualCity || preciseCity || approximateLocation?.city}`
               : "Місто не вдалося визначити"}
         </div>
         <button

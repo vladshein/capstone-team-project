@@ -1,16 +1,16 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { profileService } from "../../services/companiesProfileService";
+import { companiesProfileService } from "../../services/companiesProfileService";
 import { companiesActions } from "./constants";
-import type { CompanyProfile } from "./types";
+import type { CompanyProfile, CreateCompanyPayload, UpdateCompanyPayload } from "./types";
 import type { ApiError } from "../types";
-import { toApiError } from "../utils"
+import { toApiError } from "../utils";
 
 export const fetchMyCompanies = createAsyncThunk<CompanyProfile[], void, { rejectValue: ApiError }>(
   companiesActions.FETCH_MY_COMPANIES,
   async (_, { rejectWithValue }) => {
     try {
-      const { data } = await profileService.fetchMyCompanies();
-      return data;
+      const { data } = await companiesProfileService.fetchMyCompanies();
+      return data.data; // розгортаємо бекенд-обгортку
     } catch (error) {
       return rejectWithValue(toApiError(error));
     }
@@ -21,44 +21,49 @@ export const fetchCompanyById = createAsyncThunk<CompanyProfile, number, { rejec
   companiesActions.FETCH_COMPANY_BY_ID,
   async (id, { rejectWithValue }) => {
     try {
-      const { data } = await profileService.getCompanyCompaniById(id);
-      return data;
+      const { data } = await companiesProfileService.getCompanyById(id);
+      return data.data; // було return data
     } catch (error) {
       return rejectWithValue(toApiError(error));
     }
   },
 );
 
-export const createCompany = createAsyncThunk<CompanyProfile, number, { rejectValue: ApiError }>(
+export const createCompany = createAsyncThunk<CompanyProfile, CreateCompanyPayload, { rejectValue: ApiError }>(
   companiesActions.CREATE_COMPANY,
-  async (id, { rejectWithValue }) => {
+  async (payload, { rejectWithValue }) => {
     try {
-      const { data } = await profileService.createCompanyProfile();
-      return data;
+      const { data } = await companiesProfileService.createCompanyProfile(payload);
+      return data.data; // було return data
     } catch (error) {
       return rejectWithValue(toApiError(error));
     }
   },
 );
 
-export const updateCompany = createAsyncThunk<CompanyProfile, number, { rejectValue: ApiError }>(
+export const updateCompany = createAsyncThunk<
+  CompanyProfile,
+  { id: number; payload: UpdateCompanyPayload },
+  { rejectValue: ApiError }
+>(
   companiesActions.UPDATE_COMPANY,
-  async (id, { rejectWithValue }) => {
+  async ({ id, payload }, { rejectWithValue }) => {
     try {
-      const { data } = await profileService.updateCompanyProfile(id);
-      return data;
+      const { data } = await companiesProfileService.updateCompanyProfile(id, payload);
+      return data.data; // було return data
     } catch (error) {
       return rejectWithValue(toApiError(error));
     }
   },
 );
 
-export const deleteCompany = createAsyncThunk<CompanyProfile, number, { rejectValue: ApiError }>(
+export const deleteCompany = createAsyncThunk<
+  number, number, { rejectValue: ApiError }>(
   companiesActions.DELETE_COMPANY,
   async (id, { rejectWithValue }) => {
     try {
-      const { data } = await profileService.deleteCompanyProfile(id);
-      return data;
+      await companiesProfileService.deleteCompanyProfile(id);
+      return id; // backend повертає лише {success:true} — reducer фільтрує items по id, тож повертаємо саме id
     } catch (error) {
       return rejectWithValue(toApiError(error));
     }

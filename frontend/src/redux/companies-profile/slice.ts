@@ -61,8 +61,8 @@ const companiesProfileSlice = createSlice({
         if (index !== -1) state.items[index] = payload;
       })
       .addCase(deleteCompany.fulfilled, (state, { payload }) => {
-        state.items = state.items.filter((c) => c.id !== payload.id);
-      }),
+        state.items = state.items.filter((c) => c.id !== payload); // було payload.id
+      })
 });
 
 export const { clearCompaniesProfile } = companiesProfileSlice.actions;
