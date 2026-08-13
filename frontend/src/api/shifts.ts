@@ -10,6 +10,7 @@ export type ShiftStatus =
 export interface ShiftCompany {
   id: number;
   name: string;
+  ownerId?: number;
 }
 
 export interface ShiftLocation {
@@ -277,4 +278,12 @@ export async function getBusinessShiftApplications(
     { params: { companyId } },
   );
   return data.data;
+}
+
+/** Кількість лише нових заявок для бейджа в кабінеті бізнесу. */
+export async function getPendingBusinessShiftApplicationsCount(companyId: number): Promise<number> {
+  const { data } = await api.get<{ pendingCount: number }>("/shifts/business/applications", {
+    params: { companyId, summary: true },
+  });
+  return data.pendingCount;
 }

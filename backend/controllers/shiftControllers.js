@@ -147,10 +147,18 @@ export const getBusinessShiftApplications = async (req, res, next) => {
       return res.status(400).json({ message: "Потрібно вказати коректну компанію." });
     }
 
-    const applications = await shiftService.getBusinessShiftApplications({
+    const query = {
       companyId,
       ownerId: req.user.id,
-    });
+    };
+
+    if (req.query.summary === "true") {
+      const pendingCount = await shiftService.getPendingBusinessShiftApplicationsCount(query);
+      res.set("Cache-Control", "no-store");
+      return res.status(200).json({ pendingCount });
+    }
+
+    const applications = await shiftService.getBusinessShiftApplications(query);
 
     res.set("Cache-Control", "no-store");
     res.status(200).json({ data: applications });
@@ -317,17 +325,6 @@ export const applyToShift = async (req, res, next) => {
       throw error;
     }
     if (new Date(shift.startTime) <= new Date()) {
-      const error = new Error("Не можна редагувати зміну після її початку.");
-      error.status = 400;
-      throw error;
-    }
-    if (req.body.startTime && new Date(req.body.startTime) <= new Date()) {
-      const error = new Error("Час початку зміни має бути в майбутньому.");
-      error.status = 400;
-      throw error;
-    }
-
-    if (new Date(shift.startTime) <= new Date()) {
       const error = new Error("Відгукнутися можна лише до початку зміни.");
       error.status = 400;
       throw error;
@@ -419,6 +416,16 @@ export const updateShift = async (req, res, next) => {
         "Не можна редагувати зміну, яка вже заброньована робітником або завершена.",
       );
       error.status = 400; // Bad Request
+      throw error;
+    }
+    if (new Date(shift.startTime) <= new Date()) {
+      const error = new Error("Не можна редагувати зміну після її початку.");
+      error.status = 400;
+      throw error;
+    }
+    if (req.body.startTime && new Date(req.body.startTime) <= new Date()) {
+      const error = new Error("Час початку зміни має бути в майбутньому.");
+      error.status = 400;
       throw error;
     }
 

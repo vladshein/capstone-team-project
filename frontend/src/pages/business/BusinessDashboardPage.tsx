@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Archive, BriefcaseBusiness, Plus, Users } from "lucide-react";
+import { Archive, BriefcaseBusiness, ChevronDown, Plus, Users } from "lucide-react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { Loader } from "../../components/ui/Loader";
@@ -12,12 +12,13 @@ import {
 import type { CompanyProfile } from "../../redux/companies-profile/types";
 import { createNewShift } from "../../redux/shift/actions";
 import { clearShiftError } from "../../redux/shift/slice";
-import type { CreateShiftPayload } from "../../api/shifts";
+import { getPendingBusinessShiftApplicationsCount, type CreateShiftPayload } from "../../api/shifts";
 import { CreateShiftModal } from "./CreateShiftModal";
 
 export interface BusinessDashboardOutletContext {
   company: CompanyProfile;
   shiftsRefreshKey: number;
+  onApplicationsChanged: () => void;
 }
 
 const tabs = [
@@ -37,6 +38,8 @@ function BusinessDashboardPage() {
   const [activeCompanyId, setActiveCompanyId] = useState<number | null>(null);
   const [isCreateShiftOpen, setIsCreateShiftOpen] = useState(false);
   const [shiftsRefreshKey, setShiftsRefreshKey] = useState(0);
+  const [pendingApplicationsCount, setPendingApplicationsCount] = useState(0);
+  const [applicationsRefreshKey, setApplicationsRefreshKey] = useState(0);
   const navigationState = location.state as
     | { companyId?: number; openCreateShift?: boolean }
     | null;
@@ -62,6 +65,21 @@ function BusinessDashboardPage() {
     navigate(location.pathname, { replace: true, state: null });
   }, [companies, dispatch, location.pathname, navigate, navigationState?.companyId, navigationState?.openCreateShift]);
 
+  const activeCompany = companies.find((company) => company.id === activeCompanyId) ?? companies[0];
+
+  useEffect(() => {
+    if (!activeCompany) {
+      setPendingApplicationsCount(0);
+      return undefined;
+    }
+
+    let cancelled = false;
+    void getPendingBusinessShiftApplicationsCount(activeCompany.id)
+      .then((count) => { if (!cancelled) setPendingApplicationsCount(count); })
+      .catch(() => { if (!cancelled) setPendingApplicationsCount(0); });
+    return () => { cancelled = true; };
+  }, [activeCompany?.id, applicationsRefreshKey]);
+
   if (status === "loading" || status === "idle") {
     return <Loader label="Завантажуємо кабінет…" size="lg" fullScreen />;
   }
@@ -84,8 +102,6 @@ function BusinessDashboardPage() {
     );
   }
 
-  const activeCompany = companies.find((company) => company.id === activeCompanyId) ?? companies[0];
-
   const handleCreateShift = async (payload: CreateShiftPayload) => {
     await dispatch(createNewShift(payload)).unwrap();
     setIsCreateShiftOpen(false);
@@ -102,19 +118,24 @@ function BusinessDashboardPage() {
       <header className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">Кабінет компанії</h1>
-          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-text-muted">
+          <div className="mt-3 flex flex-wrap items-end gap-x-3 gap-y-2 text-sm text-text-muted">
             {companies.length === 1 ? (
-              <span>{activeCompany.name}</span>
+              <div className="flex flex-col">
+                <span className="text-xs text-text-subtle">Активна компанія</span>
+                <span className="mt-0.5 font-medium text-text">{activeCompany.name}</span>
+              </div>
             ) : (
-              <label className="flex items-center gap-2">
-                <span className="sr-only">Активна компанія</span>
-                <select value={activeCompany.id} onChange={(event) => setActiveCompanyId(Number(event.target.value))} className="cursor-pointer appearance-none bg-transparent pr-6 font-medium text-text outline-none hover:text-accent">
-                  {companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
-                </select>
+              <label className="flex cursor-pointer flex-col">
+                <span className="text-xs text-text-subtle">Активна компанія</span>
+                <span className="relative mt-0.5 inline-flex items-center">
+                  <select value={activeCompany.id} onChange={(event) => setActiveCompanyId(Number(event.target.value))} className="min-h-[36px] cursor-pointer appearance-none rounded-[var(--radius-pill)] border border-border bg-bg py-1 pl-3 pr-9 text-sm font-medium text-text outline-none transition-colors hover:border-accent focus:border-accent">
+                    {companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 h-4 w-4 text-text-subtle" />
+                </span>
               </label>
             )}
-            <span aria-hidden="true">·</span>
-            <Link to="/profile" state={{ companyId: activeCompany.id }} className="text-accent-text hover:underline">Профіль компанії</Link>
+            <Link to="/profile" state={{ companyId: activeCompany.id }} className="mb-1 text-accent-text hover:underline">Профіль компанії</Link>
           </div>
         </div>
 
@@ -130,10 +151,19 @@ function BusinessDashboardPage() {
             <NavLink key={to} to={to} className={({ isActive }) => `flex shrink-0 items-center gap-2 border-b-2 px-4 py-4 text-sm font-medium transition-colors sm:px-5 ${isActive ? "border-accent text-accent" : "border-transparent text-text-muted hover:text-text"}`}>
               <Icon className="h-4 w-4" />
               {label}
+              {to === "applications" && pendingApplicationsCount > 0 && (
+                <span className="flex min-w-5 items-center justify-center rounded-[var(--radius-pill)] bg-accent px-1.5 py-0.5 text-[11px] font-semibold leading-none text-white">
+                  {pendingApplicationsCount > 99 ? "99+" : pendingApplicationsCount}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>
-        <Outlet context={{ company: activeCompany, shiftsRefreshKey } satisfies BusinessDashboardOutletContext} />
+        <Outlet context={{
+          company: activeCompany,
+          shiftsRefreshKey,
+          onApplicationsChanged: () => setApplicationsRefreshKey((key) => key + 1),
+        } satisfies BusinessDashboardOutletContext} />
       </div>
 
       <CreateShiftModal

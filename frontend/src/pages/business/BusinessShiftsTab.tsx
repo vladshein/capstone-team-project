@@ -138,9 +138,6 @@ export function BusinessShiftsTab({ scope }: BusinessShiftsTabProps) {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Link to={`/shifts/${shift.id}`} className="inline-flex min-h-[40px] items-center justify-center rounded-[var(--radius-pill)] border border-border px-3 text-sm font-medium text-text transition-colors hover:border-accent hover:text-accent-text">
-              Детальніше
-            </Link>
             {scope === "active" && canManage(shift) && (
               <>
                 {shift.status === "open" && (

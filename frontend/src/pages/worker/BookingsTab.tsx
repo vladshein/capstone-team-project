@@ -135,9 +135,6 @@ export function BookingsTab() {
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <Link to={`/shifts/${shift.id}`} className="inline-flex min-h-[42px] items-center justify-center rounded-[var(--radius-pill)] border border-border px-4 text-sm font-medium text-text transition-colors hover:border-accent hover:text-accent-text">
-                Деталі
-              </Link>
               {canCancel && (
                 <button
                   type="button"

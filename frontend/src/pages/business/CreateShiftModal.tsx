@@ -59,6 +59,18 @@ const positionTitlesByCategory: Record<number, string[]> = {
   15: ["Доглядальник за тваринами", "Помічник грумера"],
 };
 
+interface ReverseGeocodeResult {
+  display_name?: string;
+  address?: {
+    city?: string;
+    town?: string;
+    village?: string;
+    municipality?: string;
+    road?: string;
+    house_number?: string;
+  };
+}
+
 export function CreateShiftModal({
   isOpen,
   companyId,
@@ -93,6 +105,7 @@ export function CreateShiftModal({
     longitude: number;
   } | null>(null);
   const [isMapPickerOpen, setIsMapPickerOpen] = useState(false);
+  const [isResolvingMapPoint, setIsResolvingMapPoint] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -250,6 +263,36 @@ export function CreateShiftModal({
     });
   };
 
+  const handleMapPointSelect = (point: { latitude: number; longitude: number }) => {
+    setLocationCoordinates(point);
+    setIsResolvingMapPoint(true);
+
+    const params = new URLSearchParams({
+      format: "jsonv2",
+      lat: String(point.latitude),
+      lon: String(point.longitude),
+      addressdetails: "1",
+      "accept-language": "uk",
+    });
+
+    void fetch(`https://nominatim.openstreetmap.org/reverse?${params}`)
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Reverse geocoding failed");
+        return (await response.json()) as ReverseGeocodeResult;
+      })
+      .then((result) => {
+        const address = result.address;
+        const city = address?.city ?? address?.town ?? address?.village ?? address?.municipality;
+        const street = [address?.road, address?.house_number].filter(Boolean).join(", ");
+
+        if (city) setLocationCity(city);
+        if (street || result.display_name) setLocationAddress(street || result.display_name || "");
+      })
+      // Точка лишається валідною навіть якщо зовнішній геокодер тимчасово недоступний.
+      .catch(() => undefined)
+      .finally(() => setIsResolvingMapPoint(false));
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={initialShift ? "Редагувати зміну" : "Створити зміну"}>
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -303,13 +346,15 @@ export function CreateShiftModal({
                   </button>
                   <p className={`text-xs ${locationCoordinates ? "text-accent-text" : "text-text-subtle"}`}>
                   {locationCoordinates
-                    ? "Точку обрано — координати буде збережено для карти."
+                    ? isResolvingMapPoint
+                      ? "Визначаємо адресу для обраної точки…"
+                      : "Точку обрано — координати буде збережено для карти."
                     : "Оберіть адресу з підказок або поставте точку на мапі."}
                   </p>
                 </div>
                 {isMapPickerOpen && (
                   <div className="mt-3">
-                    <MapPointPicker value={locationCoordinates} onChange={setLocationCoordinates} />
+                    <MapPointPicker value={locationCoordinates} onChange={handleMapPointSelect} />
                   </div>
                 )}
               </div>

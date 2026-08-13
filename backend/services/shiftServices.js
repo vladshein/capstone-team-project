@@ -392,6 +392,34 @@ export const getBusinessShiftApplications = async ({ companyId, ownerId }) => {
   });
 };
 
+/** Повертає тільки кількість нових заявок, без важких даних виконавців і змін. */
+export const getPendingBusinessShiftApplicationsCount = async ({ companyId, ownerId }) => {
+  const company = await Company.findOne({ where: { id: companyId, ownerId } });
+
+  if (!company) {
+    const error = new Error("У вас немає доступу до заявок цієї компанії");
+    error.status = 403;
+    throw error;
+  }
+
+  return ShiftApplication.count({
+    where: { status: "pending" },
+    include: [
+      {
+        model: Shift,
+        required: true,
+        include: [
+          {
+            model: Location,
+            where: { companyId: company.id },
+            required: true,
+          },
+        ],
+      },
+    ],
+  });
+};
+
 /** Приймає або відхиляє заявку на зміну від імені власника компанії. */
 export const decideBusinessShiftApplication = async ({ applicationId, ownerId, decision }) => {
   return Shift.sequelize.transaction(async (transaction) => {

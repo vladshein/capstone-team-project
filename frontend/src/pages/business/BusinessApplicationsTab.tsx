@@ -16,7 +16,7 @@ import { createReview } from "../../api/reviews";
 import type { BusinessDashboardOutletContext } from "./BusinessDashboardPage";
 
 export function BusinessApplicationsTab() {
-  const { company } = useOutletContext<BusinessDashboardOutletContext>();
+  const { company, onApplicationsChanged } = useOutletContext<BusinessDashboardOutletContext>();
   const [applications, setApplications] = useState<BusinessShiftApplication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +48,7 @@ export function BusinessApplicationsTab() {
     try {
       await decideBusinessShiftApplication(applicationId, status);
       setReloadKey((key) => key + 1);
+      onApplicationsChanged();
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Не вдалося оновити заявку.");
     } finally {
@@ -151,9 +152,6 @@ export function BusinessApplicationsTab() {
               </div>
             </div>
             <div className="flex shrink-0 flex-wrap gap-2">
-              <Link to={`/shifts/${application.Shift.id}`} className="inline-flex min-h-[40px] items-center justify-center rounded-[var(--radius-pill)] border border-border px-4 text-sm font-medium text-text transition-colors hover:border-accent hover:text-accent-text">
-                Детальніше
-              </Link>
               {application.status === "pending" && (
                 <>
                 <button
