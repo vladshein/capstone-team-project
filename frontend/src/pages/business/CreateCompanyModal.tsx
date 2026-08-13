@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { X } from "lucide-react";
 
 export interface CreateCompanyPayload {
@@ -10,41 +10,66 @@ export interface CreateCompanyPayload {
 interface CreateCompanyModalProps {
   isOpen: boolean;
   isSubmitting: boolean;
+  mode?: "create" | "edit";
+  initialValues?: CreateCompanyPayload;
+  serverError?: string;
   onClose: () => void;
   onSubmit: (payload: CreateCompanyPayload) => void;
 }
 
-const EDRPOU_REGEX = /^\d{8}$|^\d{10}$/; // 8 знаків — юрособа, 10 — ФОП. Уточнити з бекенд-командою.
+const EDRPOU_REGEX = /^\d{8}$/;
 
-export function CreateCompanyModal({ isOpen, isSubmitting, onClose, onSubmit }: CreateCompanyModalProps) {
+export function CreateCompanyModal({
+  isOpen,
+  isSubmitting,
+  mode = "create",
+  initialValues,
+  serverError,
+  onClose,
+  onSubmit,
+}: CreateCompanyModalProps) {
   const [name, setName] = useState("");
   const [edrpou, setEdrpou] = useState("");
   const [legalAddress, setLegalAddress] = useState("");
   const [error, setError] = useState<string | null>(null);
 
+  // Підставляємо дані компанії щоразу, коли модалка відкривається
+  // (як і в UpdateWorkerProfileModal) — інакше useState ініціалізується
+  // лише раз і не підхопить дані при повторному відкритті в edit-режимі.
+  useEffect(() => {
+    if (!isOpen) return;
+    setName(initialValues?.name ?? "");
+    setEdrpou(initialValues?.edrpou ?? "");
+    setLegalAddress(initialValues?.legalAddress ?? "");
+    setError(null);
+  }, [isOpen, initialValues]);
+
   if (!isOpen) return null;
 
   const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    if (!name.trim() || !legalAddress.trim()) {
-      setError("Заповніть, будь ласка, усі поля.");
-      return;
-    }
-    if (!EDRPOU_REGEX.test(edrpou.trim())) {
-      setError("ЄДРПОУ має містити 8 або 10 цифр.");
-      return;
-    }
+  if (!name.trim()) {
+    setError("Вкажіть назву компанії.");
+    return;
+  }
+  if (!EDRPOU_REGEX.test(edrpou.trim())) {
+    setError("ЄДРПОУ повинен складатися рівно з 8 цифр.");
+    return;
+  }
+  // legalAddress більше не обов'язкове — перевірку прибираємо
 
-    setError(null);
-    onSubmit({ name: name.trim(), edrpou: edrpou.trim(), legalAddress: legalAddress.trim() });
-  };
+  setError(null);
+  onSubmit({ name: name.trim(), edrpou: edrpou.trim(), legalAddress: legalAddress.trim() });
+};
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-4">
       <div className="w-full max-w-md rounded-[var(--radius-card)] bg-bg p-6 shadow-lg">
         <div className="flex items-center justify-between">
-          <h2 className="font-heading text-lg font-semibold">Дані компанії</h2>
+          <h2 className="font-heading text-lg font-semibold">
+            {mode === "edit" ? "Редагування компанії" : "Дані компанії"}
+          </h2>
           <button onClick={onClose} className="text-text-subtle hover:text-text">
             <X className="h-5 w-5" />
           </button>
@@ -84,13 +109,14 @@ export function CreateCompanyModal({ isOpen, isSubmitting, onClose, onSubmit }: 
           </div>
 
           {error && <p className="text-sm text-danger">{error}</p>}
+          {!error && serverError && <p className="text-sm text-danger">{serverError}</p>}
 
           <button
             type="submit"
             disabled={isSubmitting}
             className="w-full rounded-[var(--radius-pill)] bg-accent py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-60"
           >
-            {isSubmitting ? "Збереження..." : "Зберегти"}
+            {isSubmitting ? "Збереження..." : mode === "edit" ? "Зберегти зміни" : "Створити компанію"}
           </button>
         </form>
       </div>

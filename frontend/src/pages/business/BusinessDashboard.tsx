@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { Plus, Users, Briefcase, Archive } from "lucide-react";
 import { Link } from "react-router-dom";
+import type { AuthUser } from "../../redux/auth/types";
+import type { CompanyProfile } from "../../redux/companies-profile/types";
 
 interface BusinessDashboardProps {
-  companyProfile: {
-    name: string;
-    edrpou: string;
-    legalAddress: string;
-  };
+  user: AuthUser;
+  companies: CompanyProfile[];
 }
 
 type TabKey = "vacancies" | "workers" | "archive";
@@ -18,7 +17,7 @@ const TABS: { key: TabKey; label: string; icon: typeof Briefcase }[] = [
   { key: "archive", label: "Архів", icon: Archive },
 ];
 
-export function BusinessDashboard({ companyProfile }: BusinessDashboardProps) {
+export function BusinessDashboard({ companies }: BusinessDashboardProps) {
   const [activeTab, setActiveTab] = useState<TabKey>("vacancies");
 
   const emptyMessages: Record<TabKey, string> = {
@@ -26,6 +25,11 @@ export function BusinessDashboard({ companyProfile }: BusinessDashboardProps) {
     workers: "Наразі немає робітників, закріплених за активними змінами.",
     archive: "Завершені та скасовані зміни з'являться тут.",
   };
+
+  const headerLabel =
+    companies.length === 1
+      ? companies[0].name
+      : `${companies.length} компаній`;
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-[var(--space-section)] sm:px-6 md:px-8">
@@ -35,7 +39,8 @@ export function BusinessDashboard({ companyProfile }: BusinessDashboardProps) {
             Кабінет компанії
           </h1>
           <p className="mt-1 text-sm text-text-muted">
-            {companyProfile.name} ·{" "}
+            {headerLabel}{" "}
+            ·{" "}
             <Link to="/profile" className="text-accent-text hover:underline">
               Профіль компанії
             </Link>
@@ -47,7 +52,6 @@ export function BusinessDashboard({ companyProfile }: BusinessDashboardProps) {
         </button>
       </div>
 
-      {/* Tabs: Мої вакансії / Активні робітники / Архів — за Frontend_TZ (TabsList, роль Замовник) */}
       <div className="rounded-[var(--radius-card)] border border-border bg-bg shadow-sm overflow-hidden">
         <div className="flex border-b border-border">
           {TABS.map(({ key, label, icon: Icon }) => (
@@ -67,7 +71,6 @@ export function BusinessDashboard({ companyProfile }: BusinessDashboardProps) {
         </div>
 
         <div className="p-5">
-          {/* TODO: підключити реальні дані по вкладках, коли буде готовий /shifts?client_id=... на бекенді */}
           <div className="py-10 text-center text-sm text-text-subtle">
             {emptyMessages[activeTab]}
           </div>
@@ -75,4 +78,4 @@ export function BusinessDashboard({ companyProfile }: BusinessDashboardProps) {
       </div>
     </div>
   );
-}
+} 

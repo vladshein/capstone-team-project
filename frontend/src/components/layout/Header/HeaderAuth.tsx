@@ -102,7 +102,7 @@ export function HeaderAuth({ onOpenSignIn, onOpenSignUp, mobile = false }: Heade
       </Link>
 
       {companiesCount === 0 ? (
-        <Link to="/dashboard/companies/create" role="menuitem" className="block rounded-[var(--radius-card)] px-3 py-2.5 text-sm hover:bg-bg-muted">
+        <Link to={profileLink} role="menuitem" className="block rounded-[var(--radius-card)] px-3 py-2.5 text-sm hover:bg-bg-muted">
           Додати компанію
         </Link>
       ) : (
@@ -150,7 +150,7 @@ export function HeaderAuth({ onOpenSignIn, onOpenSignUp, mobile = false }: Heade
       <div className="mt-auto flex flex-col gap-3">
         {isAuthenticated && user ? (
           <>
-            {isWorker && (
+            {/* {isWorker && (
               <>
                 <Link to="/profile" className="flex min-h-[44px] items-center justify-center rounded-[var(--radius-pill)] border border-border px-5 text-sm font-medium">
                   {hasWorkerProfile ? "Профіль" : "Створити профіль"}
@@ -167,7 +167,7 @@ export function HeaderAuth({ onOpenSignIn, onOpenSignUp, mobile = false }: Heade
                   Кабінет замовника
                 </Link>
                 {companiesCount === 0 ? (
-                  <Link to="/dashboard/companies/create" className="flex min-h-[44px] items-center justify-center rounded-[var(--radius-pill)] border border-border px-5 text-sm font-medium">
+                  <Link to={profileLink} className="flex min-h-[44px] items-center justify-center rounded-[var(--radius-pill)] border border-border px-5 text-sm font-medium">
                     Додати компанію
                   </Link>
                 ) : (
@@ -182,7 +182,7 @@ export function HeaderAuth({ onOpenSignIn, onOpenSignUp, mobile = false }: Heade
                   ))
                 )}
               </>
-            )}
+            )} */}
 
             <LogoutButton onLogout={handleLogout} variant="mobile" />
           </>
@@ -223,8 +223,8 @@ export function HeaderAuth({ onOpenSignIn, onOpenSignUp, mobile = false }: Heade
 
           {isMenuOpen && (
             <div role="menu" className="absolute right-0 top-[calc(100%+0.5rem)] w-56 rounded-[var(--radius-card)] border border-border bg-bg p-1.5 shadow-lg">
-              {workerLinks}
-              {businessLinks}
+              {/* {workerLinks}
+              {businessLinks} */}
               <LogoutButton onLogout={handleLogout} />
             </div>
           )}
