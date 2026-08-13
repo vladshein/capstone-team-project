@@ -1,12 +1,11 @@
 import { useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "../../redux/hooks";
 import { selectUserInfo } from "../../redux/auth/selectors";
-import { fetchMyProfile } from "../../redux/auth/actions";
+import { fetchMyWorkerProfile } from "../../redux/worker-profile/actions";
 import {
   selectWorkerProfile,
   selectWorkerProfileError,
   selectWorkerProfileStatus,
-  selectHasWorkerProfile,
 } from "../../redux/worker-profile/selectors";
 import { Loader } from "../../components/ui/Loader";
 import {
@@ -50,8 +49,10 @@ export function WorkerDashboardPage() {
   const bonuses: Bonus[] = [];
 
   useEffect(() => {
-    void dispatch(fetchMyProfile());
-  }, [dispatch]);
+    if (status === "idle") {
+      void dispatch(fetchMyWorkerProfile());
+    }
+  }, [dispatch, status]);
 
   if (isLoading && !profile) {
     return <Loader label="Завантажуємо кабінет…" size="lg" fullScreen />;
