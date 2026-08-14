@@ -90,7 +90,7 @@ export function HeaderAuth({
   const workerLinks = isWorker && (
     <>
       <Link to="/profile" role="menuitem" className="block rounded-[var(--radius-card)] px-3 py-2.5 text-sm hover:bg-bg-muted">
-        {hasWorkerProfile ? "Профіль" : "Створити профіль"}
+        Профіль
       </Link>
       <Link to={profileLink} role="menuitem" className="block rounded-[var(--radius-card)] px-3 py-2.5 text-sm hover:bg-bg-muted">
         Кабінет виконавця
@@ -158,7 +158,7 @@ export function HeaderAuth({
             {isWorker && (
               <>
                 <Link to="/profile" className="flex min-h-[44px] items-center justify-center rounded-[var(--radius-pill)] border border-border px-5 text-sm font-medium">
-                  {hasWorkerProfile ? "Профіль" : "Створити профіль"}
+                  Профіль
                 </Link>
                 <Link to={profileLink} className="flex min-h-[44px] items-center justify-center rounded-[var(--radius-pill)] border border-border px-5 text-sm font-medium">
                   Кабінет виконавця

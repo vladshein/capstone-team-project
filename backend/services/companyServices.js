@@ -9,7 +9,7 @@ export const getCompanyById = async (companyId) => {
     include: [
       {
         model: Location,
-        attributes: ["id", "title", "city", "address"],
+        attributes: ["id", "title", "city", "address", "latitude", "longitude"],
       },
     ],
   });
@@ -33,7 +33,7 @@ export const getUserCompanies = async (ownerId) => {
     include: [
       {
         model: Location,
-        attributes: ["id", "title", "city", "address"],
+        attributes: ["id", "title", "city", "address", "latitude", "longitude"],
       },
     ],
     order: [["created_at", "DESC"]],
@@ -60,6 +60,19 @@ export const createCompany = async (ownerId, companyData) => {
     ownerId,
     ...companyData,
   });
+};
+
+/** Створює робочу точку лише для компанії поточного бізнес-користувача. */
+export const createCompanyLocation = async (companyId, ownerId, locationData) => {
+  const company = await Company.findOne({ where: { id: companyId, ownerId } });
+
+  if (!company) {
+    const error = new Error("У вас немає прав додавати локації цій компанії");
+    error.status = 403;
+    throw error;
+  }
+
+  return Location.create({ companyId: company.id, ...locationData });
 };
 
 /**

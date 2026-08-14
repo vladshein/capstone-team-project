@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Building2, ArrowLeft } from "lucide-react";
-import { useLocation } from "react-router-dom";
+import { Building2, ArrowLeft, Plus } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../redux/hooks";
 import { fetchMyCompanies, createCompany, updateCompany } from "../../redux/companies-profile/actions";
 import {
@@ -28,6 +28,7 @@ function ProfileField({ label, value }: { label: string; value?: string }) {
 export function BusinessProfilePage() {
   const dispatch = useAppDispatch();
   const location = useLocation();
+  const navigate = useNavigate();
   const companies = useAppSelector(selectCompanies);
   const status = useAppSelector(selectCompaniesStatus);
   const error = useAppSelector(selectCompaniesError);
@@ -79,6 +80,13 @@ export function BusinessProfilePage() {
     dispatch(clearCompanyMutationError());
     setModalMode("edit");
     setIsModalOpen(true);
+  };
+
+  const openCreateShift = () => {
+    if (!activeCompany) return;
+    navigate("/dashboard/shifts", {
+      state: { companyId: activeCompany.id, openCreateShift: true },
+    });
   };
 
   const handleCreateCompany = async (payload: CreateCompanyPayload) => {
@@ -144,7 +152,7 @@ export function BusinessProfilePage() {
 
   if (companies.length === 0) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-[var(--space-section)] sm:px-6 md:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-[var(--space-section)] sm:px-6 md:px-8">
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
           <div>
             <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">
@@ -179,7 +187,7 @@ export function BusinessProfilePage() {
 
   if (companies.length > 1 && selectedId === null) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-[var(--space-section)] sm:px-6 md:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-[var(--space-section)] sm:px-6 md:px-8">
         <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl mb-6">
           Оберіть компанію
         </h1>
@@ -211,7 +219,7 @@ export function BusinessProfilePage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-[var(--space-section)] sm:px-6 md:px-8">
+    <div className="mx-auto max-w-7xl px-4 py-[var(--space-section)] sm:px-6 md:px-8">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
         <div>
           {companies.length > 1 && (
@@ -230,6 +238,14 @@ export function BusinessProfilePage() {
           <p className="mt-1 text-sm text-text-muted">Дані вашої компанії</p>
         </div>
         <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={openCreateShift}
+            className="flex items-center gap-2 rounded-[var(--radius-pill)] bg-ink px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent"
+          >
+            <Plus className="h-4 w-4" />
+            Створити зміну
+          </button>
           <button
             type="button"
             onClick={openCreateModal}

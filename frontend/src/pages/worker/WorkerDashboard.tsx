@@ -69,7 +69,7 @@ interface WorkerDashboardProps {
 
 const TABS = [
   { key: "search", label: "Пошук змін", to: "search" },
-  { key: "bookings", label: "Мої бронювання", to: "bookings" },
+  { key: "bookings", label: "Мої зміни", to: "bookings" },
   { key: "favorites", label: "Збережені зміни", to: "favorites" },
 ];
 
@@ -144,7 +144,7 @@ export function WorkerDashboard({
       : "Ім'я не вказано";
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-[var(--space-section)] sm:px-6 md:px-8">
+    <div className="mx-auto max-w-7xl px-4 py-[var(--space-section)] sm:px-6 md:px-8">
       <div className="flex flex-col gap-8 md:flex-row">
         {/* ---------------------------------------------------------- */}
         {/* Sidebar: профіль, верифікація, бонуси                      */}
@@ -277,7 +277,7 @@ export function WorkerDashboard({
             </section>
           )}
 
-          {/* Вкладки: Пошук змін / Мої бронювання */}
+          {/* Вкладки: Пошук змін / Мої зміни */}
           <section>
             <div className="flex gap-1 border-b border-border">
               {TABS.map((tab) => (

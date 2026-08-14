@@ -109,7 +109,7 @@ export function FavoriteShiftsTab() {
           <article key={shift.id} className="flex flex-col rounded-[var(--radius-card)] border border-border bg-bg p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="font-heading font-semibold text-ink">{title}</p>
+                <Link to={`/shifts/${shift.id}`} className="font-heading font-semibold text-ink transition-colors hover:text-accent-text hover:underline">{title}</Link>
                 <p className="mt-1 text-sm text-text-muted">{companyName}</p>
               </div>
               <button
@@ -136,10 +136,7 @@ export function FavoriteShiftsTab() {
             </p>
             <div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-4">
               <span className="font-mono font-bold text-accent">~{Math.round(payment).toLocaleString("uk-UA")} ₴</span>
-              <Link
-                to={`/shifts/${shift.id}`}
-                className="inline-flex min-h-[40px] items-center gap-1 rounded-[var(--radius-pill)] bg-ink px-4 text-sm font-medium text-white transition-colors hover:bg-accent"
-              >
+              <Link to={`/shifts/${shift.id}`} className="inline-flex min-h-[40px] items-center gap-1 rounded-[var(--radius-pill)] bg-ink px-4 text-sm font-medium text-white transition-colors hover:bg-accent">
                 Детальніше <ArrowUpRight className="h-4 w-4" />
               </Link>
             </div>

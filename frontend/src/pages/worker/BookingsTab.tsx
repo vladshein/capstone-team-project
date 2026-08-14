@@ -11,9 +11,11 @@ import {
 import { formatShiftDate, formatTimeRange } from "../../sectionsHero/TasksBoard/formatters";
 import { Modal } from "../../components/ui/Modal";
 import { Loader } from "../../components/ui/Loader";
+import { ReviewModal } from "../../components/reviews/ReviewModal";
+import { createReview } from "../../api/reviews";
 
 const APPLICATIONS_PER_PAGE = 8;
-type BookingScope = "active" | "archive";
+type BookingScope = "active" | "completed" | "archive";
 
 const statusMeta = {
   pending: { label: "Заявка на розгляді", className: "bg-warning/10 text-warning" },
@@ -32,6 +34,9 @@ export function BookingsTab() {
   const [cancellingId, setCancellingId] = useState<number | null>(null);
   const [applicationToCancel, setApplicationToCancel] = useState<WorkerShiftApplication | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [applicationToReview, setApplicationToReview] = useState<WorkerShiftApplication | null>(null);
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
 
   useEffect(() => {
     let isCurrent = true;
@@ -76,12 +81,27 @@ export function BookingsTab() {
     }
   };
 
+  const handleReviewSubmit = async ({ rating, comment }: { rating: number; comment?: string }) => {
+    if (!applicationToReview) return;
+    setIsSubmittingReview(true);
+    setReviewError(null);
+    try {
+      await createReview(applicationToReview.shiftId, { rating, comment });
+      toast.success("Відгук збережено.");
+      setApplicationToReview(null);
+    } catch (error) {
+      setReviewError(error instanceof Error ? error.message : "Не вдалося зберегти відгук.");
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
+
   const isInitialLoading = isLoading && applications.length === 0;
   const content = isInitialLoading ? (
     <Loader label="Завантажуємо ваші заявки…" />
   ) : applications.length === 0 ? (
     <div className="flex flex-col items-center gap-2 p-8 text-center text-sm text-text-subtle">
-      <p>{scope === "active" ? "У вас поки немає активних заявок на зміни." : "Архів заявок поки порожній."}</p>
+      <p>{scope === "active" ? "У вас поки немає активних заявок на зміни." : scope === "completed" ? "Виконаних заявок поки немає." : "Архів заявок поки порожній."}</p>
       {scope === "active" && (
         <a href="/#zavdannia" className="font-medium text-accent-text hover:underline">Знайти зміну →</a>
       )}
@@ -92,16 +112,17 @@ export function BookingsTab() {
       {applications.map((application) => {
         const shift = application.Shift;
         const status = statusMeta[application.status];
-        const canCancel = ["pending", "approved"].includes(application.status)
+        const canCancel = application.status === "pending"
           && new Date(shift.startTime) > new Date();
+        const canReview = scope === "completed" && application.status === "completed";
 
         return (
           <article key={application.id} className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="font-heading font-semibold text-ink">
+                <Link to={`/shifts/${shift.id}`} className="font-heading font-semibold text-ink transition-colors hover:text-accent-text hover:underline">
                   {shift.JobPosition?.title ?? shift.description ?? "Зміна"}
-                </h3>
+                </Link>
                 <span className={`rounded-[var(--radius-pill)] px-2.5 py-1 text-xs font-semibold ${status.className}`}>
                   {status.label}
                 </span>
@@ -114,9 +135,6 @@ export function BookingsTab() {
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <Link to={`/shifts/${shift.id}`} className="inline-flex min-h-[42px] items-center justify-center rounded-[var(--radius-pill)] border border-border px-4 text-sm font-medium text-text transition-colors hover:border-accent hover:text-accent-text">
-                Деталі
-              </Link>
               {canCancel && (
                 <button
                   type="button"
@@ -125,6 +143,15 @@ export function BookingsTab() {
                   className="inline-flex min-h-[42px] items-center justify-center rounded-[var(--radius-pill)] px-4 text-sm font-medium text-danger transition-colors hover:bg-danger/10 disabled:cursor-wait disabled:opacity-60"
                 >
                   {cancellingId === application.id ? "Скасовуємо…" : "Відкликати"}
+                </button>
+              )}
+              {canReview && (
+                <button
+                  type="button"
+                  onClick={() => { setReviewError(null); setApplicationToReview(application); }}
+                  className="inline-flex min-h-[42px] items-center justify-center rounded-[var(--radius-pill)] bg-accent px-4 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
+                >
+                  Залишити відгук
                 </button>
               )}
             </div>
@@ -146,6 +173,9 @@ export function BookingsTab() {
       <div className="flex gap-5 border-b border-border px-5">
         <button type="button" onClick={() => handleScopeChange("active")} className={`min-h-[48px] border-b-2 px-1 text-sm font-medium transition-colors ${scope === "active" ? "border-accent text-accent-text" : "border-transparent text-text-muted hover:text-text"}`}>
           Активні
+        </button>
+        <button type="button" onClick={() => handleScopeChange("completed")} className={`min-h-[48px] border-b-2 px-1 text-sm font-medium transition-colors ${scope === "completed" ? "border-accent text-accent-text" : "border-transparent text-text-muted hover:text-text"}`}>
+          Виконані
         </button>
         <button type="button" onClick={() => handleScopeChange("archive")} className={`min-h-[48px] border-b-2 px-1 text-sm font-medium transition-colors ${scope === "archive" ? "border-accent text-accent-text" : "border-transparent text-text-muted hover:text-text"}`}>
           Архів
@@ -181,6 +211,15 @@ export function BookingsTab() {
         </button>
       </div>
     </Modal>
+    <ReviewModal
+      isOpen={applicationToReview !== null}
+      onClose={() => { if (!isSubmittingReview) setApplicationToReview(null); }}
+      title="Оцініть компанію"
+      description={`Як пройшла співпраця з ${applicationToReview?.Shift.Location?.Company?.name ?? "компанією"}?`}
+      isSubmitting={isSubmittingReview}
+      error={reviewError}
+      onSubmit={handleReviewSubmit}
+    />
     </>
   );
 }

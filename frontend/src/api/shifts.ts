@@ -10,6 +10,7 @@ export type ShiftStatus =
 export interface ShiftCompany {
   id: number;
   name: string;
+  ownerId?: number;
 }
 
 export interface ShiftLocation {
@@ -34,6 +35,8 @@ export interface ShiftJobPosition {
 
 export interface Shift {
   id: number;
+  categoryId?: number;
+  positionId?: number;
   startTime: string;
   endTime: string;
   // Sequelize може серіалізувати DECIMAL як рядок, тому API допускає обидва формати.
@@ -112,6 +115,28 @@ export interface ShiftApplication {
   appliedAt: string;
 }
 
+export interface BusinessShift extends Omit<Shift, "Location"> {
+  Location: Pick<ShiftLocation, "id" | "title" | "city" | "address">;
+}
+
+export interface BusinessShiftApplication extends ShiftApplication {
+  Shift: Pick<Shift, "id" | "startTime" | "endTime" | "status"> & {
+    JobPosition: ShiftJobPosition;
+    Location: Pick<ShiftLocation, "id" | "title" | "city" | "address">;
+  };
+  User: {
+    id: number;
+    phone: string;
+    avatar: string | null;
+    WorkerProfile: {
+      firstName: string;
+      lastName: string;
+      rating: number | string;
+      avatarUrl: string | null;
+    } | null;
+  };
+}
+
 export interface WorkerShiftApplication {
   id: number;
   shiftId: number;
@@ -178,8 +203,22 @@ export async function getShiftById(id: number): Promise<Shift> {
 export async function createShift(
   payload: CreateShiftPayload,
 ): Promise<Shift> {
-  const { data } = await api.post<Shift>("/shifts", payload);
-  return data;
+  const { data } = await api.post<{ data: Shift }>("/shifts", payload);
+  return data.data;
+}
+
+/** Оновлює відкриту зміну її власником. */
+export async function updateShift(
+  shiftId: number,
+  payload: CreateShiftPayload,
+): Promise<Shift> {
+  const { data } = await api.patch<{ data: Shift }>(`/shifts/${shiftId}`, payload);
+  return data.data;
+}
+
+/** Скасовує зміну її власником. */
+export async function cancelBusinessShift(shiftId: number): Promise<void> {
+  await api.patch(`/shifts/${shiftId}/cancel`);
 }
 
 /** Відгукнутися на відкриту зміну. */
@@ -194,7 +233,7 @@ export async function getMyShiftApplications(
   page = 1,
   limit = 8,
   shiftId?: number,
-  scope: "active" | "archive" = "active",
+  scope: "active" | "completed" | "archive" = "active",
 ): Promise<WorkerShiftApplicationsResponse> {
   const { data } = await api.get<WorkerShiftApplicationsResponse>("/shifts/worker/my-jobs", {
     params: { page, limit, shiftId, scope },
@@ -204,4 +243,47 @@ export async function getMyShiftApplications(
 
 export async function cancelShiftApplication(applicationId: number): Promise<void> {
   await api.delete(`/shifts/applications/${applicationId}`);
+}
+
+export async function decideBusinessShiftApplication(
+  applicationId: number,
+  status: "approved" | "rejected",
+): Promise<void> {
+  await api.patch(`/shifts/applications/${applicationId}/status`, { status });
+}
+
+export async function completeBusinessShiftApplication(applicationId: number): Promise<void> {
+  await api.patch(`/shifts/applications/${applicationId}/complete`);
+}
+
+export async function markBusinessShiftApplicationNoShow(applicationId: number): Promise<void> {
+  await api.patch(`/shifts/applications/${applicationId}/no-show`);
+}
+
+export async function getBusinessShifts(
+  companyId: number,
+  scope: "active" | "archive" = "active",
+): Promise<BusinessShift[]> {
+  const { data } = await api.get<{ data: BusinessShift[] }>("/shifts/business/my-shifts", {
+    params: { companyId, scope },
+  });
+  return data.data;
+}
+
+export async function getBusinessShiftApplications(
+  companyId: number,
+): Promise<BusinessShiftApplication[]> {
+  const { data } = await api.get<{ data: BusinessShiftApplication[] }>(
+    "/shifts/business/applications",
+    { params: { companyId } },
+  );
+  return data.data;
+}
+
+/** Кількість лише нових заявок для бейджа в кабінеті бізнесу. */
+export async function getPendingBusinessShiftApplicationsCount(companyId: number): Promise<number> {
+  const { data } = await api.get<{ pendingCount: number }>("/shifts/business/applications", {
+    params: { companyId, summary: true },
+  });
+  return data.pendingCount;
 }

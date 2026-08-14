@@ -10,6 +10,7 @@ import {
   MapPin,
   Moon,
   Navigation,
+  Pencil,
   ShieldCheck,
   WalletCards,
 } from "lucide-react";
@@ -32,11 +33,15 @@ import { useAppDispatch, useAppSelector } from "../redux/hooks";
 import type { Shift } from "../redux/shift/types";
 import { useFavoriteShifts } from "../hooks/useFavoriteShifts";
 import {
+  cancelBusinessShift,
   cancelShiftApplication,
   getMyShiftApplications,
+  type BusinessShift,
+  updateShift,
   type WorkerShiftApplication,
 } from "../api/shifts";
 import { clearApplication } from "../redux/shift/slice";
+import { CreateShiftModal } from "./business/CreateShiftModal";
 
 const moneyFormatter = new Intl.NumberFormat("uk-UA", {
   maximumFractionDigits: 0,
@@ -97,6 +102,10 @@ export default function ShiftsDetailPage() {
   const [isCheckingApplication, setIsCheckingApplication] = useState(false);
   const [isCancellingApplication, setIsCancellingApplication] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [isBusinessCancelModalOpen, setIsBusinessCancelModalOpen] = useState(false);
+  const [isEditingShift, setIsEditingShift] = useState(false);
+  const [isSavingBusinessShift, setIsSavingBusinessShift] = useState(false);
+  const [isCancellingBusinessShift, setIsCancellingBusinessShift] = useState(false);
   const shiftId = Number(id);
   const isInvalidId = !Number.isInteger(shiftId) || shiftId <= 0;
   const favorite = shift ? isFavorite(shift.id) : false;
@@ -162,6 +171,8 @@ export default function ShiftsDetailPage() {
   const isShiftFinished = new Date(shift.endTime) <= now;
   const canApply = shift.status === "open" && !isShiftStarted;
   const hasApplied = activeApplication?.shiftId === shift.id;
+  const isShiftOwner = user?.role === "business_client" && shift.Location?.Company?.ownerId === user.id;
+  const canManageShift = isShiftOwner && shift.status === "open" && !isShiftStarted;
 
   const handleApply = async () => {
     if (!isAuthenticated) {
@@ -217,6 +228,34 @@ export default function ShiftsDetailPage() {
       );
     } finally {
       setIsCancellingApplication(false);
+    }
+  };
+
+  const handleEditShift = async (payload: Parameters<typeof updateShift>[1]) => {
+    setIsSavingBusinessShift(true);
+    try {
+      await updateShift(shift.id, payload);
+      setIsEditingShift(false);
+      await dispatch(fetchShiftById(shift.id)).unwrap();
+      toast.success("Зміну оновлено.");
+    } catch (requestError) {
+      toast.error(requestError instanceof Error ? requestError.message : "Не вдалося оновити зміну.");
+    } finally {
+      setIsSavingBusinessShift(false);
+    }
+  };
+
+  const handleBusinessCancel = async () => {
+    setIsCancellingBusinessShift(true);
+    try {
+      await cancelBusinessShift(shift.id);
+      setIsBusinessCancelModalOpen(false);
+      await dispatch(fetchShiftById(shift.id)).unwrap();
+      toast.success("Зміну скасовано.");
+    } catch (requestError) {
+      toast.error(requestError instanceof Error ? requestError.message : "Не вдалося скасувати зміну.");
+    } finally {
+      setIsCancellingBusinessShift(false);
     }
   };
 
@@ -334,7 +373,24 @@ export default function ShiftsDetailPage() {
                 <p className="flex items-center gap-2 text-sm text-text"><CalendarDays className="h-4 w-4 text-text-subtle" /> {formatDate(shift.startTime)}</p>
                 <p className="mt-3 flex items-center gap-2 text-sm text-text"><Clock3 className="h-4 w-4 text-text-subtle" /> {formatTime(shift.startTime)} — {formatTime(shift.endTime)}</p>
               </div>
-              {hasApplied ? (
+              {canManageShift ? (
+                <div className="mt-6 grid gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingShift(true)}
+                    className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[var(--radius-pill)] bg-accent px-5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+                  >
+                    <Pencil className="h-4 w-4" /> Редагувати зміну
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsBusinessCancelModalOpen(true)}
+                    className="flex min-h-[44px] w-full items-center justify-center rounded-[var(--radius-pill)] border border-danger/30 px-5 text-sm font-semibold text-danger transition-colors hover:bg-danger/10"
+                  >
+                    Скасувати зміну
+                  </button>
+                </div>
+              ) : hasApplied ? (
                 <>
                   <p className="mt-6 rounded-[var(--radius-card)] bg-accent/10 px-4 py-3 text-center text-sm font-medium text-accent-text">
                     {activeApplication?.status === "approved"
@@ -403,6 +459,33 @@ export default function ShiftsDetailPage() {
           className="min-h-[44px] rounded-[var(--radius-pill)] bg-danger px-5 text-sm font-semibold text-white transition-colors hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
         >
           {isCancellingApplication ? "Відкликаємо…" : "Відкликати"}
+        </button>
+      </div>
+    </Modal>
+    {isShiftOwner && (
+      <CreateShiftModal
+        isOpen={isEditingShift}
+        companyId={shift.Location.Company.id}
+        locations={[]}
+        isSubmitting={isSavingBusinessShift}
+        onClose={() => { if (!isSavingBusinessShift) setIsEditingShift(false); }}
+        onSubmit={handleEditShift}
+        onLocationCreated={async () => undefined}
+        initialShift={shift as BusinessShift}
+      />
+    )}
+    <Modal
+      isOpen={isBusinessCancelModalOpen}
+      onClose={() => { if (!isCancellingBusinessShift) setIsBusinessCancelModalOpen(false); }}
+      title="Скасувати зміну?"
+    >
+      <p className="text-sm leading-6 text-text-muted">
+        Усі заявки виконавців на цю зміну буде відхилено. Повернути зміну після скасування не вийде.
+      </p>
+      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button type="button" onClick={() => setIsBusinessCancelModalOpen(false)} disabled={isCancellingBusinessShift} className="min-h-[44px] rounded-[var(--radius-pill)] border border-border px-5 text-sm font-semibold text-text transition-colors hover:border-accent">Не скасовувати</button>
+        <button type="button" onClick={handleBusinessCancel} disabled={isCancellingBusinessShift} className="min-h-[44px] rounded-[var(--radius-pill)] bg-danger px-5 text-sm font-semibold text-white transition-colors hover:opacity-90 disabled:opacity-60">
+          {isCancellingBusinessShift ? "Скасовуємо…" : "Скасувати зміну"}
         </button>
       </div>
     </Modal>

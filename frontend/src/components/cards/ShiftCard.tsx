@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Heart, ArrowUpRight, CalendarDays, MapPin, Star } from "lucide-react";
+import { ArrowUpRight, Heart, CalendarDays, MapPin, Star } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useFavoriteShifts } from "../../hooks/useFavoriteShifts";
 
@@ -55,7 +55,9 @@ export function ShiftCard({ shift }: ShiftCardProps) {
 
       <div className="group/title relative mt-4 min-h-12">
         <h3 className="line-clamp-2 font-heading text-base font-semibold leading-6 text-ink">
-          {shift.role}
+          <Link to={`/shifts/${shift.id}`} className="transition-colors hover:text-accent-text hover:underline">
+            {shift.role}
+          </Link>
         </h3>
         <span
           role="tooltip"
@@ -103,13 +105,11 @@ export function ShiftCard({ shift }: ShiftCardProps) {
         )}
       </div>
 
-      <Link
-        to={`/shifts/${shift.id}`}
-        className="mt-4 flex min-h-[44px] items-center justify-between rounded-[var(--radius-card)] border border-ink px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:border-accent hover:bg-accent hover:text-white"
-      >
+      <Link to={`/shifts/${shift.id}`} className="mt-4 flex min-h-[44px] items-center justify-between rounded-[var(--radius-card)] border border-ink px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:border-accent hover:bg-accent hover:text-white">
         Детальніше
         <ArrowUpRight className="h-4 w-4" />
       </Link>
+
     </article>
   );
 }

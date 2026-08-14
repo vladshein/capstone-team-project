@@ -162,3 +162,15 @@
   --radius-pill: var(--theme-radius-pill);
   --space-section: var(--theme-space-section);
 }
+
+/* Інтерактивність має бути помітна в усьому застосунку без дублювання класів. */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+}

@@ -3,6 +3,7 @@ import validateBody from "../helpers/validateBody.js";
 import authenticate from "../middlewares/authenticate.js";
 import {
   createCompanySchema,
+  createCompanyLocationSchema,
   updateCompanySchema,
 } from "../schemas/companySchemas.js";
 
@@ -23,6 +24,13 @@ companyRouter.post(
   "/",
   validateBody(createCompanySchema),
   companyController.createCompany,
+);
+
+// Робочі точки відрізняються від юридичної адреси компанії.
+companyRouter.post(
+  "/:id/locations",
+  validateBody(createCompanyLocationSchema),
+  companyController.createCompanyLocation,
 );
 
 // Редагувати конкретну компанію за її ID

@@ -1,5 +1,11 @@
 import api from "../api/client";
-import type { CompanyProfile, CreateCompanyPayload, UpdateCompanyPayload } from "../redux/companies-profile/types";
+import type {
+  CompanyProfile,
+  CreateCompanyLocationPayload,
+  CreateCompanyPayload,
+  Location,
+  UpdateCompanyPayload,
+} from "../redux/companies-profile/types";
 
 interface ApiResponse<T> {
   message: string;
@@ -12,4 +18,6 @@ export const companiesProfileService = {
   createCompanyProfile: (payload: CreateCompanyPayload) => api.post<ApiResponse<CompanyProfile>>("/companies", payload),
   updateCompanyProfile: (id: number, payload: UpdateCompanyPayload) => api.patch<ApiResponse<CompanyProfile>>(`/companies/${id}`, payload),
   deleteCompanyProfile: (id: number) => api.delete<ApiResponse<{ success: boolean }>>(`/companies/${id}`),
+  createCompanyLocation: (companyId: number, payload: CreateCompanyLocationPayload) =>
+    api.post<ApiResponse<Location>>(`/companies/${companyId}/locations`, payload),
 };
