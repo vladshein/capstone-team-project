@@ -13,7 +13,7 @@
  *           "displayName": { "type": "string", "example": "test@test.com" },
  *           "avatarUrl": { "type": "string", "example": "//://gravatar.com..." },
  *           "balance": { "type": "number", "format": "float", "example": 0 },
- *           "phone": { "type": "string", "example": "+380931111111" },
+ *           "phone": { "type": "string", "example": "+380931111112" },
  *           "isVerified": { "type": "boolean", "example": false }
  *         }
  *       },
@@ -23,8 +23,16 @@
  *         "properties": {
  *           "email": { "type": "string", "format": "email", "example": "example@example.com" },
  *           "password": { "type": "string", "format": "password", "minLength": 8, "example": "examplepass" },
- *           "phone": { "type": "string", "example": "+380631111111" },
+ *           "phone": { "type": "string", "example": "+380631111112" },
  *           "role": { "type": "string", "example": "worker" }
+ *         }
+ *       },
+ *       "LoginRequest": {
+ *         "type": "object",
+ *         "required": ["email", "password"],
+ *         "properties": {
+ *           "email": { "type": "string", "format": "email", "example": "example@example.com" },
+ *           "password": { "type": "string", "format": "password", "minLength": 8, "example": "examplepass" }
  *         }
  *       }
  *     }
