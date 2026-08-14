@@ -7,18 +7,14 @@
     "dev": "cross-env NODE_ENV=development nodemon -L app.js",
     "devmon": "cross-env NODE_ENV=production nodemon app.js",
     "build-docs": "redocly bundle ./docs/openapi.yaml --ext json --output ./docs/swagger.json",
-    
     "db:m": "node db/migrator.js up",
     "db:m:undo": "node db/migrator.js down",
     "db:m:generate": "node db/migrator.js create",
-
     "db:s": "node db/seeder.js up",
     "db:s:undo": "node db/seeder.js down",
     "db:s:generate": "node db/seeder.js create",
-
     "db:migrate": "node ./db/migrate.js",
     "db:migrate:status": "node ./db/migrate.js --status",
-    
     "db:seed": "node --input-type=module -e \"import('./db/models/seedDBs.js').then(m => m.default()).then(() => { console.log('Seeded'); process.exit(0); })\""
   },
   "dependencies": {
@@ -38,6 +34,7 @@
     "pg": "^8.16.3",
     "pg-hstore": "^2.3.4",
     "sequelize": "^6.37.7",
+    "swagger-jsdoc": "^6.3.0",
     "swagger-ui-express": "^5.0.1",
     "umzug": "^3.8.3"
   },

@@ -22,6 +22,7 @@ import connectDatabase from "./db/connectDatabase.js";
 import { swaggerDocs } from "./middlewares/swaggerDocs.js";
 
 
+
 const app = express();
 
 // Увімкнути на хостингу за reverse proxy (Nginx, Render, Railway тощо),
@@ -60,7 +61,6 @@ app.use("/api-docs", swaggerDocs());
 app.use("/api/reviews", reviewRouter);
 // app.use('/api/recipes'cipesRouter);
 // app.use('/api/following', followRouter);
-// app.use("/api-docs", swaggerDocs()); // swagger
 
 app.use(notFoundHandler);
 app.use(errorHandler);
