@@ -1,12 +1,16 @@
 import { useEffect, useState } from "react";
 import { Building2, ArrowLeft } from "lucide-react";
+import { useLocation } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../redux/hooks";
-import { fetchMyCompanies, createCompany } from "../../redux/companies-profile/actions";
+import { fetchMyCompanies, createCompany, updateCompany } from "../../redux/companies-profile/actions";
 import {
   selectCompanies,
   selectCompaniesStatus,
   selectCompaniesError,
+  selectCompanyMutationError,
 } from "../../redux/companies-profile/selectors";
+import { clearCompanyMutationError } from "../../redux/companies-profile/slice";
+import { incrementCompaniesCount } from "../../redux/auth/slice";
 import { CreateCompanyModal, type CreateCompanyPayload } from "./CreateCompanyModal";
 import { Loader } from "../../components/ui/Loader";
 
@@ -23,15 +27,20 @@ function ProfileField({ label, value }: { label: string; value?: string }) {
 
 export function BusinessProfilePage() {
   const dispatch = useAppDispatch();
+  const location = useLocation();
   const companies = useAppSelector(selectCompanies);
   const status = useAppSelector(selectCompaniesStatus);
   const error = useAppSelector(selectCompaniesError);
+  const mutationError = useAppSelector(selectCompanyMutationError);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<"create" | "edit">("create");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // локальний вибір, коли компаній >1 — окремого "selected" з redux тут не треба,
-  // бо список вже повністю завантажений одним fetchMyCompanies
   const [selectedId, setSelectedId] = useState<number | null>(null);
+
+  const navigationState = location.state as
+    | { companyId?: number; openCreate?: boolean }
+    | null;
 
   useEffect(() => {
     if (status === "idle") {
@@ -39,18 +48,91 @@ export function BusinessProfilePage() {
     }
   }, [status, dispatch]);
 
+  // Посилання з кабінету та меню одразу відкривають обрану компанію.
+  useEffect(() => {
+    const companyId = navigationState?.companyId;
+    if (companyId && companies.some((company) => company.id === companyId)) {
+      setSelectedId(companyId);
+    }
+  }, [companies, navigationState?.companyId]);
+
+  // Посилання «Додати компанію» відкриває форму одразу, а не лишає користувача
+  // на сторінці вже створеного профілю.
+  useEffect(() => {
+    if (!navigationState?.openCreate) return;
+    dispatch(clearCompanyMutationError());
+    setModalMode("create");
+    setIsModalOpen(true);
+  }, [dispatch, navigationState?.openCreate]);
+
+  // компанія, що показана в профілі зараз: для 1 — єдина, для >1 — обрана
+  const activeCompany =
+    companies.length === 1 ? companies[0] : companies.find((c) => c.id === selectedId);
+
+  const openCreateModal = () => {
+    dispatch(clearCompanyMutationError());
+    setModalMode("create");
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = () => {
+    dispatch(clearCompanyMutationError());
+    setModalMode("edit");
+    setIsModalOpen(true);
+  };
+
   const handleCreateCompany = async (payload: CreateCompanyPayload) => {
     setIsSubmitting(true);
     try {
       const created = await dispatch(createCompany(payload)).unwrap();
-      setSelectedId(created.id); // одразу показуємо щойно створену
+      // Header використовує bootstrap-лічильник, тому синхронізуємо його
+      // одразу після успішного створення, не чекаючи повторної авторизації.
+      dispatch(incrementCompaniesCount());
+      setSelectedId(created.id);
       setIsModalOpen(false);
     } catch {
-      // помилка (напр. дублікат ЄДРПОУ, 409) вже потрапить у selectCompaniesError через rejected-редюсер
+      // Помилка (наприклад, дубльований ЄДРПОУ) відобразиться в модалці.
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const handleUpdateCompany = async (payload: CreateCompanyPayload) => {
+    if (!activeCompany) return;
+
+    setIsSubmitting(true);
+    try {
+      await dispatch(updateCompany({ id: activeCompany.id, payload })).unwrap();
+      setIsModalOpen(false);
+    } catch {
+      // Помилка вже збережена в Redux і відображається під час наступного рендеру.
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  const handleModalSubmit = modalMode === "create" ? handleCreateCompany : handleUpdateCompany;
+
+  // Один екземпляр модалки для всіх станів сторінки — так не розходяться
+  // пропси, валідація й відображення серверної помилки.
+  const companyModal = (
+    <CreateCompanyModal
+      isOpen={isModalOpen}
+      isSubmitting={isSubmitting}
+      mode={modalMode}
+      initialValues={
+        modalMode === "edit" && activeCompany
+          ? {
+              name: activeCompany.name,
+              edrpou: activeCompany.edrpou,
+              legalAddress: activeCompany.legalAddress,
+            }
+          : undefined
+      }
+      serverError={mutationError?.message}
+      onClose={() => setIsModalOpen(false)}
+      onSubmit={handleModalSubmit}
+    />
+  );
 
   if (status === "loading" || status === "idle") {
     return <Loader label="Завантажуємо профіль компанії…" size="lg" fullScreen />;
@@ -60,7 +142,6 @@ export function BusinessProfilePage() {
     return <p className="p-8 text-center text-sm text-danger">{error.message}</p>;
   }
 
-  // --- 0 компаній: нулі + кнопка створення прямо тут ---
   if (companies.length === 0) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-[var(--space-section)] sm:px-6 md:px-8">
@@ -73,7 +154,7 @@ export function BusinessProfilePage() {
           </div>
           <button
             type="button"
-            onClick={() => setIsModalOpen(true)}
+            onClick={openCreateModal}
             className="flex items-center gap-2 rounded-[var(--radius-pill)] bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-hover transition-colors"
           >
             <Building2 className="h-4 w-4" />
@@ -91,17 +172,11 @@ export function BusinessProfilePage() {
           </div>
         </div>
 
-        <CreateCompanyModal
-          isOpen={isModalOpen}
-          isSubmitting={isSubmitting}
-          onClose={() => setIsModalOpen(false)}
-          onSubmit={handleCreateCompany}
-        />
+        {companyModal}
       </div>
     );
   }
 
-  // --- >1 компаній і жодна ще не обрана: екран вибору ---
   if (companies.length > 1 && selectedId === null) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-[var(--space-section)] sm:px-6 md:px-8">
@@ -122,7 +197,7 @@ export function BusinessProfilePage() {
           ))}
           <button
             type="button"
-            onClick={() => setIsModalOpen(true)}
+            onClick={openCreateModal}
             className="flex items-center gap-2 rounded-[var(--radius-pill)] border border-border px-5 py-2.5 text-sm font-medium hover:border-accent"
           >
             <Building2 className="h-4 w-4" />
@@ -130,18 +205,10 @@ export function BusinessProfilePage() {
           </button>
         </div>
 
-        <CreateCompanyModal
-          isOpen={isModalOpen}
-          isSubmitting={isSubmitting}
-          onClose={() => setIsModalOpen(false)}
-          onSubmit={handleCreateCompany}
-        />
+        {companyModal}
       </div>
     );
   }
-
-  // --- 1 компанія, або >1 з уже обраною ---
-  const company = companies.length === 1 ? companies[0] : companies.find((c) => c.id === selectedId);
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-[var(--space-section)] sm:px-6 md:px-8">
@@ -162,32 +229,37 @@ export function BusinessProfilePage() {
           </h1>
           <p className="mt-1 text-sm text-text-muted">Дані вашої компанії</p>
         </div>
-        <button
-          type="button"
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 rounded-[var(--radius-pill)] bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-hover transition-colors"
-        >
-          <Building2 className="h-4 w-4" />
-          Редагувати компанію
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={openCreateModal}
+            className="flex items-center gap-2 rounded-[var(--radius-pill)] border border-border px-5 py-2.5 text-sm font-medium hover:border-accent transition-colors"
+          >
+            <Building2 className="h-4 w-4" />
+            Додати компанію
+          </button>
+          <button
+            type="button"
+            onClick={openEditModal}
+            className="flex items-center gap-2 rounded-[var(--radius-pill)] bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-hover transition-colors"
+          >
+            <Building2 className="h-4 w-4" />
+            Редагувати компанію
+          </button>
+        </div>
       </div>
 
       <div className="rounded-[var(--radius-card)] border border-border bg-bg p-6 shadow-sm">
         <div className="grid gap-4 sm:grid-cols-2">
-          <ProfileField label="Назва компанії" value={company?.name} />
-          <ProfileField label="ЄДРПОУ" value={company?.edrpou} />
+          <ProfileField label="Назва компанії" value={activeCompany?.name} />
+          <ProfileField label="ЄДРПОУ" value={activeCompany?.edrpou} />
         </div>
         <div className="mt-4">
-          <ProfileField label="Юридична адреса" value={company?.legalAddress} />
+          <ProfileField label="Юридична адреса" value={activeCompany?.legalAddress} />
         </div>
       </div>
 
-      <CreateCompanyModal
-        isOpen={isModalOpen}
-        isSubmitting={isSubmitting}
-        onClose={() => setIsModalOpen(false)}
-        onSubmit={handleCreateCompany}
-      />
+      {companyModal}
     </div>
   );
 }

@@ -137,6 +137,7 @@ export function WorkerDashboard({
   onConfirmAttendance,
 }: WorkerDashboardProps) {
   const { pathname } = useLocation();
+  const rating = Number(workerProfile.rating) || 0;
   const fullName =
     workerProfile.firstName || workerProfile.lastName
       ? `${workerProfile.firstName} ${workerProfile.lastName}`.trim()
@@ -160,7 +161,7 @@ export function WorkerDashboard({
             </h2>
             <div className="mt-2 flex items-center justify-center gap-1 text-sm font-medium text-text">
               <Star className="h-4 w-4 fill-highlight text-highlight" />
-              <span>{workerProfile.rating.toFixed(2)}</span>
+              <span>{rating.toFixed(2)}</span>
             </div>
           </div>
 

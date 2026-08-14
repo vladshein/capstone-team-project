@@ -14,6 +14,7 @@ const companiesInitialState: CompaniesProfileState = {
   status: "idle",
   selectedStatus: "idle",
   error: null,
+  mutationError: null,
 };
 
 const companiesProfileSlice = createSlice({
@@ -21,6 +22,9 @@ const companiesProfileSlice = createSlice({
   initialState: companiesInitialState,
   reducers: {
     clearCompaniesProfile: () => companiesInitialState,
+    clearCompanyMutationError: (state) => {
+      state.mutationError = null;
+    },
   },
   extraReducers: (builder) =>
     builder
@@ -53,17 +57,34 @@ const companiesProfileSlice = createSlice({
       })
 
       // --- create / update / delete: локальна мутація items без рефетчу ---
+      .addCase(createCompany.pending, (state) => {
+        state.mutationError = null;
+      })
       .addCase(createCompany.fulfilled, (state, { payload }) => {
         state.items.push(payload);
+      })
+      .addCase(createCompany.rejected, (state, { payload }) => {
+        state.mutationError = payload ?? {
+          message: "Не вдалося створити компанію. Спробуйте ще раз.",
+        };
+      })
+      .addCase(updateCompany.pending, (state) => {
+        state.mutationError = null;
       })
       .addCase(updateCompany.fulfilled, (state, { payload }) => {
         const index = state.items.findIndex((c) => c.id === payload.id);
         if (index !== -1) state.items[index] = payload;
+      })
+      .addCase(updateCompany.rejected, (state, { payload }) => {
+        state.mutationError = payload ?? {
+          message: "Не вдалося оновити дані компанії. Спробуйте ще раз.",
+        };
       })
       .addCase(deleteCompany.fulfilled, (state, { payload }) => {
         state.items = state.items.filter((c) => c.id !== payload); // було payload.id
       })
 });
 
-export const { clearCompaniesProfile } = companiesProfileSlice.actions;
+export const { clearCompaniesProfile, clearCompanyMutationError } =
+  companiesProfileSlice.actions;
 export default companiesProfileSlice.reducer;
