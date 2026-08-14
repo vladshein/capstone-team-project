@@ -34,8 +34,11 @@ const getReviewContext = async ({ userId, shiftId, rating }) => {
     include: [
       {
         model: Location,
-        attributes: [],
-        include: [{ model: Company, attributes: ["ownerId"] }],
+        // Sequelize needs primary keys in nested includes to hydrate associated
+        // models reliably. Without them `Location.Company` can be missing even
+        // when the company exists, which made review creation report no owner.
+        attributes: ["id", "companyId"],
+        include: [{ model: Company, attributes: ["id", "ownerId"] }],
       },
       {
         model: ShiftApplication,
