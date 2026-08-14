@@ -1,6 +1,7 @@
 import express from "express";
 import morgan from "morgan";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import "dotenv/config";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -25,6 +26,15 @@ import { swaggerDocs } from "./middlewares/swaggerDocs.js";
 
 const app = express();
 
+// Fail fast: перевіряємо обов'язкові env-змінні до старту сервера,
+// щоб уникнути неявних помилок пізніше (напр. в JWT-функціях).
+const requiredEnvVars = ["FRONTEND_URL", "JWT_SECRET", "JWT_REFRESH_SECRET"];
+for (const key of requiredEnvVars) {
+  if (!process.env[key]) {
+    throw new Error(`${key} is not set in .env`);
+  }
+}
+
 // Увімкнути на хостингу за reverse proxy (Nginx, Render, Railway тощо),
 // щоб req.ip містив IP відвідувача з X-Forwarded-For.
 if (process.env.TRUST_PROXY === "true") app.set("trust proxy", 1);
@@ -37,11 +47,12 @@ const tempDir = path.join(__dirname, "temp");
 app.use(morgan("tiny"));
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "*",
+    origin: process.env.FRONTEND_URL,
     credentials: true,
   }),
 );
 app.use(express.json());
+app.use(cookieParser());
 app.use(express.static(publicDir));
 app.use("/temp", express.static(tempDir));
 
@@ -56,12 +67,11 @@ app.use("/api/location", locationRouter);
 
 app.use("/api-docs", swaggerDocs());
 
-// Error handling
-
 app.use("/api/reviews", reviewRouter);
 // app.use('/api/recipes'cipesRouter);
 // app.use('/api/following', followRouter);
 
+// Error handling
 app.use(notFoundHandler);
 app.use(errorHandler);
 
