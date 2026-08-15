@@ -62,8 +62,8 @@ export const refreshUser = createAsyncThunk<
   },
   {
     condition: (_, { getState }) => {
-      const { token, isRefreshing } = getState().auth;
-      return token !== null && !isRefreshing;
+      const { isRefreshing } = getState().auth;
+      return !isRefreshing;
     },
   },
 );

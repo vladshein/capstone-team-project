@@ -1,4 +1,4 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { login, logout, refreshUser, register, fetchMyProfile } from "./actions";
 import type { AuthState } from "./types";
 import type { ApiError } from "../types";
@@ -26,12 +26,12 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     clearAuth: () => initialState,
-    incrementCompaniesCount: (state) => {
-      state.companiesCount += 1;
+    setAccessToken: (state, action: PayloadAction<string>) => {
+      state.token = action.payload;
+      state.isLoggedIn = true;
     },
-    decrementCompaniesCount: (state) => {
-      state.companiesCount = Math.max(0, state.companiesCount - 1);
-    },
+    incrementCompaniesCount: (state) => { state.companiesCount += 1; },
+    decrementCompaniesCount: (state) => { state.companiesCount = Math.max(0, state.companiesCount - 1); },
   },
   extraReducers: (builder) =>
     builder
@@ -80,7 +80,6 @@ const authSlice = createSlice({
       })
       .addCase(refreshUser.rejected, () => initialState)
 
-      // --- bootstrap профіль: окремі прапорці, не чіпають isLoading/error логіну ---
       .addCase(fetchMyProfile.pending, (state) => {
         state.isProfileLoading = true;
         state.profileError = null;
@@ -96,6 +95,6 @@ const authSlice = createSlice({
       }),
 });
 
-export const { clearAuth, incrementCompaniesCount, decrementCompaniesCount } =
+export const { clearAuth, setAccessToken, incrementCompaniesCount, decrementCompaniesCount } =
   authSlice.actions;
 export const authReducer = authSlice.reducer;
