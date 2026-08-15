@@ -98,7 +98,7 @@ authRouter.post("/refresh", refreshController);
  * @swagger
  * {
  *   "/api/auth/logout": {
- *     "get": {
+ *     "post": {
  *       "tags": ["Auth"],
  *       "summary": "Private user logout endpoint",
  *       "operationId": "authLogout",
