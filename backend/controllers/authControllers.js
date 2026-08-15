@@ -2,29 +2,39 @@ import {
   registerUser,
   loginUser,
   refreshUser,
-  logoutUser,
   updateAvatar,
   getUserFollowers,
 } from "../services/authServices.js";
 
-export const registerController = async (req, res) => {
-  const result = await registerUser(req.body);
+const REFRESH_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+  path: "/api/auth",
+};
 
+export const registerController = async (req, res) => {
+  const { refreshToken, ...result } = await registerUser(req.body);
+  res.cookie("refreshToken", refreshToken, REFRESH_COOKIE_OPTIONS);
   res.status(201).json(result);
 };
 
 export const loginController = async (req, res) => {
-  const result = await loginUser(req.body);
+  const { refreshToken, ...result } = await loginUser(req.body);
+  res.cookie("refreshToken", refreshToken, REFRESH_COOKIE_OPTIONS);
   res.json(result);
 };
 
 export const refreshController = async (req, res) => {
-  const result = await refreshUser(req.user, req.token);
+  const token = req.cookies.refreshToken;
+  const { refreshToken, ...result } = await refreshUser(token);
+  res.cookie("refreshToken", refreshToken, REFRESH_COOKIE_OPTIONS);
   res.json(result);
 };
 
 export const logoutController = async (req, res) => {
-  await logoutUser(req.user);
+  res.clearCookie("refreshToken", { path: "/api/auth" });
   res.status(204).send();
 };
 

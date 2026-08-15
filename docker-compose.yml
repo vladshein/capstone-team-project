@@ -52,7 +52,6 @@ services:
     environment:
       - REDIS_HOST=${REDIS_HOST}
       - REDIS_PORT=${REDIS_PORT}
-      - JWT_SECRET=$(JWT_SECRET=)
     volumes:
       - ./backend:/app
       - /app/node_modules

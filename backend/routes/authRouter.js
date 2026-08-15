@@ -79,53 +79,31 @@ authRouter.post("/login", validateBody(loginSchema), loginController);
  *   "/api/auth/refresh": {
  *     "post": {
  *       "tags": ["Auth"],
- *       "summary": "Private endpoint for refresh JWT",
+ *       "summary": "Refresh access token using refresh token cookie",
  *       "operationId": "authRefresh",
- *       "security": [
- *         {
- *           "bearerAuth": []
- *         }
- *       ],
- *       "description": "## Refresh JWT Token\n### Request\nThis endpoint automatically generates new JWT Token.\n\n#### Expected Request Fields:\n - **user** (object) — User data.\n   - **id** (integer) — User ID.\n   - **email** (string) — Contact email address.\n   - **role** (string) — Assigned user system role. Defaults to `worker` if omitted. Allowed options: `worker`, `company`.\n   - **displayName** (string) — Display user name.\n   - **avatarUrl** (string) — link on avatart username.\n   - **balance** (integer) — Financial user balance.\n   - **phone** (string) — User phone number.\n   - **isVerified** (bool) — flag, is user verified.\n - **accessToken** (string) — valid JWT token.\n### Response\n - **user** (object) — User data.\n   - **id** (integer) — User ID.\n   - **email** (string) — Contact email address.\n   - **role** (string) — Assigned user system role. Defaults to `worker` if omitted. Allowed options: `worker`, `company`.\n   - **displayName** (string) — Display user name.\n   - **avatarUrl** (string) — link on avatart username.\n   - **balance** (integer) — Financial user balance.\n   - **phone** (string) — User phone number.\n   - **isVerified** (bool) — flag, is user verified.\n - **accessToken** (string) — valid JWT token.",
- *       "requestBody": {
- *         "required": true,
- *         "content": {
- *           "application/json": {
- *             "schema": {
- *               "type": "object",
- *               "required": ["user", "accessToken"],
- *               "properties": {
- *                 "user": { "$ref": "#/components/schemas/User" },
- *                 "accessToken": { "type": "string", "example": "eyJhbGciOiJIUzI1Ni..." }
- *               }
- *             }
- *           }
- *         }
- *       },
+ *       "security": [],
+ *       "description": "## Refresh JWT Token\n### Request\nGenerates a new access token using the refresh token stored in an httpOnly cookie (`refreshToken`, sent automatically by the browser). No request body or Authorization header is required — the cookie is set by `/login` or `/register` and scoped to `/api/auth`.\n\n### Response\n - **user** (object) — User data.\n   - **id** (integer) — User ID.\n   - **email** (string) — Contact email address.\n   - **role** (string) — Assigned user system role. Allowed options: `worker`, `company`.\n   - **displayName** (string) — Display user name.\n   - **avatarUrl** (string) — link on avatar.\n   - **balance** (integer) — Financial user balance.\n   - **phone** (string) — User phone number.\n   - **isVerified** (bool) — flag, is user verified.\n - **accessToken** (string) — new valid JWT access token.\n\nOn success, a new `refreshToken` cookie is also set (token rotation).",
  *       "responses": {
- *         "200": { "$ref": "#/components/responses/200LoginSuccess" }
+ *         "200": { "$ref": "#/components/responses/200LoginSuccess" },
+ *         "401": { "description": "Missing, invalid or expired refresh token" }
  *       }
  *     }
  *   }
  * }
  */
-authRouter.get("/refresh", authenticate, refreshController);
+authRouter.post("/refresh", refreshController);
 
 
 /**
  * @swagger
  * {
  *   "/api/auth/logout": {
- *     "get": {
+ *     "post": {
  *       "tags": ["Auth"],
- *       "summary": "Private user logout endpoint",
+ *       "summary": "Logout user and clear refresh token cookie",
  *       "operationId": "authLogout",
- *       "security": [
- *         {
- *           "bearerAuth": []
- *         }
- *       ],
- *       "description": "## Logout User\n### Request\nThis endpoint logout user from systems.\n\n#### Expected Request Fields:\n - only JWT in barer header\n ### Response\n - no value",
+ *       "security": [],
+ *       "description": "## Logout User\n### Request\nClears the `refreshToken` httpOnly cookie. No authentication required — logout is scoped to the browser session via the cookie itself.\n\n### Response\n - no content",
  *       "responses": {
  *         "204": { "$ref": "#/components/responses/204NoContent" },
  *       }
@@ -133,7 +111,7 @@ authRouter.get("/refresh", authenticate, refreshController);
  *   }
  * }
  */
-authRouter.get("/logout", authenticate, logoutController);
+authRouter.post("/logout", logoutController);
 
 // authRouter.patch("/avatars", authenticate, upload.single("avatar"), updateAvatarController);
 

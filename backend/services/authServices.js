@@ -5,36 +5,17 @@ import HttpError from "../helpers/HttpError.js";
 import gravatar from "gravatar";
 import * as fs from "node:fs/promises";
 import path from "node:path";
-import { createToken } from "../helpers/jwt.js";
+import { createAccessToken, createRefreshToken, verifyRefreshToken } from "../helpers/jwt.js";
 
-const { JWT_SECRET } = process.env;
 const avatarsPath = path.resolve("public", "avatars");
-
-// const toDatabaseRole = (role) => {
-//   if (role === "business") {
-//     return "business_client";
-//   }
-
-//   return role || "worker";
-// };
-
-// const toClientRole = (role) => {
-//   if (role === "business_client") {
-//     return "business_client";
-//   }
-
-//   return role;
-// };
 
 const buildAuthResponse = (user, token) => ({
   user: {
     id: user.id,
     email: user.email,
-    // role: toClientRole(user.role),
     role: user.role,
     displayName: user.name || user.email,
     avatarUrl: user.avatar,
-    balance: 0,
     phone: user.phone,
     isVerified: user.isVerified,
   },
@@ -47,7 +28,6 @@ export const findUser = async (where) => {
 
 export const registerUser = async (payload) => {
   const { email, phone, password, role } = payload;
-  // const databaseRole = toDatabaseRole(role);
   const databaseRole = role;
 
   const existingUser = await User.findOne({
@@ -78,11 +58,10 @@ export const registerUser = async (payload) => {
     role: databaseRole,
   });
 
-  const accessToken = createToken({ id: newUser.id });
+  const accessToken = createAccessToken({ id: newUser.id });
+  const refreshToken = createRefreshToken({ id: newUser.id });
 
-  await newUser.update({ token: accessToken });
-
-  return buildAuthResponse(newUser, accessToken);
+  return { ...buildAuthResponse(newUser, accessToken), refreshToken };
 };
 
 export const loginUser = async ({ password, email }) => {
@@ -96,26 +75,31 @@ export const loginUser = async ({ password, email }) => {
     throw HttpError(401, "Email or password invalid");
   }
 
-  const payload = {
-    id: user.id,
-  };
+  const accessToken = createAccessToken({ id: user.id });
+  const refreshToken = createRefreshToken({ id: user.id });
 
-  const accessToken = createToken(payload);
-
-  await user.update({ token: accessToken });
-  return buildAuthResponse(user, accessToken);
+  return { ...buildAuthResponse(user, accessToken), refreshToken };
 };
 
-export const refreshUser = async (user) => {
-  const accessToken = createToken({ id: user.id });
-  await user.update({ token: accessToken });
+export const refreshUser = async (token) => {
+  if (!token) {
+    throw HttpError(401, "No refresh token");
+  }
 
-  return buildAuthResponse(user, accessToken);
-};
+  const { data, error } = verifyRefreshToken(token);
+  if (error) {
+    throw HttpError(401, "Invalid refresh token");
+  }
 
-export const logoutUser = async (user) => {
-  await user.update({ token: null });
-  return true;
+  const user = await findUser({ id: data.id });
+  if (!user) {
+    throw HttpError(401, "User not found");
+  }
+
+  const accessToken = createAccessToken({ id: user.id });
+  const refreshToken = createRefreshToken({ id: user.id });
+
+  return { ...buildAuthResponse(user, accessToken), refreshToken };
 };
 
 export const updateAvatar = async (user, file) => {
