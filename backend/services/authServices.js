@@ -1,20 +1,28 @@
 import { Op } from "sequelize";
-import { User } from "../db/models/index.js";
+import { User, WorkerProfile } from "../db/models/index.js";
 import bcrypt from "bcrypt";
 import HttpError from "../helpers/HttpError.js";
 import gravatar from "gravatar";
 import * as fs from "node:fs/promises";
 import path from "node:path";
-import { createAccessToken, createRefreshToken, verifyRefreshToken } from "../helpers/jwt.js";
+import {
+  createAccessToken,
+  createRefreshToken,
+  verifyRefreshToken,
+} from "../helpers/jwt.js";
 
 const avatarsPath = path.resolve("public", "avatars");
 
-const buildAuthResponse = (user, token) => ({
+const buildAuthResponse = (
+  user,
+  token,
+  displayName = user.name || user.email,
+) => ({
   user: {
     id: user.id,
     email: user.email,
     role: user.role,
-    displayName: user.name || user.email,
+    displayName: displayName || user.email,
     avatarUrl: user.avatar,
     phone: user.phone,
     isVerified: user.isVerified,
@@ -24,6 +32,21 @@ const buildAuthResponse = (user, token) => ({
 
 export const findUser = async (where) => {
   return User.findOne({ where });
+};
+
+const getDisplayName = async (user) => {
+  if (user.role !== "worker") {
+    return user.name || user.email;
+  }
+
+  const workerProfile = await WorkerProfile.findOne({
+    where: { userId: user.id },
+    attributes: ["firstName", "lastName"],
+  });
+
+  return workerProfile
+    ? `${workerProfile.firstName} ${workerProfile.lastName}`.trim()
+    : user.email;
 };
 
 export const registerUser = async (payload) => {
@@ -77,8 +100,9 @@ export const loginUser = async ({ password, email }) => {
 
   const accessToken = createAccessToken({ id: user.id });
   const refreshToken = createRefreshToken({ id: user.id });
+  const displayName = await getDisplayName(user);
 
-  return { ...buildAuthResponse(user, accessToken), refreshToken };
+  return { ...buildAuthResponse(user, accessToken, displayName), refreshToken };
 };
 
 export const refreshUser = async (token) => {
@@ -98,8 +122,9 @@ export const refreshUser = async (token) => {
 
   const accessToken = createAccessToken({ id: user.id });
   const refreshToken = createRefreshToken({ id: user.id });
+  const displayName = await getDisplayName(user);
 
-  return { ...buildAuthResponse(user, accessToken), refreshToken };
+  return { ...buildAuthResponse(user, accessToken, displayName), refreshToken };
 };
 
 export const updateAvatar = async (user, file) => {

@@ -14,6 +14,7 @@ import {
   selectCompaniesStatus,
 } from "../../../redux/companies-profile/selectors";
 import { fetchMyCompanies } from "../../../redux/companies-profile/actions";
+import { getAvatarInitials } from "../../../utils/getAvatarInitials";
 
 export interface HeaderAuthProps {
   onOpenSignIn?: () => void;
@@ -225,7 +226,7 @@ export function HeaderAuth({
               <img src={user.avatar} alt="" className="h-7 w-7 rounded-full object-cover" />
             ) : (
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ink text-xs text-white">
-                {user.displayName.charAt(0).toUpperCase()}
+                {getAvatarInitials(user.displayName)}
               </span>
             )}
             <ChevronDown className="h-4 w-4 text-text-subtle" />

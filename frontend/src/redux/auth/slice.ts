@@ -1,5 +1,9 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { login, logout, refreshUser, register, fetchMyProfile } from "./actions";
+import {
+  createWorkerProfile,
+  updateWorkerProfile,
+} from "../worker-profile/actions";
 import type { AuthState } from "./types";
 import type { ApiError } from "../types";
 
@@ -79,6 +83,16 @@ const authSlice = createSlice({
         state.isRefreshing = false;
       })
       .addCase(refreshUser.rejected, () => initialState)
+      .addCase(createWorkerProfile.fulfilled, (state, { payload }) => {
+        if (state.user) {
+          state.user.displayName = `${payload.firstName} ${payload.lastName}`.trim();
+        }
+      })
+      .addCase(updateWorkerProfile.fulfilled, (state, { payload }) => {
+        if (state.user) {
+          state.user.displayName = `${payload.firstName} ${payload.lastName}`.trim();
+        }
+      })
 
       .addCase(fetchMyProfile.pending, (state) => {
         state.isProfileLoading = true;
