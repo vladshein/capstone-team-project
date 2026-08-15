@@ -102,10 +102,6 @@ export const refreshUser = async (token) => {
   return { ...buildAuthResponse(user, accessToken), refreshToken };
 };
 
-export const logoutUser = async (user) => {
-  return true; // немає що чистити в БД
-};
-
 export const updateAvatar = async (user, file) => {
   const { path: tempUpload, filename } = file;
   const resultUpload = path.join(avatarsPath, filename);

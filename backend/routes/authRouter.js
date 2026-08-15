@@ -100,14 +100,10 @@ authRouter.post("/refresh", refreshController);
  *   "/api/auth/logout": {
  *     "post": {
  *       "tags": ["Auth"],
- *       "summary": "Private user logout endpoint",
+ *       "summary": "Logout user and clear refresh token cookie",
  *       "operationId": "authLogout",
- *       "security": [
- *         {
- *           "bearerAuth": []
- *         }
- *       ],
- *       "description": "## Logout User\n### Request\nThis endpoint logout user from systems.\n\n#### Expected Request Fields:\n - only JWT in barer header\n ### Response\n - no value",
+ *       "security": [],
+ *       "description": "## Logout User\n### Request\nClears the `refreshToken` httpOnly cookie. No authentication required — logout is scoped to the browser session via the cookie itself.\n\n### Response\n - no content",
  *       "responses": {
  *         "204": { "$ref": "#/components/responses/204NoContent" },
  *       }
@@ -115,7 +111,7 @@ authRouter.post("/refresh", refreshController);
  *   }
  * }
  */
-authRouter.post("/logout", authenticate, logoutController);
+authRouter.post("/logout", logoutController);
 
 // authRouter.patch("/avatars", authenticate, upload.single("avatar"), updateAvatarController);
 

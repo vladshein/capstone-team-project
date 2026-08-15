@@ -2,7 +2,6 @@ import {
   registerUser,
   loginUser,
   refreshUser,
-  logoutUser,
   updateAvatar,
   getUserFollowers,
 } from "../services/authServices.js";
@@ -35,7 +34,6 @@ export const refreshController = async (req, res) => {
 };
 
 export const logoutController = async (req, res) => {
-  await logoutUser(req.user);
   res.clearCookie("refreshToken", { path: "/api/auth" });
   res.status(204).send();
 };
