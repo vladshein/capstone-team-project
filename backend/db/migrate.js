@@ -56,7 +56,9 @@ const runMigrations = async () => {
     }
 
     console.log(`Running ${file}...`);
-    await migration.up({ sequelize, queryInterface: sequelize.getQueryInterface() });
+    // Legacy migrations in this project use Umzug's `context` argument.
+    // Keep the runner compatible with them and with new migrations.
+    await migration.up({ context: sequelize.getQueryInterface(), sequelize });
     await sequelize.getQueryInterface().bulkInsert(migrationsTable, [{ name: file }]);
     console.log(`Applied ${file}.`);
   }

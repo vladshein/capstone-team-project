@@ -32,6 +32,11 @@ const WorkerProfile = sequelize.define(
     avatarUrl: {
       type: DataTypes.STRING(255),
     },
+    // Публічний ключ LiqPay акаунта робітника. Приватний ключ ніколи не
+    // зберігаємо в нашій системі.
+    liqpayPublicKey: {
+      type: DataTypes.STRING(100),
+    },
   },
   {
     tableName: "worker_profiles",

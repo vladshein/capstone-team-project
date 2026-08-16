@@ -22,6 +22,13 @@ const Transaction = sequelize.define(
       defaultValue: "pending",
       allowNull: false,
     },
+    orderId: { type: DataTypes.STRING(100), unique: true },
+    provider: { type: DataTypes.STRING(30) },
+    providerStatus: { type: DataTypes.STRING(50) },
+    workerAmount: { type: DataTypes.DECIMAL(12, 2) },
+    platformFee: { type: DataTypes.DECIMAL(12, 2) },
+    providerPayload: { type: DataTypes.JSONB },
+    confirmedAt: { type: DataTypes.DATE },
   },
   {
     tableName: "transactions",

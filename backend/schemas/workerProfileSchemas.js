@@ -20,6 +20,7 @@ export const createProfileSchema = Joi.object({
       "string.pattern.base": "ІПН повинен складатися лише з цифр",
     }),
   avatarUrl: Joi.string().uri().optional(),
+  liqpayPublicKey: Joi.string().trim().max(100).optional(),
 });
 
 // Схема для оновлення (всі поля опціональні, адже ми можемо оновлювати лише частину)
@@ -32,4 +33,5 @@ export const updateProfileSchema = Joi.object({
     .pattern(/^[0-9]+$/)
     .optional(),
   avatarUrl: Joi.string().uri().optional(),
+  liqpayPublicKey: Joi.string().trim().max(100).allow(null, "").optional(),
 });

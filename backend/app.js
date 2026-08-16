@@ -15,6 +15,7 @@ import companyRouter from "./routes/companyRouter.js";
 import workerProfileRouter from "./routes/workerProfileRouter.js";
 import reviewRouter from "./routes/reviewRouter.js";
 import locationRouter from "./routes/locationRouter.js";
+import paymentRouter from "./routes/paymentRouter.js";
 
 // import handlers & DB
 import notFoundHandler from "./middlewares/notFoundHandler.js";
@@ -64,6 +65,7 @@ app.use("/api/shifts", shiftRouter);
 app.use("/api/companies", companyRouter);
 app.use("/api/worker-profiles", workerProfileRouter);
 app.use("/api/location", locationRouter);
+app.use("/api/payments", paymentRouter);
 
 app.use("/api-docs", swaggerDocs());
 
@@ -84,7 +86,9 @@ const startServer = async () => {
       console.log(`Server is running. Use our API on port: ${port}`);
     });
   } catch (err) {
-    console.error("Failed to start server:", err.message);
+    // `message` may be empty for low-level network/database errors. Logging
+    // the whole error preserves code, host and stack for local diagnostics.
+    console.error("Failed to start server:", err);
     process.exit(1);
   }
 };
