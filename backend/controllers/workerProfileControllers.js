@@ -1,5 +1,9 @@
 import * as workerProfileService from "../services/workerProfileServices.js";
-import { getWorkerStatisticsSummary } from "../services/worker-statistics.service.js";
+import {
+  getWorkerStatisticsSummary,
+  getWorkerShiftsStatistics,
+  resolveDateRange,
+} from "../services/worker-statistics.service.js";
 
 const isValidIsoDate = (value) => {
   if (typeof value !== "string") return false;
@@ -67,6 +71,90 @@ export const getStatisticsSummary = async (req, res, next) => {
       dateFrom,
       dateTo,
       companyId,
+    });
+
+    res.status(200).json({ data: statistics });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getShiftsStatistics = async (req, res, next) => {
+  try {
+    const {
+      dateFrom,
+      dateTo,
+      groupBy,
+      companyId: companyIdQuery,
+      city,
+      positionId,
+      categoryId,
+    } = req.query;
+
+    if (dateFrom !== undefined && !isValidIsoDate(dateFrom)) {
+      return res.status(400).json({
+        message: "dateFrom must be a valid ISO date.",
+      });
+    }
+
+    if (dateTo !== undefined && !isValidIsoDate(dateTo)) {
+      return res.status(400).json({
+        message: "dateTo must be a valid ISO date.",
+      });
+    }
+
+    if (groupBy !== undefined && groupBy !== "week" && groupBy !== "month") {
+      return res.status(400).json({
+        message: "groupBy must be 'week' or 'month'.",
+      });
+    }
+
+    let companyId;
+    if (companyIdQuery !== undefined) {
+      companyId = Number(companyIdQuery);
+      if (!Number.isInteger(companyId)) {
+        return res.status(400).json({
+          message: "companyId must be an integer.",
+        });
+      }
+    }
+
+    let positionIdValue;
+    if (positionId !== undefined) {
+      positionIdValue = Number(positionId);
+      if (!Number.isInteger(positionIdValue)) {
+        return res.status(400).json({
+          message: "positionId must be an integer.",
+        });
+      }
+    }
+
+    const { dateFrom: resolvedFrom, dateTo: resolvedTo } = resolveDateRange(
+      dateFrom,
+      dateTo,
+    );
+    if (resolvedFrom > resolvedTo) {
+      return res.status(400).json({
+        message: "dateFrom must be earlier than dateTo.",
+      });
+    }
+    const rangeMonths =
+      (resolvedTo.getFullYear() - resolvedFrom.getFullYear()) * 12 +
+      (resolvedTo.getMonth() - resolvedFrom.getMonth());
+    if (rangeMonths > 12) {
+      return res.status(400).json({
+        message: "Date range must not exceed 12 months.",
+      });
+    }
+
+    const statistics = await getWorkerShiftsStatistics(req.user.id, {
+      dateFrom,
+      dateTo,
+      groupBy,
+      companyId,
+      city,
+      positionId: positionIdValue,
+      categoryId,
     });
 
     res.status(200).json({ data: statistics });

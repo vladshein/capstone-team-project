@@ -179,3 +179,156 @@ export async function getWorkerStatisticsSummary(
       : null,
   };
 }
+
+const DEFAULT_RANGE_MONTHS = 3;
+
+/**
+ * Picks a fallback period when one of `dateFrom`/`dateTo` is missing so the
+ * query always runs over a bounded window (last 3 months by default).
+ */
+export const resolveDateRange = (dateFrom, dateTo) => {
+  let from = dateFrom ? new Date(dateFrom) : null;
+  let to = dateTo ? new Date(dateTo) : null;
+
+  if (!from && !to) {
+    to = new Date();
+    from = new Date(to);
+    from.setMonth(from.getMonth() - DEFAULT_RANGE_MONTHS);
+  } else if (from && !to) {
+    to = new Date();
+  } else if (!from && to) {
+    from = new Date(to);
+    from.setMonth(from.getMonth() - DEFAULT_RANGE_MONTHS);
+  }
+
+  return { dateFrom: from, dateTo: to };
+};
+
+/**
+ * Returns a worker's time-series shifts statistics grouped by period.
+ *
+ * The group period is derived from Shift.endTime in UTC. Only applications
+ * whose attendance is resolved ("completed" or "no_show") are considered, but
+ * scheduled hours and estimated earnings are summed only for "completed"
+ * applications, mirroring `getWorkerStatisticsSummary` semantics.
+ *
+ * A single aggregated GROUP BY query feeds both the per-period `series` and
+ * the aggregate `totals` (computed by summing the series in JS).
+ */
+export async function getWorkerShiftsStatistics(
+  workerId,
+  {
+    dateFrom,
+    dateTo,
+    groupBy = "month",
+    companyId,
+    city,
+    positionId,
+    categoryId,
+  } = {},
+) {
+  const { dateFrom: resolvedFrom, dateTo: resolvedTo } = resolveDateRange(
+    dateFrom,
+    dateTo,
+  );
+
+  const shiftWhere = {
+    ...buildShiftRangeFilter({ dateFrom: resolvedFrom, dateTo: resolvedTo }),
+  };
+  if (positionId !== undefined) shiftWhere.positionId = positionId;
+  if (categoryId !== undefined) shiftWhere.categoryId = categoryId;
+
+  const locationWhere = {};
+  if (companyId !== undefined) locationWhere.companyId = companyId;
+  if (city !== undefined) locationWhere.city = city;
+
+  const shiftInclude = {
+    model: Shift,
+    attributes: [],
+    required: true,
+    where: shiftWhere,
+    include: [
+      {
+        model: Location,
+        attributes: [],
+        required: true,
+        ...(Reflect.ownKeys(locationWhere).length
+          ? { where: locationWhere }
+          : {}),
+      },
+    ],
+  };
+
+  const scheduledHours =
+    'EXTRACT(EPOCH FROM ("Shift"."endTime" - "Shift"."startTime")) / 3600.0';
+  const estimatedEarnings = `(${scheduledHours} * "Shift"."hourlyRate" + COALESCE("Shift"."bonusRate", 0))`;
+
+  const periodExpression =
+    groupBy === "week"
+      ? `to_char("Shift"."endTime" AT TIME ZONE 'UTC', 'IYYY-"W"IW')`
+      : `to_char("Shift"."endTime" AT TIME ZONE 'UTC', 'YYYY-MM')`;
+
+  const rows = await ShiftApplication.findAll({
+    where: {
+      workerId,
+      status: { [Op.in]: ["completed", "no_show"] },
+    },
+    attributes: [
+      [literal(periodExpression), "period"],
+      [
+        literal(
+          `COALESCE(SUM(CASE WHEN "ShiftApplication"."status" = 'completed' THEN 1 ELSE 0 END), 0)`,
+        ),
+        "completedShifts",
+      ],
+      [
+        literal(
+          `COALESCE(SUM(CASE WHEN "ShiftApplication"."status" = 'no_show' THEN 1 ELSE 0 END), 0)`,
+        ),
+        "noShows",
+      ],
+      [
+        literal(
+          `COALESCE(SUM(CASE WHEN "ShiftApplication"."status" = 'completed' THEN ${scheduledHours} ELSE 0 END), 0)`,
+        ),
+        "scheduledHours",
+      ],
+      [
+        literal(
+          `COALESCE(SUM(CASE WHEN "ShiftApplication"."status" = 'completed' THEN ${estimatedEarnings} ELSE 0 END), 0)`,
+        ),
+        "estimatedEarnings",
+      ],
+    ],
+    include: [shiftInclude],
+    group: [literal(periodExpression)],
+    order: [["period", "ASC"]],
+    raw: true,
+  });
+
+  const series = (rows ?? []).map((row) => ({
+    period: row.period,
+    completedShifts: numberOrZero(row.completedShifts),
+    noShows: numberOrZero(row.noShows),
+    scheduledHours: numberOrZero(row.scheduledHours),
+    estimatedEarnings: numberOrZero(row.estimatedEarnings),
+  }));
+
+  const totals = series.reduce(
+    (acc, p) => {
+      acc.completedShifts += p.completedShifts;
+      acc.noShows += p.noShows;
+      acc.scheduledCompletedHours += p.scheduledHours;
+      acc.estimatedCompletedEarnings += p.estimatedEarnings;
+      return acc;
+    },
+    {
+      completedShifts: 0,
+      noShows: 0,
+      scheduledCompletedHours: 0,
+      estimatedCompletedEarnings: 0,
+    },
+  );
+
+  return { totals, series };
+}

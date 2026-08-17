@@ -24,6 +24,12 @@ workerProfileRouter.get(
   workerProfileController.getStatisticsSummary,
 );
 
+workerProfileRouter.get(
+  "/me/statistics/shifts",
+  checkRole("worker"),
+  workerProfileController.getShiftsStatistics,
+);
+
 // Створити профіль (одразу після реєстрації)
 workerProfileRouter.post(
   "/",
