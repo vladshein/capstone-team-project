@@ -121,12 +121,12 @@ function ProfileReviewsSection({
         <>
           <div className="grid gap-3">{reviews.map((review) => <ReviewCard key={review.id} review={review} subject={subject} />)}</div>
           {totalPages > 1 && (
-            <nav className="mt-5 flex items-center justify-center gap-2" aria-label="Сторінки відгуків">
-              <button type="button" disabled={page === 1} onClick={() => setPage((value) => value - 1)} className="min-h-10 rounded-[var(--radius-pill)] border border-border px-4 text-sm text-text-muted disabled:cursor-not-allowed disabled:opacity-45 hover:border-accent hover:text-accent">Назад</button>
+            <nav className="mt-6 flex items-center justify-center gap-1.5" aria-label="Сторінки відгуків">
+              <button type="button" disabled={page === 1} onClick={() => setPage((value) => value - 1)} className="min-h-[40px] rounded-[var(--radius-pill)] border border-border px-3 text-sm text-text-muted disabled:cursor-not-allowed disabled:opacity-40">Назад</button>
               {Array.from({ length: totalPages }, (_, index) => index + 1).map((number) => (
-                <button key={number} type="button" onClick={() => setPage(number)} aria-current={page === number ? "page" : undefined} className={`flex h-10 min-w-10 items-center justify-center rounded-full border text-sm transition-colors ${page === number ? "border-accent bg-accent text-white" : "border-border text-text-muted hover:border-accent hover:text-accent"}`}>{number}</button>
+                <button key={number} type="button" onClick={() => setPage(number)} aria-current={page === number ? "page" : undefined} className={`flex h-10 w-10 items-center justify-center rounded-[var(--radius-pill)] text-sm font-medium transition-colors ${page === number ? "bg-accent text-white" : "border border-border text-text hover:border-accent"}`}>{number}</button>
               ))}
-              <button type="button" disabled={page === totalPages} onClick={() => setPage((value) => value + 1)} className="min-h-10 rounded-[var(--radius-pill)] border border-border px-4 text-sm text-text-muted disabled:cursor-not-allowed disabled:opacity-45 hover:border-accent hover:text-accent">Далі</button>
+              <button type="button" disabled={page === totalPages} onClick={() => setPage((value) => value + 1)} className="min-h-[40px] rounded-[var(--radius-pill)] border border-border px-3 text-sm text-text-muted disabled:cursor-not-allowed disabled:opacity-40">Далі</button>
             </nav>
           )}
         </>
