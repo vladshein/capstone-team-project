@@ -9,6 +9,8 @@ interface ReviewModalProps {
   description: string;
   isSubmitting: boolean;
   error?: string | null;
+  /** Якщо відгук вже існує, модалка працює у режимі редагування. */
+  initialReview?: { rating: number; comment: string | null } | null;
   onClose: () => void;
   onSubmit: (payload: { rating: number; comment?: string }) => Promise<void>;
 }
@@ -20,6 +22,7 @@ export function ReviewModal({
   description,
   isSubmitting,
   error,
+  initialReview = null,
   onClose,
   onSubmit,
 }: ReviewModalProps) {
@@ -28,10 +31,10 @@ export function ReviewModal({
 
   useEffect(() => {
     if (isOpen) {
-      setRating(null);
-      setComment("");
+      setRating(initialReview?.rating ?? null);
+      setComment(initialReview?.comment ?? "");
     }
-  }, [isOpen]);
+  }, [initialReview, isOpen]);
 
   const handleSubmit = async () => {
     if (!rating) return;
@@ -55,7 +58,7 @@ export function ReviewModal({
       {error && <p className="mt-3 text-sm text-danger">{error}</p>}
       <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <button type="button" onClick={onClose} disabled={isSubmitting} className="min-h-[44px] rounded-[var(--radius-pill)] border border-border px-5 text-sm font-semibold text-text transition-colors hover:border-accent disabled:opacity-60">Пропустити</button>
-        <button type="button" onClick={handleSubmit} disabled={!rating || isSubmitting} className="min-h-[44px] rounded-[var(--radius-pill)] bg-accent px-5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? "Зберігаємо…" : "Залишити відгук"}</button>
+        <button type="button" onClick={handleSubmit} disabled={!rating || isSubmitting} className="min-h-[44px] rounded-[var(--radius-pill)] bg-accent px-5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? "Зберігаємо…" : initialReview ? "Зберегти зміни" : "Залишити відгук"}</button>
       </div>
     </Modal>
   );

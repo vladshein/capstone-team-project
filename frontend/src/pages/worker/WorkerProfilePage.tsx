@@ -109,7 +109,7 @@ export function WorkerProfilePage() {
           <ProfileField label="ІПН" value={profile?.taxNumber} />
           <ProfileField
             label="Рейтинг"
-            value={profile?.rating !== undefined ? String(profile.rating) : undefined}
+            value={Number(profile?.rating) > 0 ? `${Number(profile?.rating).toFixed(2)} / 5` : "Ще немає відгуків"}
           />
         </div>
       </div>

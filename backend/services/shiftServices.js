@@ -8,6 +8,7 @@ import {
   ShiftApplication,
   User,
   WorkerProfile,
+  Review,
 } from "../db/models/index.js";
 
 const MAP_MARKERS_LIMIT = 1000;
@@ -333,6 +334,34 @@ export const getBusinessShifts = async ({ companyId, ownerId, scope }) => {
           endTime: { [Op.gte]: now },
         };
 
+  const archiveIncludes = scope === "archive"
+    ? [
+        {
+          model: ShiftApplication,
+          attributes: ["id", "workerId", "status"],
+          where: { status: { [Op.in]: ["completed", "no_show"] } },
+          required: false,
+          include: [
+            {
+              model: User,
+              attributes: ["id"],
+              include: [{
+                model: WorkerProfile,
+                attributes: ["firstName", "lastName"],
+              }],
+            },
+          ],
+        },
+        {
+          // В архіві бізнес бачить лише власний відгук, щоб його редагувати.
+          model: Review,
+          attributes: ["id", "rating", "comment"],
+          where: { reviewerId: ownerId },
+          required: false,
+        },
+      ]
+    : [];
+
   return Shift.findAll({
     where: shiftWhere,
     include: [
@@ -344,12 +373,13 @@ export const getBusinessShifts = async ({ companyId, ownerId, scope }) => {
         where: { companyId: company.id },
         required: true,
       },
+      ...archiveIncludes,
     ],
     order: [["startTime", scope === "archive" ? "DESC" : "ASC"]],
   });
 };
 
-/** Повертає активні заявки на зміни конкретної компанії лише її власнику. */
+/** Повертає нові й підтверджені заявки конкретної компанії лише її власнику. */
 export const getBusinessShiftApplications = async ({ companyId, ownerId }) => {
   const company = await Company.findOne({ where: { id: companyId, ownerId } });
 
@@ -361,6 +391,10 @@ export const getBusinessShiftApplications = async ({ companyId, ownerId }) => {
 
   return ShiftApplication.findAll({
     where: { status: { [Op.in]: ["pending", "approved"] } },
+    // `Reviews` — hasMany. За стандартного `subQuery: true` Sequelize виносить
+    // Shift у підзапит, а JobPosition приєднує зовні, де alias Shift уже
+    // недоступний. Це давало SQL-помилку `Shift.positionId does not exist`.
+    subQuery: false,
     include: [
       {
         model: Shift,
@@ -368,6 +402,14 @@ export const getBusinessShiftApplications = async ({ companyId, ownerId }) => {
         required: true,
         include: [
           { model: JobPosition, attributes: ["id", "title"] },
+          // Повертаємо тільки відгук поточного власника компанії. Відгук
+          // виконавця не потрібен для керування заявками бізнесу.
+          {
+            model: Review,
+            attributes: ["id", "rating", "comment"],
+            where: { reviewerId: ownerId },
+            required: false,
+          },
           {
             model: Location,
             attributes: ["id", "title", "city", "address"],
@@ -623,7 +665,11 @@ export const getWorkerShiftHistory = async (
       { status: { [Op.in]: ["rejected", "no_show"] } },
       {
         status: { [Op.in]: ["pending", "approved"] },
-        [Op.and]: [where(col("Shift.endTime"), { [Op.lt]: now })],
+        // Shift ще не приєднаний у WHERE цього запиту, тому перевіряємо
+        // завершення через підзапит за id. Інакше PostgreSQL не бачить alias Shift.
+        shiftId: {
+          [Op.in]: literal(`(SELECT "id" FROM "shifts" WHERE "endTime" < '${now.toISOString()}')`),
+        },
       },
     ];
   } else {
@@ -642,6 +688,9 @@ export const getWorkerShiftHistory = async (
     where: whereCondition,
     limit: limit,
     offset: offset,
+    // Пагінація з belongsTo-join не потребує підзапиту; так alias Shift
+    // лишається доступним і для сортування, і для умов архіву.
+    subQuery: false,
     include: [
       {
         model: Shift,
@@ -661,6 +710,27 @@ export const getWorkerShiftHistory = async (
       [Shift, "startTime", isCompleted || isArchive ? "DESC" : "ASC"],
     ],
   });
+
+  // Не додаємо hasMany Review у головний paginated query: Sequelize через це
+  // генерує крихкі підзапити. Натомість одним запитом беремо відгуки тільки
+  // для змін поточної сторінки й додаємо дані лише власного відгуку.
+  const shiftIds = rows.map((application) => application.Shift?.id).filter(Boolean);
+  if (shiftIds.length > 0) {
+    const reviews = await Review.findAll({
+      attributes: ["id", "shiftId", "rating", "comment"],
+      where: { reviewerId: workerId, shiftId: { [Op.in]: shiftIds } },
+      raw: true,
+    });
+    const reviewIdsByShift = new Map();
+    reviews.forEach((review) => {
+      const ids = reviewIdsByShift.get(review.shiftId) ?? [];
+      ids.push({ id: review.id, rating: review.rating, comment: review.comment });
+      reviewIdsByShift.set(review.shiftId, ids);
+    });
+    rows.forEach((application) => {
+      application.Shift?.setDataValue("Reviews", reviewIdsByShift.get(application.Shift.id) ?? []);
+    });
+  }
 
   return {
     totalItems: count,

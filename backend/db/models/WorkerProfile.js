@@ -27,7 +27,8 @@ const WorkerProfile = sequelize.define(
     },
     rating: {
       type: DataTypes.DECIMAL(3, 2),
-      defaultValue: 5.0,
+      // Новий профіль ще не має підтвердженої оцінки.
+      defaultValue: 0,
     },
     avatarUrl: {
       type: DataTypes.STRING(255),

@@ -5,6 +5,7 @@ import {
   Location,
   ShiftApplication,
   User,
+  WorkerProfile,
 } from "../db/models/index.js";
 import HTTPError from "../helpers/HttpError.js";
 
@@ -14,8 +15,31 @@ const checkPermissionToModifyReview = (review, userId) => {
   }
 };
 
-const getReviewContext = async ({ userId, shiftId, rating }) => {
-  const user = await User.findByPk(userId);
+/**
+ * `rating` у WorkerProfile — денормалізований кеш середньої оцінки.
+ * Джерелом правди лишаються reviews, тому перераховуємо значення після
+ * кожної зміни відгуку. Якщо профілю виконавця немає, це відгук про бізнес.
+ */
+const recalculateWorkerRating = async (userId, transaction) => {
+  const profile = await WorkerProfile.findOne({ where: { userId }, transaction });
+  if (!profile) return;
+
+  const result = await Review.findOne({
+    where: { revieweeId: userId },
+    attributes: [[Review.sequelize.fn("AVG", Review.sequelize.col("rating")), "averageRating"]],
+    raw: true,
+    transaction,
+  });
+  const averageRating = Number(result?.averageRating);
+
+  await profile.update(
+    { rating: Number.isFinite(averageRating) ? Math.round(averageRating * 100) / 100 : 0 },
+    { transaction },
+  );
+};
+
+const getReviewContext = async ({ userId, shiftId, rating, transaction }) => {
+  const user = await User.findByPk(userId, { transaction });
 
   if (!user) {
     throw HTTPError(404, "Користувача не знайдено.");
@@ -31,6 +55,7 @@ const getReviewContext = async ({ userId, shiftId, rating }) => {
 
   const shift = await Shift.findOne({
     where: { id: shiftId },
+    transaction,
     include: [
       {
         model: Location,
@@ -134,45 +159,61 @@ export const getReviewsByShiftId = async (shiftId) => {
 };
 
 export const createReview = async ({ userId, shiftId, rating, comment }) => {
-  const { user, companyOwnerId, workerId } = await getReviewContext({
-    userId,
-    shiftId,
-    rating,
+  return Review.sequelize.transaction(async (transaction) => {
+    const { user, companyOwnerId, workerId } = await getReviewContext({
+      userId,
+      shiftId,
+      rating,
+      transaction,
+    });
+
+    const { reviewerId, revieweeId } = resolveReviewDirection({
+      user,
+      companyOwnerId,
+      workerId,
+    });
+
+    const existingReview = await Review.findOne({
+      where: { shiftId, reviewerId },
+      transaction,
+    });
+    if (existingReview) {
+      throw HTTPError(409, "Ви вже залишили відгук для цієї зміни.");
+    }
+
+    const newReview = await Review.create({
+      reviewerId,
+      shiftId,
+      revieweeId,
+      rating,
+      comment,
+    }, { transaction });
+
+    await recalculateWorkerRating(revieweeId, transaction);
+    return newReview;
   });
-
-  const { reviewerId, revieweeId } = resolveReviewDirection({
-    user,
-    companyOwnerId,
-    workerId,
-  });
-
-  const existingReview = await Review.findOne({ where: { shiftId, reviewerId } });
-  if (existingReview) {
-    throw HTTPError(409, "Ви вже залишили відгук для цієї зміни.");
-  }
-
-  const newReview = await Review.create({
-    reviewerId,
-    shiftId,
-    revieweeId,
-    rating,
-    comment,
-  });
-
-  return newReview;
 };
 
 export const updateReview = async (reviewId, userId, updateData) => {
-  const review = await getReviewById(reviewId);
-  checkPermissionToModifyReview(review, userId);
-  const updatedReview = await review.update(updateData);
-  return updatedReview;
+  return Review.sequelize.transaction(async (transaction) => {
+    const review = await Review.findByPk(reviewId, { transaction });
+    if (!review) throw HTTPError(404, "Відгук не знайдено.");
+    checkPermissionToModifyReview(review, userId);
+    const updatedReview = await review.update(updateData, { transaction });
+    await recalculateWorkerRating(review.revieweeId, transaction);
+    return updatedReview;
+  });
 };
 
 export const deleteReview = async (reviewId, userId) => {
-  const review = await getReviewById(reviewId);
-  checkPermissionToModifyReview(review, userId);
-  await review.destroy();
+  await Review.sequelize.transaction(async (transaction) => {
+    const review = await Review.findByPk(reviewId, { transaction });
+    if (!review) throw HTTPError(404, "Відгук не знайдено.");
+    checkPermissionToModifyReview(review, userId);
+    const revieweeId = review.revieweeId;
+    await review.destroy({ transaction });
+    await recalculateWorkerRating(revieweeId, transaction);
+  });
 };
 
 export const getReviewsByRevieweeId = async (revieweeId) => {

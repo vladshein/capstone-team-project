@@ -23,7 +23,11 @@ export function BusinessApplicationsTab() {
   const [reloadKey, setReloadKey] = useState(0);
   const [processingId, setProcessingId] = useState<number | null>(null);
   const [applicationToMarkNoShow, setApplicationToMarkNoShow] = useState<BusinessShiftApplication | null>(null);
-  const [reviewTarget, setReviewTarget] = useState<{ shiftId: number; workerName: string; isNoShow: boolean } | null>(null);
+  const [reviewTarget, setReviewTarget] = useState<{
+    shiftId: number;
+    workerName: string;
+    isNoShow: boolean;
+  } | null>(null);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
   useEffect(() => {
@@ -102,11 +106,9 @@ export function BusinessApplicationsTab() {
     setIsSubmittingReview(true);
     setError(null);
     try {
-      await createReview(reviewTarget.shiftId, {
-        rating,
-        comment,
-      });
+      await createReview(reviewTarget.shiftId, { rating, comment });
       setReviewTarget(null);
+      setReloadKey((key) => key + 1);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Не вдалося зберегти відгук.");
     } finally {
@@ -147,7 +149,7 @@ export function BusinessApplicationsTab() {
               </p>
               <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm text-text-muted">
                 <span className="flex items-center gap-1.5"><CalendarDays className="h-4 w-4" />{schedule}</span>
-                <span className="flex items-center gap-1.5"><Star className="h-4 w-4" />Рейтинг: {profile?.rating ?? "—"}</span>
+                <span className="flex items-center gap-1.5"><Star className="h-4 w-4" />Рейтинг: {Number(profile?.rating) > 0 ? Number(profile?.rating).toFixed(2) : "ще немає відгуків"}</span>
                 <span className="flex items-center gap-1.5"><MapPin className="h-4 w-4" />{application.Shift.Location.city}, {application.Shift.Location.address}</span>
               </div>
             </div>

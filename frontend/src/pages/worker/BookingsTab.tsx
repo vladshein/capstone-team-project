@@ -12,7 +12,7 @@ import { formatShiftDate, formatTimeRange } from "../../sectionsHero/TasksBoard/
 import { Modal } from "../../components/ui/Modal";
 import { Loader } from "../../components/ui/Loader";
 import { ReviewModal } from "../../components/reviews/ReviewModal";
-import { createReview } from "../../api/reviews";
+import { createReview, updateReview } from "../../api/reviews";
 
 const APPLICATIONS_PER_PAGE = 8;
 type BookingScope = "active" | "completed" | "archive";
@@ -86,9 +86,16 @@ export function BookingsTab() {
     setIsSubmittingReview(true);
     setReviewError(null);
     try {
-      await createReview(applicationToReview.shiftId, { rating, comment });
-      toast.success("Відгук збережено.");
+      const review = applicationToReview.Shift.Reviews?.[0];
+      if (review) {
+        await updateReview(review.id, { rating, comment });
+        toast.success("Відгук оновлено.");
+      } else {
+        await createReview(applicationToReview.shiftId, { rating, comment });
+        toast.success("Відгук збережено.");
+      }
       setApplicationToReview(null);
+      setReloadKey((value) => value + 1);
     } catch (error) {
       setReviewError(error instanceof Error ? error.message : "Не вдалося зберегти відгук.");
     } finally {
@@ -115,6 +122,7 @@ export function BookingsTab() {
         const canCancel = application.status === "pending"
           && new Date(shift.startTime) > new Date();
         const canReview = scope === "completed" && application.status === "completed";
+        const review = shift.Reviews?.[0] ?? null;
 
         return (
           <article key={application.id} className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
@@ -149,9 +157,9 @@ export function BookingsTab() {
                 <button
                   type="button"
                   onClick={() => { setReviewError(null); setApplicationToReview(application); }}
-                  className="inline-flex min-h-[42px] items-center justify-center rounded-[var(--radius-pill)] bg-accent px-4 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
+                  className="inline-flex min-h-[42px] items-center justify-center gap-1.5 rounded-[var(--radius-pill)] bg-accent px-4 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
                 >
-                  Залишити відгук
+                  {review ? "Редагувати відгук" : "Залишити відгук"}
                 </button>
               )}
             </div>
@@ -218,6 +226,7 @@ export function BookingsTab() {
       description={`Як пройшла співпраця з ${applicationToReview?.Shift.Location?.Company?.name ?? "компанією"}?`}
       isSubmitting={isSubmittingReview}
       error={reviewError}
+      initialReview={applicationToReview?.Shift.Reviews?.[0] ?? null}
       onSubmit={handleReviewSubmit}
     />
     </>
