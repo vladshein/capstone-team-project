@@ -146,6 +146,25 @@ export interface BusinessShiftApplication extends ShiftApplication {
   };
 }
 
+export interface BusinessShiftsResponse {
+  totalItems: number;
+  totalPages: number;
+  currentPage: number;
+  data: BusinessShift[];
+}
+
+export interface BusinessShiftApplicationsResponse {
+  totalItems: number;
+  totalPages: number;
+  currentPage: number;
+  data: BusinessShiftApplication[];
+}
+
+export interface BusinessShiftWorkerSummary {
+  application: { status: "completed" | "no_show"; User: { avatar: string | null; WorkerProfile: { firstName: string; lastName: string; rating: number | string; avatarUrl: string | null } | null } };
+  review: { id: string; rating: number; comment: string | null } | null;
+}
+
 export interface WorkerShiftApplication {
   id: number;
   shiftId: number;
@@ -274,20 +293,29 @@ export async function markBusinessShiftApplicationNoShow(applicationId: number):
 export async function getBusinessShifts(
   companyId: number,
   scope: "active" | "archive" = "active",
-): Promise<BusinessShift[]> {
-  const { data } = await api.get<{ data: BusinessShift[] }>("/shifts/business/my-shifts", {
-    params: { companyId, scope },
+  page = 1,
+  limit = 8,
+): Promise<BusinessShiftsResponse> {
+  const { data } = await api.get<BusinessShiftsResponse>("/shifts/business/my-shifts", {
+    params: { companyId, scope, page, limit },
   });
-  return data.data;
+  return data;
 }
 
 export async function getBusinessShiftApplications(
   companyId: number,
-): Promise<BusinessShiftApplication[]> {
-  const { data } = await api.get<{ data: BusinessShiftApplication[] }>(
+  page = 1,
+  limit = 8,
+): Promise<BusinessShiftApplicationsResponse> {
+  const { data } = await api.get<BusinessShiftApplicationsResponse>(
     "/shifts/business/applications",
-    { params: { companyId } },
+    { params: { companyId, page, limit } },
   );
+  return data;
+}
+
+export async function getBusinessShiftWorkerSummary(shiftId: number): Promise<BusinessShiftWorkerSummary> {
+  const { data } = await api.get<{ data: BusinessShiftWorkerSummary }>(`/shifts/business/shifts/${shiftId}/worker`);
   return data.data;
 }
 

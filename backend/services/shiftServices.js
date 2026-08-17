@@ -311,7 +311,7 @@ export const createShift = async (shiftData) => {
 };
 
 /** Повертає зміни однієї компанії лише її власнику. */
-export const getBusinessShifts = async ({ companyId, ownerId, scope }) => {
+export const getBusinessShifts = async ({ companyId, ownerId, scope, page = 1, limit = 8 }) => {
   const company = await Company.findOne({ where: { id: companyId, ownerId } });
 
   if (!company) {
@@ -362,8 +362,13 @@ export const getBusinessShifts = async ({ companyId, ownerId, scope }) => {
       ]
     : [];
 
-  return Shift.findAll({
+  const { count, rows } = await Shift.findAndCountAll({
     where: shiftWhere,
+    limit,
+    offset: (page - 1) * limit,
+    // Архів додає hasMany заявки та reviews, тому рахуємо саме зміни.
+    distinct: true,
+    subQuery: false,
     include: [
       { model: JobPosition, attributes: ["id", "title"] },
       { model: Category, attributes: ["id", "name"] },
@@ -377,10 +382,17 @@ export const getBusinessShifts = async ({ companyId, ownerId, scope }) => {
     ],
     order: [["startTime", scope === "archive" ? "DESC" : "ASC"]],
   });
+
+  return {
+    totalItems: count,
+    totalPages: Math.ceil(count / limit),
+    currentPage: page,
+    data: rows,
+  };
 };
 
 /** Повертає нові й підтверджені заявки конкретної компанії лише її власнику. */
-export const getBusinessShiftApplications = async ({ companyId, ownerId }) => {
+export const getBusinessShiftApplications = async ({ companyId, ownerId, page = 1, limit = 8 }) => {
   const company = await Company.findOne({ where: { id: companyId, ownerId } });
 
   if (!company) {
@@ -389,7 +401,7 @@ export const getBusinessShiftApplications = async ({ companyId, ownerId }) => {
     throw error;
   }
 
-  return ShiftApplication.findAll({
+  const { count, rows } = await ShiftApplication.findAndCountAll({
     where: { status: { [Op.in]: ["pending", "approved"] } },
     // `Reviews` — hasMany. За стандартного `subQuery: true` Sequelize виносить
     // Shift у підзапит, а JobPosition приєднує зовні, де alias Shift уже
@@ -430,8 +442,51 @@ export const getBusinessShiftApplications = async ({ companyId, ownerId }) => {
       },
     ],
     order: [["appliedAt", "DESC"]],
-    limit: 50,
+    limit,
+    offset: (page - 1) * limit,
+    distinct: true,
+    subQuery: false,
   });
+
+  return {
+    totalItems: count,
+    totalPages: Math.ceil(count / limit),
+    currentPage: page,
+    data: rows,
+  };
+};
+
+/** Дані виконавця для архівної зміни — доступні лише власнику компанії. */
+export const getBusinessShiftWorkerSummary = async ({ shiftId, ownerId }) => {
+  const application = await ShiftApplication.findOne({
+    where: { shiftId, status: { [Op.in]: ["completed", "no_show"] } },
+    include: [
+      {
+        model: Shift,
+        required: true,
+        attributes: ["id"],
+        include: [{
+          model: Location,
+          required: true,
+          attributes: ["id"],
+          include: [{ model: Company, attributes: ["id"], where: { ownerId }, required: true }],
+        }],
+      },
+      {
+        model: User,
+        attributes: ["id", "avatar"],
+        include: [{ model: WorkerProfile, attributes: ["firstName", "lastName", "rating", "avatarUrl"] }],
+      },
+    ],
+  });
+
+  if (!application) return null;
+  const review = await Review.findOne({
+    where: { shiftId, reviewerId: ownerId },
+    attributes: ["id", "rating", "comment"],
+  });
+
+  return { application, review };
 };
 
 /** Повертає тільки кількість нових заявок, без важких даних виконавців і змін. */

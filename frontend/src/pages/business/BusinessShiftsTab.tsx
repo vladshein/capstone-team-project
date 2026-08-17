@@ -15,10 +15,14 @@ import { createReview, updateReview } from "../../api/reviews";
 import { formatTimeRange } from "../../sectionsHero/TasksBoard/formatters";
 import type { BusinessDashboardOutletContext } from "./BusinessDashboardPage";
 import { CreateShiftModal } from "./CreateShiftModal";
+import { useAppDispatch, useAppSelector } from "../../redux/hooks";
+import { createNewShift } from "../../redux/shift/actions";
 
 interface BusinessShiftsTabProps {
   scope: "active" | "archive";
 }
+
+const SHIFTS_PER_PAGE = 8;
 
 const emptyState = {
   active: {
@@ -41,12 +45,17 @@ const shiftStatus = {
 
 export function BusinessShiftsTab({ scope }: BusinessShiftsTabProps) {
   const { company, shiftsRefreshKey } = useOutletContext<BusinessDashboardOutletContext>();
+  const dispatch = useAppDispatch();
+  const isCreatingRepeat = useAppSelector((state) => state.shift.isCreating);
   const [shifts, setShifts] = useState<BusinessShift[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
   const [shiftToEdit, setShiftToEdit] = useState<BusinessShift | null>(null);
   const [shiftToCancel, setShiftToCancel] = useState<BusinessShift | null>(null);
+  const [shiftToRepeat, setShiftToRepeat] = useState<BusinessShift | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -63,15 +72,21 @@ export function BusinessShiftsTab({ scope }: BusinessShiftsTabProps) {
     setIsLoading(true);
     setError(null);
 
-    void getBusinessShifts(company.id, scope)
-      .then((data) => { if (!cancelled) setShifts(data); })
+    void getBusinessShifts(company.id, scope, page, SHIFTS_PER_PAGE)
+      .then((response) => {
+        if (cancelled) return;
+        setShifts(response.data);
+        setTotalPages(response.totalPages);
+      })
       .catch((requestError) => {
         if (!cancelled) setError(requestError instanceof Error ? requestError.message : "Не вдалося завантажити зміни.");
       })
       .finally(() => { if (!cancelled) setIsLoading(false); });
 
     return () => { cancelled = true; };
-  }, [company.id, reloadKey, scope, shiftsRefreshKey]);
+  }, [company.id, page, reloadKey, scope, shiftsRefreshKey]);
+
+  useEffect(() => { setPage(1); }, [company.id, scope]);
 
   const formatSchedule = (shift: BusinessShift) => {
     const date = new Date(shift.startTime);
@@ -144,6 +159,12 @@ export function BusinessShiftsTab({ scope }: BusinessShiftsTabProps) {
     }
   };
 
+  const handleRepeat = async (payload: Parameters<typeof updateShift>[1]) => {
+    await dispatch(createNewShift(payload)).unwrap();
+    setShiftToRepeat(null);
+    setReloadKey((key) => key + 1);
+  };
+
   return (
     <>
       <div className="divide-y divide-border">
@@ -210,11 +231,25 @@ export function BusinessShiftsTab({ scope }: BusinessShiftsTabProps) {
                 {review ? "Редагувати відгук" : "Залишити відгук"}
               </button>
             )}
+            {scope === "archive" && (
+              <button type="button" onClick={() => { setActionError(null); setShiftToRepeat(shift); }} className="inline-flex min-h-[40px] items-center gap-1.5 rounded-[var(--radius-pill)] border border-border px-3 text-sm font-medium text-text transition-colors hover:border-accent hover:text-accent-text">
+                Повторити зміну
+              </button>
+            )}
           </div>
         </article>
         );
       })}
       </div>
+      {totalPages > 1 && (
+        <nav className="mt-6 flex items-center justify-center gap-1.5 px-5 pb-5" aria-label="Пагінація змін">
+          <button type="button" onClick={() => setPage((value) => value - 1)} disabled={page === 1} className="min-h-[40px] rounded-[var(--radius-pill)] border border-border px-3 text-sm text-text-muted disabled:cursor-not-allowed disabled:opacity-40">Назад</button>
+          {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+            <button key={pageNumber} type="button" onClick={() => setPage(pageNumber)} aria-current={pageNumber === page ? "page" : undefined} className={`flex h-10 w-10 items-center justify-center rounded-[var(--radius-pill)] text-sm font-medium transition-colors ${pageNumber === page ? "bg-accent text-white" : "border border-border text-text hover:border-accent"}`}>{pageNumber}</button>
+          ))}
+          <button type="button" onClick={() => setPage((value) => value + 1)} disabled={page === totalPages} className="min-h-[40px] rounded-[var(--radius-pill)] border border-border px-3 text-sm text-text-muted disabled:cursor-not-allowed disabled:opacity-40">Далі</button>
+        </nav>
+      )}
 
       <CreateShiftModal
         isOpen={shiftToEdit !== null}
@@ -225,6 +260,19 @@ export function BusinessShiftsTab({ scope }: BusinessShiftsTabProps) {
         initialShift={shiftToEdit}
         onClose={() => { if (!isSaving) setShiftToEdit(null); }}
         onSubmit={handleEdit}
+        onLocationCreated={async () => undefined}
+      />
+
+      <CreateShiftModal
+        isOpen={shiftToRepeat !== null}
+        companyId={company.id}
+        locations={company.Locations ?? []}
+        isSubmitting={isCreatingRepeat}
+        serverError={actionError}
+        initialShift={shiftToRepeat}
+        isDuplicate
+        onClose={() => { if (!isCreatingRepeat) setShiftToRepeat(null); }}
+        onSubmit={handleRepeat}
         onLocationCreated={async () => undefined}
       />
 

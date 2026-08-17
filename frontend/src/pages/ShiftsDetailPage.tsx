@@ -19,7 +19,7 @@ import { Link, useParams } from "react-router-dom";
 import Loader from "../components/ui/Loader";
 import { Modal } from "../components/ui/Modal";
 import NotFoundPage from "./NotFoundPage";
-import { applyToShift, fetchShiftById } from "../redux/shift/actions";
+import { applyToShift, createNewShift, fetchShiftById } from "../redux/shift/actions";
 import { selectIsLoggedIn, selectUserInfo } from "../redux/auth/selectors";
 import {
   selectIsApplyingToShift,
@@ -39,7 +39,11 @@ import {
   type BusinessShift,
   updateShift,
   type WorkerShiftApplication,
+  getBusinessShiftWorkerSummary,
+  type BusinessShiftWorkerSummary,
 } from "../api/shifts";
+import { createReview, updateReview } from "../api/reviews";
+import { ReviewModal } from "../components/reviews/ReviewModal";
 import { clearApplication } from "../redux/shift/slice";
 import { CreateShiftModal } from "./business/CreateShiftModal";
 
@@ -106,6 +110,12 @@ export default function ShiftsDetailPage() {
   const [isEditingShift, setIsEditingShift] = useState(false);
   const [isSavingBusinessShift, setIsSavingBusinessShift] = useState(false);
   const [isCancellingBusinessShift, setIsCancellingBusinessShift] = useState(false);
+  const [isRepeatModalOpen, setIsRepeatModalOpen] = useState(false);
+  const [isRepeatingShift, setIsRepeatingShift] = useState(false);
+  const [workerSummary, setWorkerSummary] = useState<BusinessShiftWorkerSummary | null>(null);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
   const shiftId = Number(id);
   const isInvalidId = !Number.isInteger(shiftId) || shiftId <= 0;
   const favorite = shift ? isFavorite(shift.id) : false;
@@ -138,6 +148,23 @@ export default function ShiftsDetailPage() {
       isCurrent = false;
     };
   }, [application?.id, isAuthenticated, shift, user?.role]);
+
+  // Хук має виконуватися на кожному рендері. Перевірки всередині не дають
+  // робити запит, доки деталі зміни ще завантажуються або це не її власник.
+  useEffect(() => {
+    const isOwner = user?.role === "business_client" && shift?.Location?.Company?.ownerId === user.id;
+    const isFinished = shift ? new Date(shift.endTime) <= new Date() : false;
+    if (!shift || !isOwner || !isFinished) {
+      setWorkerSummary(null);
+      return;
+    }
+
+    let cancelled = false;
+    void getBusinessShiftWorkerSummary(shift.id)
+      .then((summary) => { if (!cancelled) setWorkerSummary(summary); })
+      .catch(() => { if (!cancelled) setWorkerSummary(null); });
+    return () => { cancelled = true; };
+  }, [shift?.Location?.Company?.ownerId, shift?.endTime, shift?.id, user?.id, user?.role]);
 
   if (!isInvalidId && (isLoading || (!shift && !error))) {
     return <Loader fullScreen label="Завантажуємо деталі зміни…" />;
@@ -173,6 +200,7 @@ export default function ShiftsDetailPage() {
   const hasApplied = activeApplication?.shiftId === shift.id;
   const isShiftOwner = user?.role === "business_client" && shift.Location?.Company?.ownerId === user.id;
   const canManageShift = isShiftOwner && shift.status === "open" && !isShiftStarted;
+  const canRepeatShift = isShiftOwner && (isShiftFinished || ["completed", "cancelled"].includes(shift.status));
 
   const handleApply = async () => {
     if (!isAuthenticated) {
@@ -256,6 +284,38 @@ export default function ShiftsDetailPage() {
       toast.error(requestError instanceof Error ? requestError.message : "Не вдалося скасувати зміну.");
     } finally {
       setIsCancellingBusinessShift(false);
+    }
+  };
+
+  const handleRepeatShift = async (payload: Parameters<typeof updateShift>[1]) => {
+    setIsRepeatingShift(true);
+    try {
+      await dispatch(createNewShift(payload)).unwrap();
+      setIsRepeatingShift(false);
+      setIsRepeatModalOpen(false);
+      toast.success("Нову зміну опубліковано.");
+    } catch (requestError) {
+      setIsRepeatingShift(false);
+      toast.error(requestError instanceof Error ? requestError.message : "Не вдалося повторити зміну.");
+      throw requestError;
+    }
+  };
+
+  const handleReviewSubmit = async ({ rating, comment }: { rating: number; comment?: string }) => {
+    if (!workerSummary) return;
+    setIsSubmittingReview(true);
+    setReviewError(null);
+    try {
+      if (workerSummary.review) await updateReview(workerSummary.review.id, { rating, comment });
+      else await createReview(shift.id, { rating, comment });
+      const refreshed = await getBusinessShiftWorkerSummary(shift.id);
+      setWorkerSummary(refreshed);
+      setIsReviewModalOpen(false);
+      toast.success("Відгук збережено.");
+    } catch (requestError) {
+      setReviewError(requestError instanceof Error ? requestError.message : "Не вдалося зберегти відгук.");
+    } finally {
+      setIsSubmittingReview(false);
     }
   };
 
@@ -390,6 +450,14 @@ export default function ShiftsDetailPage() {
                     Скасувати зміну
                   </button>
                 </div>
+              ) : canRepeatShift ? (
+                <button
+                  type="button"
+                  onClick={() => setIsRepeatModalOpen(true)}
+                  className="mt-6 flex min-h-[48px] w-full items-center justify-center rounded-[var(--radius-pill)] bg-accent px-5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+                >
+                  Повторити зміну
+                </button>
               ) : hasApplied ? (
                 <>
                   <p className="mt-6 rounded-[var(--radius-card)] bg-accent/10 px-4 py-3 text-center text-sm font-medium text-accent-text">
@@ -430,6 +498,27 @@ export default function ShiftsDetailPage() {
                       : status.label}
                 </p>
               )}
+              {isShiftOwner && workerSummary && (() => {
+                const profile = workerSummary.application.User.WorkerProfile;
+                const workerName = profile ? `${profile.firstName} ${profile.lastName}` : "Виконавець";
+                const avatar = profile?.avatarUrl ?? workerSummary.application.User.avatar;
+                const isNoShow = workerSummary.application.status === "no_show";
+                return (
+                  <div className="mt-5 border-t border-border pt-5">
+                    <p className="text-xs font-medium uppercase tracking-wide text-text-subtle">{isNoShow ? "Статус виконавця" : "Виконавець зміни"}</p>
+                    <div className="mt-3 flex items-center gap-3">
+                      {avatar ? <img src={avatar} alt="" className="h-11 w-11 rounded-full object-cover" /> : <span className="flex h-11 w-11 items-center justify-center rounded-full bg-accent/10 font-heading font-semibold text-accent">{workerName.charAt(0)}</span>}
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-ink">{workerName}</p>
+                        <p className="mt-0.5 text-xs text-text-muted">{isNoShow ? "Не з’явився на зміну" : Number(profile?.rating) > 0 ? `★ ${Number(profile?.rating).toFixed(1)}` : "Ще немає відгуків"}</p>
+                      </div>
+                    </div>
+                    <button type="button" onClick={() => { setReviewError(null); setIsReviewModalOpen(true); }} className="mt-4 flex min-h-[42px] w-full items-center justify-center rounded-[var(--radius-pill)] border border-border px-4 text-sm font-medium text-text transition-colors hover:border-accent hover:text-accent-text">
+                      {workerSummary.review ? "Редагувати відгук" : "Залишити відгук"}
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
           </aside>
         </div>
@@ -472,6 +561,29 @@ export default function ShiftsDetailPage() {
         onSubmit={handleEditShift}
         onLocationCreated={async () => undefined}
         initialShift={shift as BusinessShift}
+      />
+    )}
+    <ReviewModal
+      isOpen={isReviewModalOpen}
+      onClose={() => { if (!isSubmittingReview) setIsReviewModalOpen(false); }}
+      title={workerSummary?.application.status === "no_show" ? "Відгук про неявку" : "Оцініть виконавця"}
+      description={workerSummary?.application.status === "no_show" ? "Залиште відгук, щоб інші компанії бачили історію співпраці." : "Як пройшла зміна з виконавцем?"}
+      isSubmitting={isSubmittingReview}
+      error={reviewError}
+      initialReview={workerSummary?.review}
+      onSubmit={handleReviewSubmit}
+    />
+    {isShiftOwner && (
+      <CreateShiftModal
+        isOpen={isRepeatModalOpen}
+        companyId={shift.Location.Company.id}
+        locations={[]}
+        isSubmitting={isRepeatingShift}
+        onClose={() => { if (!isRepeatingShift) setIsRepeatModalOpen(false); }}
+        onSubmit={handleRepeatShift}
+        onLocationCreated={async () => undefined}
+        initialShift={shift as BusinessShift}
+        isDuplicate
       />
     )}
     <Modal

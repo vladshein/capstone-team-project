@@ -20,6 +20,8 @@ interface CreateShiftModalProps {
   onSubmit: (payload: CreateShiftPayload) => Promise<void>;
   onLocationCreated: () => Promise<void>;
   initialShift?: BusinessShift | null;
+  /** Повторення створює нову зміну, тому не переносить минулу дату з архіву. */
+  isDuplicate?: boolean;
 }
 
 const inputClass =
@@ -81,6 +83,7 @@ export function CreateShiftModal({
   onSubmit,
   onLocationCreated,
   initialShift = null,
+  isDuplicate = false,
 }: CreateShiftModalProps) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [positions, setPositions] = useState<JobPositionOption[]>([]);
@@ -120,7 +123,7 @@ export function CreateShiftModal({
       setLocationId(String(initialShift.Location.id));
       setCategoryId(initialCategoryId ? String(initialCategoryId) : "");
       setPositionId(String(initialShift.JobPosition?.id ?? initialShift.positionId ?? ""));
-      setDate(start.toISOString().slice(0, 10));
+      setDate(isDuplicate ? earliestShiftDate() : start.toISOString().slice(0, 10));
       setStartTime(start.toISOString().slice(11, 16));
       setEndTime(end.toISOString().slice(11, 16));
       setHourlyRate(String(initialShift.hourlyRate));
@@ -152,7 +155,7 @@ export function CreateShiftModal({
     return () => {
       cancelled = true;
     };
-  }, [initialShift, isOpen, locations]);
+  }, [initialShift, isDuplicate, isOpen, locations]);
 
   const availablePositions = useMemo(() => {
     const categoryPositions = positionTitlesByCategory[Number(categoryId)] ?? [];
@@ -294,7 +297,7 @@ export function CreateShiftModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={initialShift ? "Редагувати зміну" : "Створити зміну"}>
+    <Modal isOpen={isOpen} onClose={onClose} title={isDuplicate ? "Повторити зміну" : initialShift ? "Редагувати зміну" : "Створити зміну"}>
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="text-sm font-medium">
@@ -391,7 +394,7 @@ export function CreateShiftModal({
         {(formError || serverError) && <p className="text-sm text-danger">{formError || serverError}</p>}
         <button type="submit" disabled={!canSubmit} className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--radius-pill)] bg-accent px-5 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60">
           <MapPin className="h-4 w-4" />
-          {isSubmitting || isCreatingLocation ? "Зберігаємо…" : initialShift ? "Зберегти зміни" : "Опублікувати зміну"}
+          {isSubmitting || isCreatingLocation ? "Зберігаємо…" : isDuplicate ? "Опублікувати повторно" : initialShift ? "Зберегти зміни" : "Опублікувати зміну"}
         </button>
       </form>
     </Modal>

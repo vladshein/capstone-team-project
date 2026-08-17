@@ -15,12 +15,16 @@ import { ReviewModal } from "../../components/reviews/ReviewModal";
 import { createReview } from "../../api/reviews";
 import type { BusinessDashboardOutletContext } from "./BusinessDashboardPage";
 
+const APPLICATIONS_PER_PAGE = 8;
+
 export function BusinessApplicationsTab() {
   const { company, onApplicationsChanged } = useOutletContext<BusinessDashboardOutletContext>();
   const [applications, setApplications] = useState<BusinessShiftApplication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
   const [processingId, setProcessingId] = useState<number | null>(null);
   const [applicationToMarkNoShow, setApplicationToMarkNoShow] = useState<BusinessShiftApplication | null>(null);
   const [reviewTarget, setReviewTarget] = useState<{
@@ -34,14 +38,20 @@ export function BusinessApplicationsTab() {
     let cancelled = false;
     setIsLoading(true);
     setError(null);
-    void getBusinessShiftApplications(company.id)
-      .then((data) => { if (!cancelled) setApplications(data); })
+    void getBusinessShiftApplications(company.id, page, APPLICATIONS_PER_PAGE)
+      .then((response) => {
+        if (cancelled) return;
+        setApplications(response.data);
+        setTotalPages(response.totalPages);
+      })
       .catch((requestError) => {
         if (!cancelled) setError(requestError instanceof Error ? requestError.message : "Не вдалося завантажити заявки.");
       })
       .finally(() => { if (!cancelled) setIsLoading(false); });
     return () => { cancelled = true; };
-  }, [company.id, reloadKey]);
+  }, [company.id, page, reloadKey]);
+
+  useEffect(() => { setPage(1); }, [company.id]);
 
   const handleDecision = async (
     applicationId: number,
@@ -201,6 +211,15 @@ export function BusinessApplicationsTab() {
         );
       })}
       </div>
+      {totalPages > 1 && (
+        <nav className="mt-6 flex items-center justify-center gap-1.5 px-5 pb-5" aria-label="Пагінація заявок">
+          <button type="button" onClick={() => setPage((value) => value - 1)} disabled={page === 1} className="min-h-[40px] rounded-[var(--radius-pill)] border border-border px-3 text-sm text-text-muted disabled:cursor-not-allowed disabled:opacity-40">Назад</button>
+          {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+            <button key={pageNumber} type="button" onClick={() => setPage(pageNumber)} aria-current={pageNumber === page ? "page" : undefined} className={`flex h-10 w-10 items-center justify-center rounded-[var(--radius-pill)] text-sm font-medium transition-colors ${pageNumber === page ? "bg-accent text-white" : "border border-border text-text hover:border-accent"}`}>{pageNumber}</button>
+          ))}
+          <button type="button" onClick={() => setPage((value) => value + 1)} disabled={page === totalPages} className="min-h-[40px] rounded-[var(--radius-pill)] border border-border px-3 text-sm text-text-muted disabled:cursor-not-allowed disabled:opacity-40">Далі</button>
+        </nav>
+      )}
 
       <Modal
         isOpen={applicationToMarkNoShow !== null}
