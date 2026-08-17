@@ -230,6 +230,9 @@ export const getReviewsByRevieweeId = async (
       {
         model: Shift,
         attributes: ["id", "startTime"],
+        // Для профілю конкретної компанії потрібен INNER JOIN, інакше
+        // LEFT JOIN лишає у списку відгуки інших компаній того ж власника.
+        required: Boolean(companyId),
         include: [
           { model: JobPosition, attributes: ["title"] },
           {
@@ -261,10 +264,32 @@ export const getReviewsByRevieweeId = async (
     distinct: true,
   });
 
+  const ratingFilter = companyId
+    ? [{
+        model: Shift,
+        attributes: [],
+        required: true,
+        include: [{
+          model: Location,
+          attributes: [],
+          required: true,
+          include: [{ model: Company, attributes: [], where: { id: companyId }, required: true }],
+        }],
+      }]
+    : [];
+  const ratingResult = await Review.findOne({
+    where: { revieweeId },
+    attributes: [[Review.sequelize.fn("AVG", Review.sequelize.col("rating")), "averageRating"]],
+    include: ratingFilter,
+    raw: true,
+  });
+  const averageRating = Number(ratingResult?.averageRating);
+
   return {
     data: rows,
     totalItems: count,
     totalPages: Math.ceil(count / limit),
     currentPage: page,
+    averageRating: Number.isFinite(averageRating) ? Math.round(averageRating * 100) / 100 : 0,
   };
 };

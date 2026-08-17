@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Building2, MessageSquareText, Star } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import { getReceivedReviews, type ReceivedReview } from "../../api/reviews";
 import { Loader } from "../../components/ui/Loader";
@@ -36,7 +37,13 @@ function ReviewCard({ review, subject }: { review: ReceivedReview; subject: Revi
             <span className="truncate">{reviewerName}</span>
           </div>
           <p className="mt-1 text-xs text-text-muted">
-            {review.Shift.JobPosition?.title ?? "Зміна"} · {date}
+            <Link
+              to={`/shifts/${review.Shift.id}`}
+              className="font-medium text-accent-text hover:text-accent hover:underline"
+            >
+              {review.Shift.JobPosition?.title ?? "Зміна"}
+            </Link>
+            <span> · {date}</span>
           </p>
         </div>
         <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-warning/10 px-2.5 py-1 text-sm font-semibold text-warning">
@@ -62,6 +69,7 @@ function ProfileReviewsSection({
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
+  const [averageRating, setAverageRating] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -76,6 +84,7 @@ function ProfileReviewsSection({
         setReviews(response.data);
         setTotalItems(response.totalItems);
         setTotalPages(response.totalPages);
+        setAverageRating(response.averageRating);
       })
       .catch((requestError) => {
         if (!cancelled) setError(requestError instanceof Error ? requestError.message : "Не вдалося завантажити відгуки.");
@@ -92,7 +101,12 @@ function ProfileReviewsSection({
           <h2 id="worker-reviews-title" className="font-heading text-xl font-semibold">
             {subject === "worker" ? "Відгуки про вас" : "Відгуки про компанію"}
           </h2>
-          {totalItems > 0 && <p className="mt-1 text-sm text-text-muted">Усього: {totalItems}</p>}
+          {totalItems > 0 && (
+            <p className="mt-1 flex items-center gap-2 text-sm text-text-muted">
+              Усього: {totalItems}
+              {subject === "company" && <><span aria-hidden="true">·</span><span className="inline-flex items-center gap-1 font-medium text-warning"><Star className="h-3.5 w-3.5 fill-current" /> {averageRating.toFixed(2)} / 5</span></>}
+            </p>
+          )}
         </div>
       </div>
 

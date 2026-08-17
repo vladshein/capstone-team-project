@@ -27,6 +27,7 @@ export interface ReviewsPage {
   totalItems: number;
   totalPages: number;
   currentPage: number;
+  averageRating: number;
 }
 
 export async function createReview(
