@@ -1,4 +1,23 @@
 import * as workerProfileService from "../services/workerProfileServices.js";
+import { getWorkerStatisticsSummary } from "../services/worker-statistics.service.js";
+
+const isValidIsoDate = (value) => {
+  if (typeof value !== "string") return false;
+
+  const match = value.match(
+    /^(\d{4})-(\d{2})-(\d{2})(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})?)?$/,
+  );
+  if (!match || Number.isNaN(Date.parse(value))) return false;
+
+  const [, year, month, day] = match.map(Number);
+  const calendarDate = new Date(Date.UTC(year, month - 1, day));
+
+  return (
+    calendarDate.getUTCFullYear() === year &&
+    calendarDate.getUTCMonth() === month - 1 &&
+    calendarDate.getUTCDate() === day
+  );
+};
 
 export const getMyProfile = async (req, res, next) => {
   try {
@@ -13,6 +32,44 @@ export const getMyProfile = async (req, res, next) => {
       message: "Профіль успішно отримано",
       data: profile,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getStatisticsSummary = async (req, res, next) => {
+  try {
+    const { dateFrom, dateTo, companyId: companyIdQuery } = req.query;
+
+    if (dateFrom !== undefined && !isValidIsoDate(dateFrom)) {
+      return res.status(400).json({
+        message: "dateFrom must be a valid ISO date.",
+      });
+    }
+
+    if (dateTo !== undefined && !isValidIsoDate(dateTo)) {
+      return res.status(400).json({
+        message: "dateTo must be a valid ISO date.",
+      });
+    }
+
+    let companyId;
+    if (companyIdQuery !== undefined) {
+      companyId = Number(companyIdQuery);
+      if (!Number.isInteger(companyId)) {
+        return res.status(400).json({
+          message: "companyId must be an integer.",
+        });
+      }
+    }
+
+    const statistics = await getWorkerStatisticsSummary(req.user.id, {
+      dateFrom,
+      dateTo,
+      companyId,
+    });
+
+    res.status(200).json({ data: statistics });
   } catch (error) {
     next(error);
   }

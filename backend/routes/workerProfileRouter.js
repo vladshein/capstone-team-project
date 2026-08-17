@@ -1,6 +1,7 @@
 import express from "express";
 import validateBody from "../helpers/validateBody.js";
 import authenticate from "../middlewares/authenticate.js";
+import checkRole from "../middlewares/checkRole.js";
 
 import {
   createProfileSchema,
@@ -16,6 +17,12 @@ workerProfileRouter.use(authenticate);
 
 // Отримати свій профіль (для кабінету)
 workerProfileRouter.get("/me", workerProfileController.getMyProfile);
+
+workerProfileRouter.get(
+  "/me/statistics/summary",
+  checkRole("worker"),
+  workerProfileController.getStatisticsSummary,
+);
 
 // Створити профіль (одразу після реєстрації)
 workerProfileRouter.post(
