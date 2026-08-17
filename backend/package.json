@@ -15,7 +15,8 @@
     "db:s:generate": "node db/seeder.js create",
     "db:migrate": "node ./db/migrate.js",
     "db:migrate:status": "node ./db/migrate.js --status",
-    "db:seed": "node --input-type=module -e \"import('./db/models/seedDBs.js').then(m => m.default()).then(() => { console.log('Seeded'); process.exit(0); })\""
+    "db:seed": "node --input-type=module -e \"import('./db/models/seedDBs.js').then(m => m.default()).then(() => { console.log('Seeded'); process.exit(0); })\"",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
@@ -41,6 +42,7 @@
   },
   "devDependencies": {
     "@redocly/cli": "^2.12.5",
+    "jest": "^30.2.0",
     "nodemon": "^3.0.2",
     "prettier": "^3.7.4"
   }
