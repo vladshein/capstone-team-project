@@ -3,7 +3,7 @@ import { Building2, MessageSquareText, Star } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { getReceivedReviews, type ReceivedReview } from "../../api/reviews";
-import { Loader } from "../../components/ui/Loader";
+import { Loader } from "../ui/Loader";
 
 const REVIEWS_PER_PAGE = 5;
 
@@ -56,12 +56,20 @@ function ReviewCard({ review, subject }: { review: ReceivedReview; subject: Revi
   );
 }
 
-function ProfileReviewsSection({
-  userId,
+function getVisiblePages(currentPage: number, totalPages: number) {
+  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, index) => index + 1);
+
+  return [...new Set([1, currentPage - 1, currentPage, currentPage + 1, totalPages])]
+    .filter((page) => page >= 1 && page <= totalPages)
+    .sort((left, right) => left - right);
+}
+
+export function ProfileReviewsSection({
+  revieweeId,
   subject,
   companyId,
 }: {
-  userId: number;
+  revieweeId: number;
   subject: ReviewSubject;
   companyId?: number;
 }) {
@@ -78,7 +86,7 @@ function ProfileReviewsSection({
     setIsLoading(true);
     setError(null);
 
-    void getReceivedReviews(userId, page, REVIEWS_PER_PAGE, companyId)
+    void getReceivedReviews(revieweeId, page, REVIEWS_PER_PAGE, companyId)
       .then((response) => {
         if (cancelled) return;
         setReviews(response.data);
@@ -92,7 +100,9 @@ function ProfileReviewsSection({
       .finally(() => { if (!cancelled) setIsLoading(false); });
 
     return () => { cancelled = true; };
-  }, [companyId, page, userId]);
+  }, [companyId, page, revieweeId]);
+
+  const visiblePages = getVisiblePages(page, totalPages);
 
   return (
     <section className="mt-8" aria-labelledby="worker-reviews-title">
@@ -123,8 +133,11 @@ function ProfileReviewsSection({
           {totalPages > 1 && (
             <nav className="mt-6 flex items-center justify-center gap-1.5" aria-label="Сторінки відгуків">
               <button type="button" disabled={page === 1} onClick={() => setPage((value) => value - 1)} className="min-h-[40px] rounded-[var(--radius-pill)] border border-border px-3 text-sm text-text-muted disabled:cursor-not-allowed disabled:opacity-40">Назад</button>
-              {Array.from({ length: totalPages }, (_, index) => index + 1).map((number) => (
-                <button key={number} type="button" onClick={() => setPage(number)} aria-current={page === number ? "page" : undefined} className={`flex h-10 w-10 items-center justify-center rounded-[var(--radius-pill)] text-sm font-medium transition-colors ${page === number ? "bg-accent text-white" : "border border-border text-text hover:border-accent"}`}>{number}</button>
+              {visiblePages.map((number, index) => (
+                <span key={number} className="contents">
+                  {index > 0 && number - visiblePages[index - 1] > 1 && <span className="px-1 text-text-muted" aria-hidden="true">…</span>}
+                  <button type="button" onClick={() => setPage(number)} aria-current={page === number ? "page" : undefined} className={`flex h-10 w-10 items-center justify-center rounded-[var(--radius-pill)] text-sm font-medium transition-colors ${page === number ? "bg-accent text-white" : "border border-border text-text hover:border-accent"}`}>{number}</button>
+                </span>
               ))}
               <button type="button" disabled={page === totalPages} onClick={() => setPage((value) => value + 1)} className="min-h-[40px] rounded-[var(--radius-pill)] border border-border px-3 text-sm text-text-muted disabled:cursor-not-allowed disabled:opacity-40">Далі</button>
             </nav>
@@ -133,12 +146,4 @@ function ProfileReviewsSection({
       )}
     </section>
   );
-}
-
-export function WorkerReviewsSection({ userId }: { userId: number }) {
-  return <ProfileReviewsSection userId={userId} subject="worker" />;
-}
-
-export function CompanyReviewsSection({ userId, companyId }: { userId: number; companyId: number }) {
-  return <ProfileReviewsSection userId={userId} companyId={companyId} subject="company" />;
 }

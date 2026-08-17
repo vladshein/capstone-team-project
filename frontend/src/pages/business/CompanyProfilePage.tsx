@@ -14,7 +14,7 @@ import { incrementCompaniesCount } from "../../redux/auth/slice";
 import { CreateCompanyModal, type CreateCompanyPayload } from "./CreateCompanyModal";
 import { Loader } from "../../components/ui/Loader";
 import { selectUserInfo } from "../../redux/auth/selectors";
-import { CompanyReviewsSection } from "../worker/WorkerReviewsSection";
+import { ProfileReviewsSection } from "../../components/reviews/ProfileReviewsSection";
 
 function ProfileField({ label, value }: { label: string; value?: string }) {
   return (
@@ -278,7 +278,7 @@ export function BusinessProfilePage() {
         </div>
       </div>
 
-      {activeCompany && user && <CompanyReviewsSection userId={user.id} companyId={activeCompany.id} />}
+      {activeCompany && user && <ProfileReviewsSection revieweeId={user.id} companyId={activeCompany.id} subject="company" />}
 
       {companyModal}
     </div>
