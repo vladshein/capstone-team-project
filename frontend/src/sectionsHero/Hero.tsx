@@ -80,7 +80,7 @@ export function Hero({
             <div className="mt-4 flex flex-col gap-3 text-sm sm:flex-row sm:flex-wrap">
               <a
                 href="/#zavdannia"
-                className="flex min-h-[44px] items-center justify-center rounded-[var(--radius-pill)] bg-ink px-5 font-medium text-white hover:bg-accent sm:justify-start"
+                className="flex min-h-[44px] items-center justify-center rounded-[var(--radius-pill)] bg-bg-inverse px-5 font-medium text-white hover:bg-accent sm:justify-start"
               >
                 Я шукаю зміну
               </a>
@@ -96,7 +96,7 @@ export function Hero({
           </div>
 
           {/* <div className="relative rounded-[var(--radius-card)] border border-border bg-bg p-2.5 shadow-[0_20px_60px_-30px_rgba(18,19,26,0.35)] sm:p-3">
-            <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between rounded-[var(--radius-card)] bg-white/95 px-3 py-2.5 shadow-lg backdrop-blur sm:bottom-6 sm:left-6 sm:right-6 sm:px-4 sm:py-3">
+            <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between rounded-[var(--radius-card)] bg-bg/95 px-3 py-2.5 shadow-lg backdrop-blur sm:bottom-6 sm:left-6 sm:right-6 sm:px-4 sm:py-3">
               <div>
                 <p className="text-xs text-text-muted">Найближча зміна</p>
                 <p className="text-sm font-semibold">Бариста · 0.8 км</p>
@@ -122,7 +122,7 @@ export function Hero({
               type="button"
               onClick={() => setAudience("worker")}
               className={`flex-1 rounded-[var(--radius-pill)] px-3 py-2 font-medium transition-colors sm:flex-initial sm:px-4 sm:py-1.5 ${
-                audience === "worker" ? "bg-ink text-white" : "text-text"
+                audience === "worker" ? "bg-bg-inverse text-white" : "text-text"
               }`}
             >
               Для виконавця
@@ -131,7 +131,7 @@ export function Hero({
               type="button"
               onClick={() => setAudience("business")}
               className={`flex-1 rounded-[var(--radius-pill)] px-3 py-2 font-medium transition-colors sm:flex-initial sm:px-4 sm:py-1.5 ${
-                audience === "business" ? "bg-ink text-white" : "text-text"
+                audience === "business" ? "bg-bg-inverse text-white" : "text-text"
               }`}
             >
               Для бізнесу

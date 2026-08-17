@@ -202,7 +202,7 @@ export function HeaderAuth({
             <button type="button" onClick={onOpenSignIn} className="min-h-[44px] rounded-[var(--radius-pill)] border border-border px-5 text-sm font-medium">
               Увійти
             </button>
-            <button type="button" onClick={onOpenSignUp} className="min-h-[44px] rounded-[var(--radius-pill)] bg-ink px-5 text-sm font-medium text-white">
+            <button type="button" onClick={onOpenSignUp} className="min-h-[44px] rounded-[var(--radius-pill)] bg-bg-inverse px-5 text-sm font-medium text-white">
               Реєстрація
             </button>
           </>
@@ -225,7 +225,7 @@ export function HeaderAuth({
             {user.avatar ? (
               <img src={user.avatar} alt="" className="h-7 w-7 rounded-full object-cover" />
             ) : (
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ink text-xs text-white">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-bg-inverse text-xs text-white">
                 {getAvatarInitials(user.displayName)}
               </span>
             )}
@@ -245,7 +245,7 @@ export function HeaderAuth({
           <button type="button" onClick={onOpenSignIn} className="text-sm font-medium text-ink hover:text-accent">
             Увійти
           </button>
-          <button type="button" onClick={onOpenSignUp} className="rounded-[var(--radius-pill)] bg-ink px-5 py-2 text-sm font-medium text-white hover:bg-accent">
+          <button type="button" onClick={onOpenSignUp} className="rounded-[var(--radius-pill)] bg-bg-inverse px-5 py-2 text-sm font-medium text-white hover:bg-accent">
             Реєстрація
           </button>
         </>

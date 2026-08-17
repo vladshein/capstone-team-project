@@ -136,7 +136,7 @@ export function FavoriteShiftsTab() {
             </p>
             <div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-4">
               <span className="font-mono font-bold text-accent">~{Math.round(payment).toLocaleString("uk-UA")} ₴</span>
-              <Link to={`/shifts/${shift.id}`} className="inline-flex min-h-[40px] items-center gap-1 rounded-[var(--radius-pill)] bg-ink px-4 text-sm font-medium text-white transition-colors hover:bg-accent">
+              <Link to={`/shifts/${shift.id}`} className="inline-flex min-h-[40px] items-center gap-1 rounded-[var(--radius-pill)] bg-bg-inverse px-4 text-sm font-medium text-white transition-colors hover:bg-accent">
                 Детальніше <ArrowUpRight className="h-4 w-4" />
               </Link>
             </div>

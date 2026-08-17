@@ -3,7 +3,7 @@ import { TICKER_SHIFTS } from "../../constants/mockData";
 export function Ticker() {
   const items = [...TICKER_SHIFTS, ...TICKER_SHIFTS];
   return (
-    <div className="relative overflow-hidden border-y border-border bg-ink py-2.5 sm:py-3">
+    <div className="relative overflow-hidden border-y border-border bg-bg-inverse py-2.5 sm:py-3">
       <style>{`
         @keyframes ludi-ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
         .ludi-ticker-track { animation: ludi-ticker 32s linear infinite; }

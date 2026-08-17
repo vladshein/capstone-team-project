@@ -163,6 +163,36 @@
   --space-section: var(--theme-space-section);
 }
 
+/* Темна схема перевизначає лише семантичні токени. Брендова тема (teal,
+   indigo тощо) лишається незалежною й продовжує керувати акцентом. */
+@layer base {
+  [data-color-scheme="light"] {
+    color-scheme: light;
+  }
+
+  [data-color-scheme="dark"] {
+    color-scheme: dark;
+    --color-bg: #171a21;
+    --color-bg-muted: #20242d;
+    --color-bg-inverse: #0d0f14;
+    --color-border: #343a46;
+    --color-ink: #f4f6f8;
+    --color-text: #c4cad3;
+    --color-text-muted: #9ba5b4;
+    --color-text-subtle: #778191;
+    --color-text-on-dark: #d7dce3;
+    --color-divider-on-dark: #3b4350;
+    --color-accent-text: #5ee0c0;
+    --color-map-bg: #202a2c;
+    --color-map-line: #3c4e51;
+  }
+
+  body {
+    background: var(--color-bg);
+    color: var(--color-ink);
+  }
+}
+
 /* Інтерактивність має бути помітна в усьому застосунку без дублювання класів. */
 @layer base {
   button:not(:disabled),

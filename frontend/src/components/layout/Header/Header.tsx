@@ -3,6 +3,7 @@ import { Menu } from "lucide-react";
 import { HeaderNav } from "./HeaderNav";
 import { HeaderAuth } from "./HeaderAuth";
 import { MobileMenu } from "./MobileMenu";
+import { ColorSchemeToggle } from "../../ui/ColorSchemeToggle";
 
 export interface HeaderProps {
   onOpenSignIn?: () => void;
@@ -22,11 +23,14 @@ export function Header({ onOpenSignIn, onOpenSignUp, onLogout }: HeaderProps) {
 
         <HeaderNav />
 
-        <HeaderAuth
-          onOpenSignIn={onOpenSignIn}
-          onOpenSignUp={onOpenSignUp}
-          onLogout={onLogout}
-        />
+        <div className="flex items-center gap-2">
+          <ColorSchemeToggle />
+          <HeaderAuth
+            onOpenSignIn={onOpenSignIn}
+            onOpenSignUp={onOpenSignUp}
+            onLogout={onLogout}
+          />
+        </div>
 
         <button
           type="button"

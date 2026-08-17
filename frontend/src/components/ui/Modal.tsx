@@ -22,7 +22,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
       aria-modal="true"
       aria-labelledby="auth-modal-title"
     >
-      <div className="absolute inset-0 bg-ink/50" onClick={onClose} />
+      <div className="absolute inset-0 bg-bg-inverse/50" onClick={onClose} />
 
       <div className="relative max-h-[92vh] w-full overflow-y-auto rounded-t-[var(--radius-card)] bg-bg p-5 shadow-2xl sm:max-w-md sm:rounded-[var(--radius-card)] sm:p-7">
         <div className="flex items-center justify-between">
