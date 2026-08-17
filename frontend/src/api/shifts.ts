@@ -94,6 +94,7 @@ export interface ShiftMapMarker {
 export interface ShiftMapMarkersResponse {
   data: ShiftMapMarker[];
   isTruncated: boolean;
+  partnerOptions?: { label: string; count: number }[];
 }
 
 export interface CreateShiftPayload {

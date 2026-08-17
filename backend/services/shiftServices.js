@@ -108,6 +108,30 @@ const buildShiftSearchQuery = ({
   return { whereCondition, locationInclude, order };
 };
 
+// Фасетка партнерів враховує решту активних фільтрів (місто, дата, категорії),
+// але навмисно не враховує сам фільтр partners. Інакше вимкнений партнер
+// зникає з чекліста й користувач уже не може увімкнути його назад.
+const buildPartnerFacetLocation = (city) => {
+  const locationInclude = {
+    model: Location,
+    attributes: [],
+    include: [{ model: Company, attributes: ["id", "name"], required: true }],
+  };
+  if (city) {
+    locationInclude.where = { city: { [Op.iLike]: city } };
+    locationInclude.required = true;
+  }
+  return locationInclude;
+};
+
+const formatPartnerOptions = (partnerRows) =>
+  partnerRows
+    .map((row) => ({
+      label: row["Location.Company.name"],
+      count: Number(row.count),
+    }))
+    .filter((partner) => partner.label);
+
 /**
  * Отримує зміни з бази даних на основі фільтрів та пагінації.
  * Містить всю логіку запитів до БД.
@@ -187,15 +211,7 @@ export const getAllShifts = async ({
         locationInclude,
       ],
     };
-    const partnerFacetLocation = {
-      model: Location,
-      attributes: [],
-      include: [{ model: Company, attributes: ["id", "name"], required: true }],
-    };
-    if (city) {
-      partnerFacetLocation.where = { city: { [Op.iLike]: city } };
-      partnerFacetLocation.required = true;
-    }
+    const partnerFacetLocation = buildPartnerFacetLocation(city);
 
     const [listResult, partnerRows] = await Promise.all([
       Shift.findAndCountAll(listOptions),
@@ -209,12 +225,7 @@ export const getAllShifts = async ({
       }),
     ]);
     const { count, rows } = listResult;
-    const partnerOptions = partnerRows
-      .map((row) => ({
-        label: row["Location.Company.name"],
-        count: Number(row.count),
-      }))
-      .filter((partner) => partner.label);
+    const partnerOptions = formatPartnerOptions(partnerRows);
 
     console.log(
       `[shiftsService] found ${count} shift(s), returning page ${parsedPage} (${rows.length} row(s))`,
@@ -243,21 +254,33 @@ export const getAllShifts = async ({
 /** Повертає лише поля, потрібні для маркерів карти, без пагінації карток. */
 export const getShiftMapMarkers = async (filters) => {
   const { whereCondition, locationInclude, order } = buildShiftSearchQuery(filters);
+  const partnerFacetLocation = buildPartnerFacetLocation(filters.city);
 
-  const rows = await Shift.findAll({
-    attributes: ["id", "startTime", "endTime", "hourlyRate", "bonusRate"],
-    where: whereCondition,
-    order,
-    limit: MAP_MARKERS_LIMIT + 1,
-    include: [
-      { model: JobPosition, attributes: ["title"] },
-      locationInclude,
-    ],
-  });
+  const [rows, partnerRows] = await Promise.all([
+    Shift.findAll({
+      attributes: ["id", "startTime", "endTime", "hourlyRate", "bonusRate"],
+      where: whereCondition,
+      order,
+      limit: MAP_MARKERS_LIMIT + 1,
+      include: [
+        { model: JobPosition, attributes: ["title"] },
+        locationInclude,
+      ],
+    }),
+    Shift.findAll({
+      attributes: [[fn("COUNT", col("Shift.id")), "count"]],
+      where: whereCondition,
+      include: [partnerFacetLocation],
+      group: ["Location.Company.id", "Location.Company.name"],
+      order: [[literal('COUNT("Shift"."id")'), "DESC"], [literal('"Location->Company"."name"'), "ASC"]],
+      raw: true,
+    }),
+  ]);
 
   return {
     data: rows.slice(0, MAP_MARKERS_LIMIT),
     isTruncated: rows.length > MAP_MARKERS_LIMIT,
+    partnerOptions: formatPartnerOptions(partnerRows),
   };
 };
 
