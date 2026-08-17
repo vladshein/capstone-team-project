@@ -41,26 +41,6 @@ const earliestShiftDate = () => {
 // «Посада (Київ)». Для форми показуємо одну читабельну назву без міста.
 const getPositionTitle = (title: string) => title.replace(/\s*\([^)]*\)\s*$/, "").trim();
 
-// Тимчасове зіставлення, доки JobPosition не має власного categoryId.
-// Після додавання зв'язку фільтрація має переїхати на бекенд.
-const positionTitlesByCategory: Record<number, string[]> = {
-  1: ["Продавець-консультант", "Касир торговельного залу", "Касир"],
-  2: ["Офіціант", "Кухар-помічник", "Бариста"],
-  3: ["Комплектувальник", "Вантажник"],
-  4: ["Кур'єр", "Водій-кур'єр"],
-  5: ["Прибиральник", "Працівник клінінгу"],
-  6: ["Пакувальник", "Оператор виробництва"],
-  7: ["Промоутер", "Хостес"],
-  8: ["Підсобний робітник", "Монтажник"],
-  9: ["Охоронець", "Контролер залу"],
-  10: ["Працівник теплиці", "Збирач урожаю"],
-  11: ["Оператор кол-центру", "Оператор підтримки", "Адміністратор"],
-  12: ["Помічник по дому", "Няня"],
-  13: ["Помічник майстра", "Адміністратор салону"],
-  14: ["Водій-експедитор", "Працівник автомийки"],
-  15: ["Доглядальник за тваринами", "Помічник грумера"],
-};
-
 interface ReverseGeocodeResult {
   display_name?: string;
   address?: {
@@ -158,7 +138,6 @@ export function CreateShiftModal({
   }, [initialShift, isDuplicate, isOpen, locations]);
 
   const availablePositions = useMemo(() => {
-    const categoryPositions = positionTitlesByCategory[Number(categoryId)] ?? [];
     const uniquePositions = new Map<string, JobPositionOption>();
 
     positions.forEach((position) => {
@@ -169,7 +148,7 @@ export function CreateShiftModal({
     });
 
     return [...uniquePositions.values()].filter((position) =>
-      categoryId ? categoryPositions.includes(position.title) : true,
+      categoryId ? String(position.categoryId) === categoryId : true,
     );
   }, [categoryId, positions]);
 
@@ -326,7 +305,7 @@ export function CreateShiftModal({
 
         <fieldset className="rounded-[var(--radius-card)] border border-border p-4">
           <legend className="px-1 text-sm font-medium">Робоча локація</legend>
-          {locations.length > 0 && !initialShift && (
+          {locations.length > 0 && (!initialShift || isDuplicate) && (
             <label className="flex cursor-pointer items-center gap-2 text-sm text-text-muted">
               <input type="checkbox" checked={isNewLocation} onChange={(event) => setIsNewLocation(event.target.checked)} className="accent-accent" />
               <Plus className="h-4 w-4" />

@@ -23,6 +23,7 @@ import {
   type UpdateWorkerProfilePayload,
 } from "./UpdateWorkerProfileModal";
 import { Loader } from "../../components/ui/Loader";
+import { WorkerReviewsSection } from "./WorkerReviewsSection";
 
 function ProfileField({ label, value }: { label: string; value?: string }) {
   return (
@@ -113,6 +114,8 @@ export function WorkerProfilePage() {
           />
         </div>
       </div>
+
+      {hasProfile && <WorkerReviewsSection userId={user.id} />}
 
       {hasProfile ? (
         <UpdateWorkerProfileModal

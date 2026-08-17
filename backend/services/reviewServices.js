@@ -1,6 +1,7 @@
 import {
   Review,
   Shift,
+  JobPosition,
   Company,
   Location,
   ShiftApplication,
@@ -216,7 +217,54 @@ export const deleteReview = async (reviewId, userId) => {
   });
 };
 
-export const getReviewsByRevieweeId = async (revieweeId) => {
-  const reviews = await Review.findAll({ where: { revieweeId } });
-  return reviews;
+export const getReviewsByRevieweeId = async (
+  revieweeId,
+  { page = 1, limit = 5, companyId } = {},
+) => {
+  const offset = (page - 1) * limit;
+  const { count, rows } = await Review.findAndCountAll({
+    where: { revieweeId },
+    // У моделі timestamp мапиться на фізичну колонку created_at.
+    attributes: ["id", "rating", "comment", ["created_at", "createdAt"]],
+    include: [
+      {
+        model: Shift,
+        attributes: ["id", "startTime"],
+        include: [
+          { model: JobPosition, attributes: ["title"] },
+          {
+            model: Location,
+            attributes: ["id"],
+            required: Boolean(companyId),
+            include: [{
+              model: Company,
+              attributes: ["name", "avatar"],
+              where: companyId ? { id: companyId } : undefined,
+              required: Boolean(companyId),
+            }],
+          },
+        ],
+      },
+      {
+        model: User,
+        as: "Reviewer",
+        attributes: ["id", "avatar"],
+        include: [{
+          model: WorkerProfile,
+          attributes: ["firstName", "lastName", "avatarUrl"],
+        }],
+      },
+    ],
+    order: [["created_at", "DESC"]],
+    limit,
+    offset,
+    distinct: true,
+  });
+
+  return {
+    data: rows,
+    totalItems: count,
+    totalPages: Math.ceil(count / limit),
+    currentPage: page,
+  };
 };

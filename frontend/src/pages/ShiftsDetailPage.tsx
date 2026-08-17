@@ -30,6 +30,8 @@ import {
   selectShiftError,
 } from "../redux/shift/selectors";
 import { useAppDispatch, useAppSelector } from "../redux/hooks";
+import { fetchMyCompanies } from "../redux/companies-profile/actions";
+import { selectCompanyById, selectCompaniesStatus } from "../redux/companies-profile/selectors";
 import type { Shift } from "../redux/shift/types";
 import { useFavoriteShifts } from "../hooks/useFavoriteShifts";
 import {
@@ -101,6 +103,7 @@ export default function ShiftsDetailPage() {
   const isApplying = useAppSelector(selectIsApplyingToShift);
   const application = useAppSelector(selectShiftApplication);
   const applicationError = useAppSelector(selectShiftApplicationError);
+  const companiesStatus = useAppSelector(selectCompaniesStatus);
   const { isFavorite, toggleFavorite } = useFavoriteShifts();
   const [activeApplication, setActiveApplication] = useState<WorkerShiftApplication | null>(null);
   const [isCheckingApplication, setIsCheckingApplication] = useState(false);
@@ -119,10 +122,18 @@ export default function ShiftsDetailPage() {
   const shiftId = Number(id);
   const isInvalidId = !Number.isInteger(shiftId) || shiftId <= 0;
   const favorite = shift ? isFavorite(shift.id) : false;
+  const companyId = shift?.Location?.Company?.id ?? 0;
+  const owningCompany = useAppSelector(selectCompanyById(companyId));
 
   useEffect(() => {
     if (!isInvalidId) void dispatch(fetchShiftById(shiftId));
   }, [dispatch, isInvalidId, shiftId]);
+
+  useEffect(() => {
+    if (user?.role === "business_client" && companiesStatus === "idle") {
+      void dispatch(fetchMyCompanies());
+    }
+  }, [companiesStatus, dispatch, user?.role]);
 
   useEffect(() => {
     if (!shift || !isAuthenticated || user?.role !== "worker") {
@@ -201,6 +212,20 @@ export default function ShiftsDetailPage() {
   const isShiftOwner = user?.role === "business_client" && shift.Location?.Company?.ownerId === user.id;
   const canManageShift = isShiftOwner && shift.status === "open" && !isShiftStarted;
   const canRepeatShift = isShiftOwner && (isShiftFinished || ["completed", "cancelled"].includes(shift.status));
+  // Детальна відповідь містить поточну локацію, але не список усіх локацій
+  // компанії. Для редагування/повторення достатньо передати хоча б її.
+  const currentShiftLocation = {
+    id: shift.Location.id,
+    companyId: shift.Location.Company.id,
+    title: shift.Location.title,
+    city: shift.Location.city,
+    address: shift.Location.address,
+    latitude: shift.Location.latitude,
+    longitude: shift.Location.longitude,
+  };
+  const detailLocations = owningCompany?.Locations?.length
+    ? owningCompany.Locations
+    : [currentShiftLocation];
 
   const handleApply = async () => {
     if (!isAuthenticated) {
@@ -426,7 +451,7 @@ export default function ShiftsDetailPage() {
 
           <aside className="lg:sticky lg:top-24">
             <div className="rounded-[var(--radius-card)] border border-border bg-bg p-5 shadow-sm sm:p-6">
-              <p className="text-sm text-text-muted">Ви отримаєте</p>
+              <p className="text-sm text-text-muted">Оплата за зміну</p>
               <p className="mt-1 font-mono text-3xl font-bold tracking-tight text-ink">~{moneyFormatter.format(total)} ₴</p>
               <p className="mt-1 text-xs text-text-subtle">{moneyFormatter.format(hourlyRate)} ₴/год {hasBonus ? `+ бонус ${moneyFormatter.format(bonusRate)} ₴` : ""}</p>
               <div className="mt-5 border-t border-border pt-5">
@@ -555,7 +580,7 @@ export default function ShiftsDetailPage() {
       <CreateShiftModal
         isOpen={isEditingShift}
         companyId={shift.Location.Company.id}
-        locations={[]}
+        locations={detailLocations}
         isSubmitting={isSavingBusinessShift}
         onClose={() => { if (!isSavingBusinessShift) setIsEditingShift(false); }}
         onSubmit={handleEditShift}
@@ -577,7 +602,7 @@ export default function ShiftsDetailPage() {
       <CreateShiftModal
         isOpen={isRepeatModalOpen}
         companyId={shift.Location.Company.id}
-        locations={[]}
+        locations={detailLocations}
         isSubmitting={isRepeatingShift}
         onClose={() => { if (!isRepeatingShift) setIsRepeatModalOpen(false); }}
         onSubmit={handleRepeatShift}
