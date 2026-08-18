@@ -196,6 +196,11 @@ export function BusinessShiftsTab({ scope }: BusinessShiftsTabProps) {
             <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-sm text-text-muted">
               <span className="flex items-center gap-1.5"><CalendarDays className="h-4 w-4" />{formatSchedule(shift)}</span>
               <span className="flex items-center gap-1.5"><MapPin className="h-4 w-4" />{shift.Location.title}, {shift.Location.city}</span>
+              {scope === "archive" && finalApplication?.User.WorkerProfile && (
+                <Link to={`/workers/${finalApplication.User.id}`} className="font-medium transition-colors hover:text-accent-text hover:underline">
+                  Виконавець: {workerName}
+                </Link>
+              )}
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">

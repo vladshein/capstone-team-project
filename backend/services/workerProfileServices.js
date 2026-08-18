@@ -16,6 +16,26 @@ export const getProfileByUserId = async (userId) => {
   });
 };
 
+/** Повертає лише безпечні для публічного профілю дані виконавця. */
+export const getPublicProfileByUserId = async (userId, { includePhone = false } = {}) => {
+  const profile = await WorkerProfile.findOne({
+    where: { userId },
+    attributes: ["id", "userId", "firstName", "lastName", "rating", "avatarUrl", "description"],
+    include: [{
+      model: User,
+      attributes: ["id", "avatar", ...(includePhone ? ["phone"] : [])],
+    }],
+  });
+
+  if (!profile) {
+    const error = new Error("Профіль виконавця не знайдено");
+    error.status = 404;
+    throw error;
+  }
+
+  return profile;
+};
+
 /**
  * Створює новий профіль. Перевіряє, чи не існує він вже (зв'язок 1:1).
  */

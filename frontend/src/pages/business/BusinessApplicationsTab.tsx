@@ -151,7 +151,7 @@ export function BusinessApplicationsTab() {
           <article key={application.id} className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <p className="font-heading font-semibold">{workerName}</p>
+                <Link to={`/workers/${application.User.id}`} className="font-heading font-semibold transition-colors hover:text-accent-text hover:underline">{workerName}</Link>
                 <span className={`rounded-[var(--radius-pill)] px-3 py-1 text-xs font-medium ${isApproved ? "bg-accent/10 text-accent-text" : "bg-warning/10 text-warning"}`}>{isApproved ? "Підтверджено" : "Нова заявка"}</span>
               </div>
               <p className="mt-1 text-sm text-text-muted">

@@ -33,6 +33,10 @@ const WorkerProfile = sequelize.define(
     avatarUrl: {
       type: DataTypes.STRING(255),
     },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
   },
   {
     tableName: "worker_profiles",

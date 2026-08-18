@@ -14,6 +14,7 @@ export const createCompanySchema = Joi.object({
       "string.pattern.base": "Код ЄДРПОУ повинен складатися лише з цифр",
     }),
   legalAddress: Joi.string().max(255).allow("").optional(),
+  description: Joi.string().trim().max(500).allow("").optional(),
 });
 
 export const updateCompanySchema = Joi.object({
@@ -23,6 +24,7 @@ export const updateCompanySchema = Joi.object({
     .pattern(/^[0-9]+$/)
     .optional(),
   legalAddress: Joi.string().max(255).allow("").optional(),
+  description: Joi.string().trim().max(500).allow("").optional(),
 });
 
 export const createCompanyLocationSchema = Joi.object({

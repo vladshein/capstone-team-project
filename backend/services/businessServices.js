@@ -16,7 +16,7 @@ export const getCompanyProfile = async (userId) => {
     include: {
       model: Company,
       as: "OwnedCompanies",
-      attributes: ["id", "name", "edrpou", "legalAddress", "avatar"],
+      attributes: ["id", "name", "edrpou", "legalAddress", "description", "avatar"],
       required: false,
     },
   });

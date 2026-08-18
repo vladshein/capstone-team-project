@@ -99,6 +99,7 @@ export function FavoriteShiftsTab() {
       <div className="grid gap-4 sm:grid-cols-2">
       {shifts.map((shift) => {
         const companyName = shift.Location?.Company?.name ?? "Компанія";
+        const companyId = shift.Location?.Company?.id;
         const title = shift.JobPosition?.title ?? shift.Category?.name ?? "Зміна";
         const startTime = new Date(shift.startTime);
         const endTime = new Date(shift.endTime);
@@ -110,7 +111,11 @@ export function FavoriteShiftsTab() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <Link to={`/shifts/${shift.id}`} className="font-heading font-semibold text-ink transition-colors hover:text-accent-text hover:underline">{title}</Link>
-                <p className="mt-1 text-sm text-text-muted">{companyName}</p>
+                {companyId ? (
+                  <Link to={`/companies/${companyId}`} className="mt-1 block text-sm text-text-muted transition-colors hover:text-accent-text hover:underline">{companyName}</Link>
+                ) : (
+                  <p className="mt-1 text-sm text-text-muted">{companyName}</p>
+                )}
               </div>
               <button
                 type="button"

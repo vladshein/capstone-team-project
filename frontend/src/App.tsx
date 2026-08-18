@@ -47,6 +47,12 @@ const WorkerProfilePage = lazy(
 const BusinessProfilePage = lazy(
   () => import("./pages/business/CompanyProfilePage"),
 );
+const PublicWorkerProfilePage = lazy(
+  () => import("./pages/public/PublicWorkerProfilePage"),
+);
+const PublicCompanyProfilePage = lazy(
+  () => import("./pages/public/PublicCompanyProfilePage"),
+);
 
 const getApiError = (error: unknown): ApiError => {
   if (typeof error === "object" && error !== null && "message" in error) {
@@ -175,6 +181,8 @@ export default function App() {
             />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/shifts/:id" element={<ShiftsDetailPage />} />
+            <Route path="/workers/:workerId" element={<PublicWorkerProfilePage />} />
+            <Route path="/companies/:companyId" element={<PublicCompanyProfilePage />} />
 
             <Route
               path="/profile"

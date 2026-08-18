@@ -5,6 +5,7 @@ export interface CreateCompanyPayload {
   name: string;
   edrpou: string;
   legalAddress: string;
+  description: string;
 }
 
 interface CreateCompanyModalProps {
@@ -31,6 +32,7 @@ export function CreateCompanyModal({
   const [name, setName] = useState("");
   const [edrpou, setEdrpou] = useState("");
   const [legalAddress, setLegalAddress] = useState("");
+  const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   // Підставляємо дані компанії щоразу, коли модалка відкривається
@@ -41,6 +43,7 @@ export function CreateCompanyModal({
     setName(initialValues?.name ?? "");
     setEdrpou(initialValues?.edrpou ?? "");
     setLegalAddress(initialValues?.legalAddress ?? "");
+    setDescription(initialValues?.description ?? "");
     setError(null);
   }, [isOpen, initialValues]);
 
@@ -63,6 +66,7 @@ export function CreateCompanyModal({
       name: name.trim(),
       edrpou: edrpou.trim(),
       legalAddress: legalAddress.trim(),
+      description: description.trim(),
     });
   };
 
@@ -103,6 +107,21 @@ export function CreateCompanyModal({
               className="mt-1 w-full rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-accent"
               placeholder="м. Київ, вул. ..."
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-text-muted">
+              Про компанію <span className="text-text-subtle">— необов'язково</span>
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              maxLength={500}
+              rows={3}
+              className="mt-1 w-full resize-y rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-accent"
+              placeholder="Коротко розкажіть про компанію"
+            />
+            <p className="mt-1 text-right text-xs text-text-subtle">{description.length}/500</p>
           </div>
 
           {error && <p className="text-sm text-danger">{error}</p>}

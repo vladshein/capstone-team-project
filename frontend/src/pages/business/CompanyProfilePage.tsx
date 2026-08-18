@@ -136,6 +136,7 @@ export function BusinessProfilePage() {
               name: activeCompany.name,
               edrpou: activeCompany.edrpou,
               legalAddress: activeCompany.legalAddress,
+              description: activeCompany.description ?? "",
             }
           : undefined
       }
@@ -275,6 +276,9 @@ export function BusinessProfilePage() {
         </div>
         <div className="mt-4">
           <ProfileField label="Юридична адреса" value={activeCompany?.legalAddress} />
+        </div>
+        <div className="mt-5 border-t border-border pt-4">
+          <ProfileField label="Про компанію" value={activeCompany?.description ?? undefined} />
         </div>
       </div>
 

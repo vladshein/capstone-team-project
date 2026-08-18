@@ -41,6 +41,22 @@ export const getMyProfile = async (req, res, next) => {
   }
 };
 
+export const getPublicProfile = async (req, res, next) => {
+  try {
+    const userId = Number(req.params.userId);
+    if (!Number.isInteger(userId) || userId < 1) {
+      return res.status(400).json({ message: "Некоректний ідентифікатор виконавця" });
+    }
+
+    const profile = await workerProfileService.getPublicProfileByUserId(userId, {
+      includePhone: Boolean(req.user),
+    });
+    res.status(200).json({ data: profile });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getStatisticsSummary = async (req, res, next) => {
   try {
     const { dateFrom, dateTo, companyId: companyIdQuery } = req.query;
