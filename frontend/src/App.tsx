@@ -35,6 +35,9 @@ const FavoriteShiftsTab = lazy(
 const BusinessDashboardPage = lazy(
   () => import("./pages/business/BusinessDashboardPage"),
 );
+const WorkerStatisticsPage = lazy(
+  () => import("./pages/worker/WorkerStatisticsPage"),
+);
 const BusinessShiftsTab = lazy(
   () => import("./pages/business/BusinessShiftsTab").then((module) => ({ default: module.BusinessShiftsTab })),
 );
@@ -154,8 +157,6 @@ export default function App() {
   return (
     <>
       <MainLayout
-        // isAuthenticated={isAuthenticated}
-        // userRole={user?.role}
         onOpenSignIn={() => setAuthModal("signin")}
         onOpenSignUp={() => openSignUp()}
         onOpenBusinessSignUp={() => openSignUp("business_client")}
@@ -191,12 +192,25 @@ export default function App() {
               }
             />
 
-            <Route path="/cabinet" element={renderWorkerDashboard()}>
-              <Route index element={<BookingsTab />} />
-              <Route path="search" element={<NearbyWorkerShiftsTab />} />
-              <Route path="bookings" element={<BookingsTab />} />
-              <Route path="favorites" element={<FavoriteShiftsTab />} />
-            </Route>
+             <Route path="/cabinet" element={renderWorkerDashboard()}>
+               <Route index element={<BookingsTab />} />
+               <Route path="search" element={<NearbyWorkerShiftsTab />} />
+               <Route path="bookings" element={<BookingsTab />} />
+               <Route path="favorites" element={<FavoriteShiftsTab />} />
+             </Route>
+
+             <Route
+               path="/statistics"
+               element={
+                 !isAuthenticated ? (
+                   <Navigate to="/" replace />
+                 ) : user?.role === "worker" ? (
+                   <WorkerStatisticsPage />
+                 ) : (
+                   <Navigate to={getDashboardPath(user?.role)} replace />
+                 )
+               }
+             />
 
             <Route path="/dashboard" element={renderBusinessDashboard()}>
               <Route index element={<Navigate to="shifts" replace />} />
