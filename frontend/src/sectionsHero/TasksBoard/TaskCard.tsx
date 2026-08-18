@@ -9,6 +9,7 @@ export function TaskCard({ shift }: { shift: Shift }) {
   const { isFavorite, toggleFavorite } = useFavoriteShifts();
   const favorite = isFavorite(shift.id);
   const companyName = shift.Location?.Company?.name ?? "";
+  const companyId = shift.Location?.Company?.id;
   const logoInitial = companyName ? companyName[0].toUpperCase() : "?";
   const title =
     shift.description ||
@@ -43,7 +44,13 @@ export function TaskCard({ shift }: { shift: Shift }) {
         <p className="mt-2 text-xs text-text-muted">
           {formatShiftDate(shift.startTime)} · {formatTimeRange(shift.startTime, shift.endTime)}
         </p>
-        <p className="mt-3 text-sm font-medium">{companyName}</p>
+        {companyId ? (
+          <Link to={`/companies/${companyId}`} className="mt-3 block text-sm font-medium transition-colors hover:text-accent-text hover:underline">
+            {companyName}
+          </Link>
+        ) : (
+          <p className="mt-3 text-sm font-medium">{companyName}</p>
+        )}
         <p className="text-sm text-text-muted">
           {[shift.Location?.address, shift.Location?.city]
             .filter(Boolean)

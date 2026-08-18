@@ -2,6 +2,7 @@ import { ApiError } from "../types";
 
 export interface Location {
   id: number;
+  ownerId?: number;
   companyId: number;
   title: string;
   city: string;
@@ -28,7 +29,7 @@ export interface CompanyProfile {
   Locations?: Location[];
 }
 
-export type CreateCompanyPayload = Omit<CompanyProfile, "id" | "avatar" | "Locations">;
+export type CreateCompanyPayload = Omit<CompanyProfile, "id" | "ownerId" | "avatar" | "Locations">;
 export type UpdateCompanyPayload = Partial<CreateCompanyPayload>;
 
 export interface CompaniesProfileState {

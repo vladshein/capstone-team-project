@@ -363,7 +363,7 @@ export default function ShiftsDetailPage() {
                   {companyName.charAt(0).toUpperCase()}
                 </div>
                 <div>
-                  <p className="text-sm text-text-muted">{companyName}</p>
+                  <Link to={`/companies/${shift.Location.Company.id}`} className="text-sm text-text-muted transition-colors hover:text-accent-text hover:underline">{companyName}</Link>
                   <h1 className="mt-1 font-heading text-2xl font-bold tracking-tight text-ink sm:text-3xl">
                     {title}
                   </h1>
@@ -534,7 +534,7 @@ export default function ShiftsDetailPage() {
                     <div className="mt-3 flex items-center gap-3">
                       {avatar ? <img src={avatar} alt="" className="h-11 w-11 rounded-full object-cover" /> : <span className="flex h-11 w-11 items-center justify-center rounded-full bg-accent/10 font-heading font-semibold text-accent">{workerName.charAt(0)}</span>}
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-ink">{workerName}</p>
+                        <Link to={`/workers/${workerSummary.application.User.id}`} className="block truncate text-sm font-semibold text-ink transition-colors hover:text-accent-text hover:underline">{workerName}</Link>
                         <p className="mt-0.5 text-xs text-text-muted">{isNoShow ? "Не з’явився на зміну" : Number(profile?.rating) > 0 ? `★ ${Number(profile?.rating).toFixed(1)}` : "Ще немає відгуків"}</p>
                       </div>
                     </div>

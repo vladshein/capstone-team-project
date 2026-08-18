@@ -6,7 +6,14 @@ import { Company, Location, User } from "../db/models/index.js";
  */
 export const getCompanyById = async (companyId) => {
   const company = await Company.findByPk(companyId, {
+    // Публічна сторінка не повинна віддавати службові чи фінансові дані.
+    attributes: ["id", "ownerId", "name", "description", "avatar", "created_at"],
     include: [
+      {
+        model: User,
+        as: "Owner",
+        attributes: ["phone"],
+      },
       {
         model: Location,
         attributes: ["id", "title", "city", "address", "latitude", "longitude"],

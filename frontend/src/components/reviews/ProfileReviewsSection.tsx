@@ -17,6 +17,9 @@ function ReviewCard({ review, subject }: { review: ReceivedReview; subject: Revi
     ? company?.name ?? "Компанії"
     : [worker?.firstName, worker?.lastName].filter(Boolean).join(" ") || "Виконавця";
   const reviewerAvatar = isWorkerProfile ? company?.avatar : worker?.avatarUrl ?? review.Reviewer?.avatar;
+  const reviewerProfilePath = isWorkerProfile
+    ? company?.id ? `/companies/${company.id}` : null
+    : review.Reviewer?.id ? `/workers/${review.Reviewer.id}` : null;
   const date = new Date(review.createdAt).toLocaleDateString("uk-UA", {
     day: "numeric",
     month: "long",
@@ -34,7 +37,13 @@ function ReviewCard({ review, subject }: { review: ReceivedReview; subject: Revi
             ) : (
               <Building2 className="h-4 w-4 shrink-0 text-accent" />
             )}
-            <span className="truncate">{reviewerName}</span>
+            {reviewerProfilePath ? (
+              <Link to={reviewerProfilePath} className="truncate transition-colors hover:text-accent-text hover:underline">
+                {reviewerName}
+              </Link>
+            ) : (
+              <span className="truncate">{reviewerName}</span>
+            )}
           </div>
           <p className="mt-1 text-xs text-text-muted">
             <Link

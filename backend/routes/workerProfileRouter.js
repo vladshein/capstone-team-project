@@ -12,6 +12,9 @@ import * as workerProfileController from "../controllers/workerProfileController
 
 const workerProfileRouter = express.Router();
 
+// Публічна картка: приватні поля відфільтровані на рівні сервісу.
+workerProfileRouter.get("/public/:userId", workerProfileController.getPublicProfile);
+
 // Всі ці маршрути вимагають авторизації
 workerProfileRouter.use(authenticate);
 

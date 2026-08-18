@@ -20,12 +20,14 @@ reviewRouter.get(
   reviewController.getReviewsByShiftId,
 );
 
+// Відгуки — частина публічної репутації профілю; мутації нижче лишаються захищеними.
 reviewRouter.get(
   "/:revieweeId",
   validateParams(revieweeIdParamsSchema),
-  authenticate,
   reviewController.getReviewsByRevieweeId,
 );
+
+reviewRouter.use(authenticate);
 
 reviewRouter.post(
   "/:shiftId",

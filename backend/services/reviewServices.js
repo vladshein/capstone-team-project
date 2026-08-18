@@ -241,7 +241,7 @@ export const getReviewsByRevieweeId = async (
             required: Boolean(companyId),
             include: [{
               model: Company,
-              attributes: ["name", "avatar"],
+              attributes: ["id", "name", "avatar"],
               where: companyId ? { id: companyId } : undefined,
               required: Boolean(companyId),
             }],

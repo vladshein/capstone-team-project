@@ -10,6 +10,9 @@ import {
 import * as companyController from "../controllers/companyControllers.js";
 const companyRouter = express.Router();
 
+// Окремий шлях не конфліктує з /my та не вимагає сесії.
+companyRouter.get("/public/:id", companyController.getCompanyById);
+
 // Всі ці маршрути вимагають авторизації
 companyRouter.use(authenticate);
 

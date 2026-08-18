@@ -9,7 +9,7 @@ export interface ReceivedReview {
     id: number;
     startTime: string;
     JobPosition?: { title: string };
-    Location?: { Company?: { name: string; avatar: string | null } };
+    Location?: { Company?: { id: number; name: string; avatar: string | null } };
   };
   Reviewer?: {
     id: number;

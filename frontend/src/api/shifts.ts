@@ -162,7 +162,7 @@ export interface BusinessShiftApplicationsResponse {
 }
 
 export interface BusinessShiftWorkerSummary {
-  application: { status: "completed" | "no_show"; User: { avatar: string | null; WorkerProfile: { firstName: string; lastName: string; rating: number | string; avatarUrl: string | null } | null } };
+  application: { status: "completed" | "no_show"; User: { id: number; avatar: string | null; WorkerProfile: { firstName: string; lastName: string; rating: number | string; avatarUrl: string | null } | null } };
   review: { id: string; rating: number; comment: string | null } | null;
 }
 

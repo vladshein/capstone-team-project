@@ -414,6 +414,39 @@ export const getBusinessShifts = async ({ companyId, ownerId, scope, page = 1, l
   };
 };
 
+/**
+ * Після початку зміни компанія вже не може обрати виконавця. Нерозглянуті
+ * заявки закриваємо під час завантаження кабінету, щоб вони не зависали
+ * серед активних і переходили до архіву виконавця.
+ */
+const rejectExpiredPendingApplications = async (companyId) => {
+  const expiredApplications = await ShiftApplication.findAll({
+    attributes: ["id"],
+    where: { status: "pending" },
+    include: [{
+      model: Shift,
+      attributes: [],
+      required: true,
+      where: { startTime: { [Op.lte]: new Date() } },
+      include: [{
+        model: Location,
+        attributes: [],
+        required: true,
+        where: { companyId },
+      }],
+    }],
+    raw: true,
+  });
+
+  const applicationIds = expiredApplications.map((application) => application.id);
+  if (applicationIds.length) {
+    await ShiftApplication.update(
+      { status: "rejected" },
+      { where: { id: { [Op.in]: applicationIds }, status: "pending" } },
+    );
+  }
+};
+
 /** Повертає нові й підтверджені заявки конкретної компанії лише її власнику. */
 export const getBusinessShiftApplications = async ({ companyId, ownerId, page = 1, limit = 8 }) => {
   const company = await Company.findOne({ where: { id: companyId, ownerId } });
@@ -423,6 +456,8 @@ export const getBusinessShiftApplications = async ({ companyId, ownerId, page = 
     error.status = 403;
     throw error;
   }
+
+  await rejectExpiredPendingApplications(company.id);
 
   const { count, rows } = await ShiftApplication.findAndCountAll({
     where: { status: { [Op.in]: ["pending", "approved"] } },
@@ -521,6 +556,8 @@ export const getPendingBusinessShiftApplicationsCount = async ({ companyId, owne
     error.status = 403;
     throw error;
   }
+
+  await rejectExpiredPendingApplications(company.id);
 
   return ShiftApplication.count({
     where: { status: "pending" },
