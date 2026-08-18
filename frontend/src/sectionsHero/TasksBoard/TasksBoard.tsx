@@ -296,10 +296,8 @@ export function TasksBoard() {
         
         <div className="flex flex-col gap-6">
         
-          {/* city quick search */}
-          <div className={isMapView ? "" : "hidden"}>
-            <MapSearchForm onSearch={handleCitySearch} />
-          </div>
+          {/* Ручний пошук міста однаково задає фільтр і для карти, і для списку. */}
+          <MapSearchForm onSearch={handleCitySearch} />
 
           <FilterSidebar
             coordinates={coordinates}

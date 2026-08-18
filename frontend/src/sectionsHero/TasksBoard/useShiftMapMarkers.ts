@@ -33,7 +33,7 @@ type Action =
       isFallback: boolean;
     }
   | { type: "error" }
-  | { type: "reset" };
+  | { type: "reset"; clearPartnerOptions: boolean };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -51,7 +51,10 @@ function reducer(state: State, action: Action): State {
     case "error":
       return { ...state, isLoading: false, error: "Не вдалося завантажити точки на карті." };
     case "reset":
-      return initialState;
+      return {
+        ...initialState,
+        partnerOptions: action.clearPartnerOptions ? [] : state.partnerOptions,
+      };
     default:
       return state;
   }
@@ -93,7 +96,7 @@ export function useShiftMapMarkers(
     let cancelled = false;
 
     if (!isEnabled || hasEmptyPartnerSelection) {
-      dispatch({ type: "reset" });
+      dispatch({ type: "reset", clearPartnerOptions: !isEnabled });
       return undefined;
     }
 
@@ -112,7 +115,7 @@ export function useShiftMapMarkers(
           dispatch({
             type: "success",
             markers: fallbackResponse.data,
-            partnerOptions: getPartnerOptions(fallbackResponse.data),
+            partnerOptions: fallbackResponse.partnerOptions ?? getPartnerOptions(fallbackResponse.data),
             isTruncated: fallbackResponse.isTruncated,
             isFallback: fallbackResponse.data.length > 0,
           });
@@ -122,7 +125,7 @@ export function useShiftMapMarkers(
         dispatch({
           type: "success",
           markers: response.data,
-          partnerOptions: getPartnerOptions(response.data),
+          partnerOptions: response.partnerOptions ?? getPartnerOptions(response.data),
           isTruncated: response.isTruncated,
           isFallback: false,
         });

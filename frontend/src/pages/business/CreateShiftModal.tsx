@@ -20,6 +20,8 @@ interface CreateShiftModalProps {
   onSubmit: (payload: CreateShiftPayload) => Promise<void>;
   onLocationCreated: () => Promise<void>;
   initialShift?: BusinessShift | null;
+  /** Повторення створює нову зміну, тому не переносить минулу дату з архіву. */
+  isDuplicate?: boolean;
 }
 
 const inputClass =
@@ -38,26 +40,6 @@ const earliestShiftDate = () => {
 // У поточній БД тестові посади дублюються для різних міст у форматі
 // «Посада (Київ)». Для форми показуємо одну читабельну назву без міста.
 const getPositionTitle = (title: string) => title.replace(/\s*\([^)]*\)\s*$/, "").trim();
-
-// Тимчасове зіставлення, доки JobPosition не має власного categoryId.
-// Після додавання зв'язку фільтрація має переїхати на бекенд.
-const positionTitlesByCategory: Record<number, string[]> = {
-  1: ["Продавець-консультант", "Касир торговельного залу", "Касир"],
-  2: ["Офіціант", "Кухар-помічник", "Бариста"],
-  3: ["Комплектувальник", "Вантажник"],
-  4: ["Кур'єр", "Водій-кур'єр"],
-  5: ["Прибиральник", "Працівник клінінгу"],
-  6: ["Пакувальник", "Оператор виробництва"],
-  7: ["Промоутер", "Хостес"],
-  8: ["Підсобний робітник", "Монтажник"],
-  9: ["Охоронець", "Контролер залу"],
-  10: ["Працівник теплиці", "Збирач урожаю"],
-  11: ["Оператор кол-центру", "Оператор підтримки", "Адміністратор"],
-  12: ["Помічник по дому", "Няня"],
-  13: ["Помічник майстра", "Адміністратор салону"],
-  14: ["Водій-експедитор", "Працівник автомийки"],
-  15: ["Доглядальник за тваринами", "Помічник грумера"],
-};
 
 interface ReverseGeocodeResult {
   display_name?: string;
@@ -81,6 +63,7 @@ export function CreateShiftModal({
   onSubmit,
   onLocationCreated,
   initialShift = null,
+  isDuplicate = false,
 }: CreateShiftModalProps) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [positions, setPositions] = useState<JobPositionOption[]>([]);
@@ -120,7 +103,7 @@ export function CreateShiftModal({
       setLocationId(String(initialShift.Location.id));
       setCategoryId(initialCategoryId ? String(initialCategoryId) : "");
       setPositionId(String(initialShift.JobPosition?.id ?? initialShift.positionId ?? ""));
-      setDate(start.toISOString().slice(0, 10));
+      setDate(isDuplicate ? earliestShiftDate() : start.toISOString().slice(0, 10));
       setStartTime(start.toISOString().slice(11, 16));
       setEndTime(end.toISOString().slice(11, 16));
       setHourlyRate(String(initialShift.hourlyRate));
@@ -152,10 +135,9 @@ export function CreateShiftModal({
     return () => {
       cancelled = true;
     };
-  }, [initialShift, isOpen, locations]);
+  }, [initialShift, isDuplicate, isOpen, locations]);
 
   const availablePositions = useMemo(() => {
-    const categoryPositions = positionTitlesByCategory[Number(categoryId)] ?? [];
     const uniquePositions = new Map<string, JobPositionOption>();
 
     positions.forEach((position) => {
@@ -166,7 +148,7 @@ export function CreateShiftModal({
     });
 
     return [...uniquePositions.values()].filter((position) =>
-      categoryId ? categoryPositions.includes(position.title) : true,
+      categoryId ? String(position.categoryId) === categoryId : true,
     );
   }, [categoryId, positions]);
 
@@ -294,7 +276,7 @@ export function CreateShiftModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={initialShift ? "Редагувати зміну" : "Створити зміну"}>
+    <Modal isOpen={isOpen} onClose={onClose} title={isDuplicate ? "Повторити зміну" : initialShift ? "Редагувати зміну" : "Створити зміну"}>
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="text-sm font-medium">
@@ -323,7 +305,7 @@ export function CreateShiftModal({
 
         <fieldset className="rounded-[var(--radius-card)] border border-border p-4">
           <legend className="px-1 text-sm font-medium">Робоча локація</legend>
-          {locations.length > 0 && !initialShift && (
+          {locations.length > 0 && (!initialShift || isDuplicate) && (
             <label className="flex cursor-pointer items-center gap-2 text-sm text-text-muted">
               <input type="checkbox" checked={isNewLocation} onChange={(event) => setIsNewLocation(event.target.checked)} className="accent-accent" />
               <Plus className="h-4 w-4" />
@@ -391,7 +373,7 @@ export function CreateShiftModal({
         {(formError || serverError) && <p className="text-sm text-danger">{formError || serverError}</p>}
         <button type="submit" disabled={!canSubmit} className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--radius-pill)] bg-accent px-5 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60">
           <MapPin className="h-4 w-4" />
-          {isSubmitting || isCreatingLocation ? "Зберігаємо…" : initialShift ? "Зберегти зміни" : "Опублікувати зміну"}
+          {isSubmitting || isCreatingLocation ? "Зберігаємо…" : isDuplicate ? "Опублікувати повторно" : initialShift ? "Зберегти зміни" : "Опублікувати зміну"}
         </button>
       </form>
     </Modal>

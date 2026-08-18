@@ -86,6 +86,7 @@ export default async function seedAll() {
         id: u.id,
         title: u.title,
         description: u.description,
+        categoryId: u.categoryId,
       });
     }
 

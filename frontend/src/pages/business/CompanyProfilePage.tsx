@@ -13,6 +13,8 @@ import { clearCompanyMutationError } from "../../redux/companies-profile/slice";
 import { incrementCompaniesCount } from "../../redux/auth/slice";
 import { CreateCompanyModal, type CreateCompanyPayload } from "./CreateCompanyModal";
 import { Loader } from "../../components/ui/Loader";
+import { selectUserInfo } from "../../redux/auth/selectors";
+import { ProfileReviewsSection } from "../../components/reviews/ProfileReviewsSection";
 
 function ProfileField({ label, value }: { label: string; value?: string }) {
   return (
@@ -33,6 +35,7 @@ export function BusinessProfilePage() {
   const status = useAppSelector(selectCompaniesStatus);
   const error = useAppSelector(selectCompaniesError);
   const mutationError = useAppSelector(selectCompanyMutationError);
+  const user = useAppSelector(selectUserInfo);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
@@ -274,6 +277,8 @@ export function BusinessProfilePage() {
           <ProfileField label="Юридична адреса" value={activeCompany?.legalAddress} />
         </div>
       </div>
+
+      {activeCompany && user && <ProfileReviewsSection revieweeId={user.id} companyId={activeCompany.id} subject="company" />}
 
       {companyModal}
     </div>

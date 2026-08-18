@@ -77,6 +77,13 @@ Category.hasMany(Shift, {
 });
 Shift.belongsTo(Category, { foreignKey: "categoryId" });
 
+// --- 7.1 Category <-> JobPosition (1:M) ---
+Category.hasMany(JobPosition, {
+  foreignKey: { name: "categoryId", allowNull: false },
+  onDelete: "RESTRICT",
+});
+JobPosition.belongsTo(Category, { foreignKey: "categoryId" });
+
 // --- 8. (Reviews) ---
 Shift.hasMany(Review, {
   foreignKey: { name: "shiftId", allowNull: false },

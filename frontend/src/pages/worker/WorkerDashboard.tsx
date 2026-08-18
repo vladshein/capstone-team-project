@@ -159,10 +159,14 @@ export function WorkerDashboard({
             <h2 className="mt-4 font-heading text-xl font-semibold">
               {fullName}
             </h2>
-            <div className="mt-2 flex items-center justify-center gap-1 text-sm font-medium text-text">
-              <Star className="h-4 w-4 fill-highlight text-highlight" />
-              <span>{rating.toFixed(2)}</span>
-            </div>
+            {rating > 0 ? (
+              <div className="mt-2 flex items-center justify-center gap-1 text-sm font-medium text-text">
+                <Star className="h-4 w-4 fill-highlight text-highlight" />
+                <span>{rating.toFixed(2)}</span>
+              </div>
+            ) : (
+              <p className="mt-2 text-sm text-text-subtle">Ще немає відгуків</p>
+            )}
           </div>
 
           {/* Верифікація (Identity & Auth) */}

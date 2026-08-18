@@ -124,16 +124,20 @@ export const getBusinessShifts = async (req, res, next) => {
     }
 
     const scope = req.query.scope === "archive" ? "archive" : "active";
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 8, 1), 50);
     const shifts = await shiftService.getBusinessShifts({
       companyId,
       ownerId: req.user.id,
       scope,
+      page,
+      limit,
     });
 
     // Дані кабінету залежать від поточного часу: кеш може залишити
     // завершену зміну в активному списку після зміни дати.
     res.set("Cache-Control", "no-store");
-    res.status(200).json({ data: shifts });
+    res.status(200).json(shifts);
   } catch (error) {
     next(error);
   }
@@ -150,6 +154,8 @@ export const getBusinessShiftApplications = async (req, res, next) => {
     const query = {
       companyId,
       ownerId: req.user.id,
+      page: Math.max(parseInt(req.query.page, 10) || 1, 1),
+      limit: Math.min(Math.max(parseInt(req.query.limit, 10) || 8, 1), 50),
     };
 
     if (req.query.summary === "true") {
@@ -161,7 +167,22 @@ export const getBusinessShiftApplications = async (req, res, next) => {
     const applications = await shiftService.getBusinessShiftApplications(query);
 
     res.set("Cache-Control", "no-store");
-    res.status(200).json({ data: applications });
+    res.status(200).json(applications);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** Повертає виконавця та відгук для архівної зміни власника компанії. */
+export const getBusinessShiftWorkerSummary = async (req, res, next) => {
+  try {
+    const shiftId = Number(req.params.id);
+    if (!Number.isInteger(shiftId) || shiftId < 1) {
+      return res.status(400).json({ message: "Некоректний ідентифікатор зміни." });
+    }
+    const summary = await shiftService.getBusinessShiftWorkerSummary({ shiftId, ownerId: req.user.id });
+    if (!summary) return res.status(404).json({ message: "Виконавця для цієї зміни не знайдено." });
+    res.status(200).json({ data: summary });
   } catch (error) {
     next(error);
   }

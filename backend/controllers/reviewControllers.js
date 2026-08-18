@@ -76,10 +76,17 @@ export const getReviewsByShiftId = async (req, res, next) => {
 export const getReviewsByRevieweeId = async (req, res, next) => {
   try {
     const { revieweeId } = req.validatedParams;
-    const reviews = await reviewService.getReviewsByRevieweeId(revieweeId);
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 5, 1), 20);
+    const parsedCompanyId = parseInt(req.query.companyId, 10);
+    const reviews = await reviewService.getReviewsByRevieweeId(revieweeId, {
+      page,
+      limit,
+      companyId: Number.isInteger(parsedCompanyId) && parsedCompanyId > 0 ? parsedCompanyId : undefined,
+    });
     res.status(200).json({
       message: "Відгуки успішно отримано",
-      data: reviews,
+      ...reviews,
     });
   } catch (error) {
     next(error);

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CalendarDays, ClipboardList, MapPin, Pencil, X } from "lucide-react";
+import { CalendarDays, ClipboardList, MapPin, Pencil, Star, X } from "lucide-react";
 import { Link, useOutletContext } from "react-router-dom";
 
 import {
@@ -10,13 +10,19 @@ import {
 } from "../../api/shifts";
 import { Loader } from "../../components/ui/Loader";
 import { Modal } from "../../components/ui/Modal";
+import { ReviewModal } from "../../components/reviews/ReviewModal";
+import { createReview, updateReview } from "../../api/reviews";
 import { formatTimeRange } from "../../sectionsHero/TasksBoard/formatters";
 import type { BusinessDashboardOutletContext } from "./BusinessDashboardPage";
 import { CreateShiftModal } from "./CreateShiftModal";
+import { useAppDispatch, useAppSelector } from "../../redux/hooks";
+import { createNewShift } from "../../redux/shift/actions";
 
 interface BusinessShiftsTabProps {
   scope: "active" | "archive";
 }
+
+const SHIFTS_PER_PAGE = 8;
 
 const emptyState = {
   active: {
@@ -39,30 +45,48 @@ const shiftStatus = {
 
 export function BusinessShiftsTab({ scope }: BusinessShiftsTabProps) {
   const { company, shiftsRefreshKey } = useOutletContext<BusinessDashboardOutletContext>();
+  const dispatch = useAppDispatch();
+  const isCreatingRepeat = useAppSelector((state) => state.shift.isCreating);
   const [shifts, setShifts] = useState<BusinessShift[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
   const [shiftToEdit, setShiftToEdit] = useState<BusinessShift | null>(null);
   const [shiftToCancel, setShiftToCancel] = useState<BusinessShift | null>(null);
+  const [shiftToRepeat, setShiftToRepeat] = useState<BusinessShift | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [reviewTarget, setReviewTarget] = useState<{
+    shift: BusinessShift;
+    workerName: string;
+    isNoShow: boolean;
+    review: { id: string; rating: number; comment: string | null } | null;
+  } | null>(null);
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
     setError(null);
 
-    void getBusinessShifts(company.id, scope)
-      .then((data) => { if (!cancelled) setShifts(data); })
+    void getBusinessShifts(company.id, scope, page, SHIFTS_PER_PAGE)
+      .then((response) => {
+        if (cancelled) return;
+        setShifts(response.data);
+        setTotalPages(response.totalPages);
+      })
       .catch((requestError) => {
         if (!cancelled) setError(requestError instanceof Error ? requestError.message : "Не вдалося завантажити зміни.");
       })
       .finally(() => { if (!cancelled) setIsLoading(false); });
 
     return () => { cancelled = true; };
-  }, [company.id, reloadKey, scope, shiftsRefreshKey]);
+  }, [company.id, page, reloadKey, scope, shiftsRefreshKey]);
+
+  useEffect(() => { setPage(1); }, [company.id, scope]);
 
   const formatSchedule = (shift: BusinessShift) => {
     const date = new Date(shift.startTime);
@@ -115,10 +139,42 @@ export function BusinessShiftsTab({ scope }: BusinessShiftsTabProps) {
     }
   };
 
+  const handleReviewSubmit = async ({ rating, comment }: { rating: number; comment?: string }) => {
+    if (!reviewTarget) return;
+    setIsSubmittingReview(true);
+    setActionError(null);
+    try {
+      const payload = { rating, comment };
+      if (reviewTarget.review) {
+        await updateReview(reviewTarget.review.id, payload);
+      } else {
+        await createReview(reviewTarget.shift.id, payload);
+      }
+      setReviewTarget(null);
+      setReloadKey((key) => key + 1);
+    } catch (requestError) {
+      setActionError(requestError instanceof Error ? requestError.message : "Не вдалося зберегти відгук.");
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
+
+  const handleRepeat = async (payload: Parameters<typeof updateShift>[1]) => {
+    await dispatch(createNewShift(payload)).unwrap();
+    setShiftToRepeat(null);
+    setReloadKey((key) => key + 1);
+  };
+
   return (
     <>
       <div className="divide-y divide-border">
-      {shifts.map((shift) => (
+      {shifts.map((shift) => {
+        const finalApplication = shift.ShiftApplications?.[0];
+        const workerProfile = finalApplication?.User.WorkerProfile;
+        const workerName = workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : "Виконавець";
+        const review = shift.Reviews?.[0] ?? null;
+
+        return (
         <article key={shift.id} className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-2">
@@ -131,6 +187,11 @@ export function BusinessShiftsTab({ scope }: BusinessShiftsTabProps) {
               <span className={`w-fit rounded-[var(--radius-pill)] px-2.5 py-1 text-xs font-medium ${shiftStatus[shift.status]?.className ?? "bg-bg-muted text-text-muted"}`}>
                 {shiftStatus[shift.status]?.label ?? shift.status}
               </span>
+              {scope === "archive" && finalApplication && (
+                <span className={`w-fit rounded-[var(--radius-pill)] px-2.5 py-1 text-xs font-medium ${finalApplication.status === "no_show" ? "bg-danger/10 text-danger" : "bg-accent/10 text-accent-text"}`}>
+                  {finalApplication.status === "no_show" ? "Неявка" : "Виконано"}
+                </span>
+              )}
             </div>
             <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-sm text-text-muted">
               <span className="flex items-center gap-1.5"><CalendarDays className="h-4 w-4" />{formatSchedule(shift)}</span>
@@ -152,10 +213,43 @@ export function BusinessShiftsTab({ scope }: BusinessShiftsTabProps) {
                 </button>
               </>
             )}
+            {scope === "archive" && finalApplication && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActionError(null);
+                  setReviewTarget({
+                    shift,
+                    workerName,
+                    isNoShow: finalApplication.status === "no_show",
+                    review,
+                  });
+                }}
+                className="inline-flex min-h-[42px] items-center justify-center gap-1.5 rounded-[var(--radius-pill)] bg-accent px-4 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
+              >
+                {review && <Star className="h-3.5 w-3.5 fill-warning text-warning" />}
+                {review ? "Редагувати відгук" : "Залишити відгук"}
+              </button>
+            )}
+            {scope === "archive" && (
+              <button type="button" onClick={() => { setActionError(null); setShiftToRepeat(shift); }} className="inline-flex min-h-[40px] items-center gap-1.5 rounded-[var(--radius-pill)] border border-border px-3 text-sm font-medium text-text transition-colors hover:border-accent hover:text-accent-text">
+                Повторити зміну
+              </button>
+            )}
           </div>
         </article>
-      ))}
+        );
+      })}
       </div>
+      {totalPages > 1 && (
+        <nav className="mt-6 flex items-center justify-center gap-1.5 px-5 pb-5" aria-label="Пагінація змін">
+          <button type="button" onClick={() => setPage((value) => value - 1)} disabled={page === 1} className="min-h-[40px] rounded-[var(--radius-pill)] border border-border px-3 text-sm text-text-muted disabled:cursor-not-allowed disabled:opacity-40">Назад</button>
+          {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+            <button key={pageNumber} type="button" onClick={() => setPage(pageNumber)} aria-current={pageNumber === page ? "page" : undefined} className={`flex h-10 w-10 items-center justify-center rounded-[var(--radius-pill)] text-sm font-medium transition-colors ${pageNumber === page ? "bg-accent text-white" : "border border-border text-text hover:border-accent"}`}>{pageNumber}</button>
+          ))}
+          <button type="button" onClick={() => setPage((value) => value + 1)} disabled={page === totalPages} className="min-h-[40px] rounded-[var(--radius-pill)] border border-border px-3 text-sm text-text-muted disabled:cursor-not-allowed disabled:opacity-40">Далі</button>
+        </nav>
+      )}
 
       <CreateShiftModal
         isOpen={shiftToEdit !== null}
@@ -169,6 +263,19 @@ export function BusinessShiftsTab({ scope }: BusinessShiftsTabProps) {
         onLocationCreated={async () => undefined}
       />
 
+      <CreateShiftModal
+        isOpen={shiftToRepeat !== null}
+        companyId={company.id}
+        locations={company.Locations ?? []}
+        isSubmitting={isCreatingRepeat}
+        serverError={actionError}
+        initialShift={shiftToRepeat}
+        isDuplicate
+        onClose={() => { if (!isCreatingRepeat) setShiftToRepeat(null); }}
+        onSubmit={handleRepeat}
+        onLocationCreated={async () => undefined}
+      />
+
       <Modal isOpen={shiftToCancel !== null} onClose={() => { if (!isCancelling) setShiftToCancel(null); }} title="Скасувати зміну?">
         <p className="text-sm leading-6 text-text-muted">
           Виконавці, які подали заявку, отримають статус «Відхилено». Повернути зміну після скасування не вийде.
@@ -179,6 +286,19 @@ export function BusinessShiftsTab({ scope }: BusinessShiftsTabProps) {
           <button type="button" onClick={handleCancel} disabled={isCancelling} className="min-h-[44px] rounded-[var(--radius-pill)] bg-danger px-5 text-sm font-semibold text-white transition-colors hover:opacity-90 disabled:cursor-wait disabled:opacity-60">{isCancelling ? "Скасовуємо…" : "Скасувати зміну"}</button>
         </div>
       </Modal>
+
+      <ReviewModal
+        isOpen={reviewTarget !== null}
+        onClose={() => { if (!isSubmittingReview) setReviewTarget(null); }}
+        title={reviewTarget?.isNoShow ? "Відгук про неявку" : "Оцініть виконавця"}
+        description={reviewTarget?.isNoShow
+          ? `Залиште відгук про ${reviewTarget.workerName}, щоб інші компанії бачили історію співпраці.`
+          : `Як пройшла зміна з ${reviewTarget?.workerName}?`}
+        isSubmitting={isSubmittingReview}
+        error={actionError}
+        initialReview={reviewTarget?.review}
+        onSubmit={handleReviewSubmit}
+      />
     </>
   );
 }

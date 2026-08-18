@@ -8,6 +8,7 @@ import {
   ShiftApplication,
   User,
   WorkerProfile,
+  Review,
 } from "../db/models/index.js";
 
 const MAP_MARKERS_LIMIT = 1000;
@@ -107,6 +108,30 @@ const buildShiftSearchQuery = ({
   return { whereCondition, locationInclude, order };
 };
 
+// Фасетка партнерів враховує решту активних фільтрів (місто, дата, категорії),
+// але навмисно не враховує сам фільтр partners. Інакше вимкнений партнер
+// зникає з чекліста й користувач уже не може увімкнути його назад.
+const buildPartnerFacetLocation = (city) => {
+  const locationInclude = {
+    model: Location,
+    attributes: [],
+    include: [{ model: Company, attributes: ["id", "name"], required: true }],
+  };
+  if (city) {
+    locationInclude.where = { city: { [Op.iLike]: city } };
+    locationInclude.required = true;
+  }
+  return locationInclude;
+};
+
+const formatPartnerOptions = (partnerRows) =>
+  partnerRows
+    .map((row) => ({
+      label: row["Location.Company.name"],
+      count: Number(row.count),
+    }))
+    .filter((partner) => partner.label);
+
 /**
  * Отримує зміни з бази даних на основі фільтрів та пагінації.
  * Містить всю логіку запитів до БД.
@@ -186,15 +211,7 @@ export const getAllShifts = async ({
         locationInclude,
       ],
     };
-    const partnerFacetLocation = {
-      model: Location,
-      attributes: [],
-      include: [{ model: Company, attributes: ["id", "name"], required: true }],
-    };
-    if (city) {
-      partnerFacetLocation.where = { city: { [Op.iLike]: city } };
-      partnerFacetLocation.required = true;
-    }
+    const partnerFacetLocation = buildPartnerFacetLocation(city);
 
     const [listResult, partnerRows] = await Promise.all([
       Shift.findAndCountAll(listOptions),
@@ -208,12 +225,7 @@ export const getAllShifts = async ({
       }),
     ]);
     const { count, rows } = listResult;
-    const partnerOptions = partnerRows
-      .map((row) => ({
-        label: row["Location.Company.name"],
-        count: Number(row.count),
-      }))
-      .filter((partner) => partner.label);
+    const partnerOptions = formatPartnerOptions(partnerRows);
 
     console.log(
       `[shiftsService] found ${count} shift(s), returning page ${parsedPage} (${rows.length} row(s))`,
@@ -242,21 +254,33 @@ export const getAllShifts = async ({
 /** Повертає лише поля, потрібні для маркерів карти, без пагінації карток. */
 export const getShiftMapMarkers = async (filters) => {
   const { whereCondition, locationInclude, order } = buildShiftSearchQuery(filters);
+  const partnerFacetLocation = buildPartnerFacetLocation(filters.city);
 
-  const rows = await Shift.findAll({
-    attributes: ["id", "startTime", "endTime", "hourlyRate", "bonusRate"],
-    where: whereCondition,
-    order,
-    limit: MAP_MARKERS_LIMIT + 1,
-    include: [
-      { model: JobPosition, attributes: ["title"] },
-      locationInclude,
-    ],
-  });
+  const [rows, partnerRows] = await Promise.all([
+    Shift.findAll({
+      attributes: ["id", "startTime", "endTime", "hourlyRate", "bonusRate"],
+      where: whereCondition,
+      order,
+      limit: MAP_MARKERS_LIMIT + 1,
+      include: [
+        { model: JobPosition, attributes: ["title"] },
+        locationInclude,
+      ],
+    }),
+    Shift.findAll({
+      attributes: [[fn("COUNT", col("Shift.id")), "count"]],
+      where: whereCondition,
+      include: [partnerFacetLocation],
+      group: ["Location.Company.id", "Location.Company.name"],
+      order: [[literal('COUNT("Shift"."id")'), "DESC"], [literal('"Location->Company"."name"'), "ASC"]],
+      raw: true,
+    }),
+  ]);
 
   return {
     data: rows.slice(0, MAP_MARKERS_LIMIT),
     isTruncated: rows.length > MAP_MARKERS_LIMIT,
+    partnerOptions: formatPartnerOptions(partnerRows),
   };
 };
 
@@ -310,7 +334,7 @@ export const createShift = async (shiftData) => {
 };
 
 /** Повертає зміни однієї компанії лише її власнику. */
-export const getBusinessShifts = async ({ companyId, ownerId, scope }) => {
+export const getBusinessShifts = async ({ companyId, ownerId, scope, page = 1, limit = 8 }) => {
   const company = await Company.findOne({ where: { id: companyId, ownerId } });
 
   if (!company) {
@@ -333,8 +357,41 @@ export const getBusinessShifts = async ({ companyId, ownerId, scope }) => {
           endTime: { [Op.gte]: now },
         };
 
-  return Shift.findAll({
+  const archiveIncludes = scope === "archive"
+    ? [
+        {
+          model: ShiftApplication,
+          attributes: ["id", "workerId", "status"],
+          where: { status: { [Op.in]: ["completed", "no_show"] } },
+          required: false,
+          include: [
+            {
+              model: User,
+              attributes: ["id"],
+              include: [{
+                model: WorkerProfile,
+                attributes: ["firstName", "lastName"],
+              }],
+            },
+          ],
+        },
+        {
+          // В архіві бізнес бачить лише власний відгук, щоб його редагувати.
+          model: Review,
+          attributes: ["id", "rating", "comment"],
+          where: { reviewerId: ownerId },
+          required: false,
+        },
+      ]
+    : [];
+
+  const { count, rows } = await Shift.findAndCountAll({
     where: shiftWhere,
+    limit,
+    offset: (page - 1) * limit,
+    // Архів додає hasMany заявки та reviews, тому рахуємо саме зміни.
+    distinct: true,
+    subQuery: false,
     include: [
       { model: JobPosition, attributes: ["id", "title"] },
       { model: Category, attributes: ["id", "name"] },
@@ -344,13 +401,21 @@ export const getBusinessShifts = async ({ companyId, ownerId, scope }) => {
         where: { companyId: company.id },
         required: true,
       },
+      ...archiveIncludes,
     ],
     order: [["startTime", scope === "archive" ? "DESC" : "ASC"]],
   });
+
+  return {
+    totalItems: count,
+    totalPages: Math.ceil(count / limit),
+    currentPage: page,
+    data: rows,
+  };
 };
 
-/** Повертає активні заявки на зміни конкретної компанії лише її власнику. */
-export const getBusinessShiftApplications = async ({ companyId, ownerId }) => {
+/** Повертає нові й підтверджені заявки конкретної компанії лише її власнику. */
+export const getBusinessShiftApplications = async ({ companyId, ownerId, page = 1, limit = 8 }) => {
   const company = await Company.findOne({ where: { id: companyId, ownerId } });
 
   if (!company) {
@@ -359,8 +424,12 @@ export const getBusinessShiftApplications = async ({ companyId, ownerId }) => {
     throw error;
   }
 
-  return ShiftApplication.findAll({
+  const { count, rows } = await ShiftApplication.findAndCountAll({
     where: { status: { [Op.in]: ["pending", "approved"] } },
+    // `Reviews` — hasMany. За стандартного `subQuery: true` Sequelize виносить
+    // Shift у підзапит, а JobPosition приєднує зовні, де alias Shift уже
+    // недоступний. Це давало SQL-помилку `Shift.positionId does not exist`.
+    subQuery: false,
     include: [
       {
         model: Shift,
@@ -368,6 +437,14 @@ export const getBusinessShiftApplications = async ({ companyId, ownerId }) => {
         required: true,
         include: [
           { model: JobPosition, attributes: ["id", "title"] },
+          // Повертаємо тільки відгук поточного власника компанії. Відгук
+          // виконавця не потрібен для керування заявками бізнесу.
+          {
+            model: Review,
+            attributes: ["id", "rating", "comment"],
+            where: { reviewerId: ownerId },
+            required: false,
+          },
           {
             model: Location,
             attributes: ["id", "title", "city", "address"],
@@ -388,8 +465,51 @@ export const getBusinessShiftApplications = async ({ companyId, ownerId }) => {
       },
     ],
     order: [["appliedAt", "DESC"]],
-    limit: 50,
+    limit,
+    offset: (page - 1) * limit,
+    distinct: true,
+    subQuery: false,
   });
+
+  return {
+    totalItems: count,
+    totalPages: Math.ceil(count / limit),
+    currentPage: page,
+    data: rows,
+  };
+};
+
+/** Дані виконавця для архівної зміни — доступні лише власнику компанії. */
+export const getBusinessShiftWorkerSummary = async ({ shiftId, ownerId }) => {
+  const application = await ShiftApplication.findOne({
+    where: { shiftId, status: { [Op.in]: ["completed", "no_show"] } },
+    include: [
+      {
+        model: Shift,
+        required: true,
+        attributes: ["id"],
+        include: [{
+          model: Location,
+          required: true,
+          attributes: ["id"],
+          include: [{ model: Company, attributes: ["id"], where: { ownerId }, required: true }],
+        }],
+      },
+      {
+        model: User,
+        attributes: ["id", "avatar"],
+        include: [{ model: WorkerProfile, attributes: ["firstName", "lastName", "rating", "avatarUrl"] }],
+      },
+    ],
+  });
+
+  if (!application) return null;
+  const review = await Review.findOne({
+    where: { shiftId, reviewerId: ownerId },
+    attributes: ["id", "rating", "comment"],
+  });
+
+  return { application, review };
 };
 
 /** Повертає тільки кількість нових заявок, без важких даних виконавців і змін. */
@@ -623,7 +743,11 @@ export const getWorkerShiftHistory = async (
       { status: { [Op.in]: ["rejected", "no_show"] } },
       {
         status: { [Op.in]: ["pending", "approved"] },
-        [Op.and]: [where(col("Shift.endTime"), { [Op.lt]: now })],
+        // Shift ще не приєднаний у WHERE цього запиту, тому перевіряємо
+        // завершення через підзапит за id. Інакше PostgreSQL не бачить alias Shift.
+        shiftId: {
+          [Op.in]: literal(`(SELECT "id" FROM "shifts" WHERE "endTime" < '${now.toISOString()}')`),
+        },
       },
     ];
   } else {
@@ -642,6 +766,9 @@ export const getWorkerShiftHistory = async (
     where: whereCondition,
     limit: limit,
     offset: offset,
+    // Пагінація з belongsTo-join не потребує підзапиту; так alias Shift
+    // лишається доступним і для сортування, і для умов архіву.
+    subQuery: false,
     include: [
       {
         model: Shift,
@@ -661,6 +788,27 @@ export const getWorkerShiftHistory = async (
       [Shift, "startTime", isCompleted || isArchive ? "DESC" : "ASC"],
     ],
   });
+
+  // Не додаємо hasMany Review у головний paginated query: Sequelize через це
+  // генерує крихкі підзапити. Натомість одним запитом беремо відгуки тільки
+  // для змін поточної сторінки й додаємо дані лише власного відгуку.
+  const shiftIds = rows.map((application) => application.Shift?.id).filter(Boolean);
+  if (shiftIds.length > 0) {
+    const reviews = await Review.findAll({
+      attributes: ["id", "shiftId", "rating", "comment"],
+      where: { reviewerId: workerId, shiftId: { [Op.in]: shiftIds } },
+      raw: true,
+    });
+    const reviewIdsByShift = new Map();
+    reviews.forEach((review) => {
+      const ids = reviewIdsByShift.get(review.shiftId) ?? [];
+      ids.push({ id: review.id, rating: review.rating, comment: review.comment });
+      reviewIdsByShift.set(review.shiftId, ids);
+    });
+    rows.forEach((application) => {
+      application.Shift?.setDataValue("Reviews", reviewIdsByShift.get(application.Shift.id) ?? []);
+    });
+  }
 
   return {
     totalItems: count,

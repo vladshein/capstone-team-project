@@ -49,6 +49,13 @@ shiftRouter.get(
   shiftController.getBusinessShiftApplications,
 );
 
+shiftRouter.get(
+  "/business/shifts/:id/worker",
+  authenticate,
+  checkRole("business_client", "admin"),
+  shiftController.getBusinessShiftWorkerSummary,
+);
+
 /** @route PATCH /api/shifts/applications/:applicationId/status */
 shiftRouter.patch(
   "/applications/:applicationId/status",
