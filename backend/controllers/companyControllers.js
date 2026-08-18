@@ -3,7 +3,9 @@ import * as companyService from "../services/companyServices.js";
 export const getCompanyById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const company = await companyService.getCompanyById(id);
+    const company = await companyService.getCompanyById(id, {
+      includePhone: Boolean(req.user),
+    });
 
     res.status(200).json({
       message: "Компанію успішно отримано",

@@ -48,7 +48,9 @@ export const getPublicProfile = async (req, res, next) => {
       return res.status(400).json({ message: "Некоректний ідентифікатор виконавця" });
     }
 
-    const profile = await workerProfileService.getPublicProfileByUserId(userId);
+    const profile = await workerProfileService.getPublicProfileByUserId(userId, {
+      includePhone: Boolean(req.user),
+    });
     res.status(200).json({ data: profile });
   } catch (error) {
     next(error);

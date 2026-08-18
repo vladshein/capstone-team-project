@@ -135,7 +135,13 @@ export function BookingsTab() {
                   {status.label}
                 </span>
               </div>
-              <p className="mt-1 text-sm text-text-muted">{shift.Location?.Company?.name ?? "Компанія"}</p>
+              {shift.Location?.Company?.id ? (
+                <Link to={`/companies/${shift.Location.Company.id}`} className="mt-1 block text-sm text-text-muted transition-colors hover:text-accent-text hover:underline">
+                  {shift.Location.Company.name}
+                </Link>
+              ) : (
+                <p className="mt-1 text-sm text-text-muted">Компанія</p>
+              )}
               <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm text-text-muted">
                 <span className="flex items-center gap-1.5"><CalendarDays className="h-4 w-4 text-text-subtle" />{formatShiftDate(shift.startTime)}</span>
                 <span className="flex items-center gap-1.5"><Clock3 className="h-4 w-4 text-text-subtle" />{formatTimeRange(shift.startTime, shift.endTime)}</span>

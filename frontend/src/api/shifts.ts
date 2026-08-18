@@ -122,7 +122,7 @@ export interface BusinessShift extends Omit<Shift, "Location"> {
   ShiftApplications?: Array<{
     id: number;
     status: "completed" | "no_show";
-    User: { WorkerProfile: { firstName: string; lastName: string } | null };
+    User: { id: number; WorkerProfile: { firstName: string; lastName: string } | null };
   }>;
   Reviews?: { id: string; rating: number; comment: string | null }[];
 }

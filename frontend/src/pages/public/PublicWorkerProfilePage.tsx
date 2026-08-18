@@ -1,14 +1,18 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, Phone, Star, UserRound } from "lucide-react";
-import { Link, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import { getPublicWorkerProfile, type PublicWorkerProfile } from "../../api/publicProfiles";
 import { ProfileReviewsSection } from "../../components/reviews/ProfileReviewsSection";
 import { Loader } from "../../components/ui/Loader";
+import { selectIsLoggedIn } from "../../redux/auth/selectors";
+import { useAppSelector } from "../../redux/hooks";
 import NotFoundPage from "../NotFoundPage";
 
 export default function PublicWorkerProfilePage() {
   const { workerId } = useParams();
+  const navigate = useNavigate();
+  const isAuthenticated = useAppSelector(selectIsLoggedIn);
   const parsedWorkerId = Number(workerId);
   const [profile, setProfile] = useState<PublicWorkerProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -39,12 +43,16 @@ export default function PublicWorkerProfilePage() {
   const fullName = `${profile.firstName} ${profile.lastName}`;
   const avatar = profile.avatarUrl ?? profile.User?.avatar;
   const rating = Number(profile.rating);
+  const goBack = () => {
+    if ((window.history.state?.idx ?? 0) > 0) navigate(-1);
+    else navigate("/#zavdannia", { replace: true });
+  };
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-[var(--space-section)] sm:px-6 md:px-8">
-      <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-text-muted transition-colors hover:text-accent-text">
-        <ArrowLeft className="h-4 w-4" /> До всіх змін
-      </Link>
+      <button type="button" onClick={goBack} className="inline-flex items-center gap-1.5 text-sm text-text-muted transition-colors hover:text-accent-text">
+        <ArrowLeft className="h-4 w-4" /> Назад
+      </button>
 
       <section className="mt-6 rounded-[var(--radius-card)] border border-border bg-bg p-6 shadow-sm sm:p-8">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
@@ -72,7 +80,7 @@ export default function PublicWorkerProfilePage() {
           </p>
         </div>
 
-        {profile.User?.phone && (
+        {isAuthenticated && profile.User?.phone && (
           <div className="mt-5 border-t border-border pt-5">
             <p className="text-xs font-medium text-text-muted">Контактний телефон</p>
             <a href={`tel:${profile.User.phone}`} className="mt-1 inline-flex items-center gap-2 text-sm font-medium text-accent-text transition-colors hover:text-accent hover:underline">

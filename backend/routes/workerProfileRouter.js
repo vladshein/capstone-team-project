@@ -1,6 +1,7 @@
 import express from "express";
 import validateBody from "../helpers/validateBody.js";
 import authenticate from "../middlewares/authenticate.js";
+import optionalAuthenticate from "../middlewares/optionalAuthenticate.js";
 import checkRole from "../middlewares/checkRole.js";
 
 import {
@@ -13,7 +14,7 @@ import * as workerProfileController from "../controllers/workerProfileController
 const workerProfileRouter = express.Router();
 
 // Публічна картка: приватні поля відфільтровані на рівні сервісу.
-workerProfileRouter.get("/public/:userId", workerProfileController.getPublicProfile);
+workerProfileRouter.get("/public/:userId", optionalAuthenticate, workerProfileController.getPublicProfile);
 
 // Всі ці маршрути вимагають авторизації
 workerProfileRouter.use(authenticate);

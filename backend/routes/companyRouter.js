@@ -1,6 +1,7 @@
 import express from "express";
 import validateBody from "../helpers/validateBody.js";
 import authenticate from "../middlewares/authenticate.js";
+import optionalAuthenticate from "../middlewares/optionalAuthenticate.js";
 import {
   createCompanySchema,
   createCompanyLocationSchema,
@@ -11,7 +12,7 @@ import * as companyController from "../controllers/companyControllers.js";
 const companyRouter = express.Router();
 
 // Окремий шлях не конфліктує з /my та не вимагає сесії.
-companyRouter.get("/public/:id", companyController.getCompanyById);
+companyRouter.get("/public/:id", optionalAuthenticate, companyController.getCompanyById);
 
 // Всі ці маршрути вимагають авторизації
 companyRouter.use(authenticate);

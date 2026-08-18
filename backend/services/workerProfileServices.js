@@ -17,11 +17,14 @@ export const getProfileByUserId = async (userId) => {
 };
 
 /** Повертає лише безпечні для публічного профілю дані виконавця. */
-export const getPublicProfileByUserId = async (userId) => {
+export const getPublicProfileByUserId = async (userId, { includePhone = false } = {}) => {
   const profile = await WorkerProfile.findOne({
     where: { userId },
     attributes: ["id", "userId", "firstName", "lastName", "rating", "avatarUrl", "description"],
-    include: [{ model: User, attributes: ["id", "avatar", "phone"] }],
+    include: [{
+      model: User,
+      attributes: ["id", "avatar", ...(includePhone ? ["phone"] : [])],
+    }],
   });
 
   if (!profile) {
