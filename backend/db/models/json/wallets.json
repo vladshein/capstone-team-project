@@ -28,5 +28,13 @@
 "userId": 5,
 "balance": 3500.00,
 "frozenBalance": 0.00
+},
+{
+  "id": 3,
+  "userId": 3,
+  "balance": 1280.00,
+  "frozenBalance": 0.00,
+  "createdAt": "2026-01-10T00:00:00Z",
+  "updatedAt": "2026-08-10T00:00:00Z"
 }
 ]

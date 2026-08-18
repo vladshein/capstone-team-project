@@ -12,5 +12,20 @@
 "name": "ФОП Петренко О.М. (Кав'ярня 'Зерно')",
 "edrpou": "12345678",
 "legalAddress": "м. Львів, вул. Галицька, 5"
+},
+{
+  "id": 10,
+  "ownerId": 5,
+  "name": "Coffee House LLC"
+},
+{
+  "id": 11,
+  "ownerId": 6,
+  "name": "Retail Group"
+},
+{
+  "id": 12,
+  "ownerId": 7,
+  "name": "Event Staff Co"
 }
 ]

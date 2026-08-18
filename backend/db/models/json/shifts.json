@@ -271,5 +271,19 @@
     "bonusRate": 0.00,
     "description": "Ранкова зміна баристи.",
     "status": "open"
-  }
+  },
+  { "id": 100, "locationId": 20, "positionId": 1, "categoryId": 1, "startTime": "2026-06-05T09:00:00Z", "endTime": "2026-06-05T17:00:00Z", "hourlyRate": 350, "bonusRate": null, "status": "completed" },
+  { "id": 101, "locationId": 21, "positionId": 1, "categoryId": 2, "startTime": "2026-06-12T10:00:00Z", "endTime": "2026-06-12T18:00:00Z", "hourlyRate": 400, "bonusRate": 200, "status": "completed" },
+  { "id": 102, "locationId": 22, "positionId": 2, "categoryId": 1, "startTime": "2026-06-20T08:00:00Z", "endTime": "2026-06-20T16:00:00Z", "hourlyRate": 450, "bonusRate": null, "status": "completed" },
+  { "id": 103, "locationId": 20, "positionId": 1, "categoryId": 1, "startTime": "2026-07-03T09:00:00Z", "endTime": "2026-07-03T17:00:00Z", "hourlyRate": 350, "bonusRate": null, "status": "completed" },
+  { "id": 104, "locationId": 21, "positionId": 1, "categoryId": 2, "startTime": "2026-07-10T09:00:00Z", "endTime": "2026-07-10T15:00:00Z", "hourlyRate": 500, "bonusRate": 150, "status": "completed" },
+  { "id": 105, "locationId": 22, "positionId": 2, "categoryId": 1, "startTime": "2026-07-18T10:00:00Z", "endTime": "2026-07-18T19:00:00Z", "hourlyRate": 550, "bonusRate": null, "status": "completed" },
+  { "id": 106, "locationId": 20, "positionId": 1, "categoryId": 1, "startTime": "2026-07-25T09:00:00Z", "endTime": "2026-07-25T18:00:00Z", "hourlyRate": 400, "bonusRate": 100, "status": "completed" },
+  { "id": 107, "locationId": 21, "positionId": 1, "categoryId": 2, "startTime": "2026-08-01T09:00:00Z", "endTime": "2026-08-01T17:00:00Z", "hourlyRate": 380, "bonusRate": null, "status": "completed" },
+  { "id": 108, "locationId": 22, "positionId": 2, "categoryId": 1, "startTime": "2026-08-08T08:00:00Z", "endTime": "2026-08-08T16:00:00Z", "hourlyRate": 420, "bonusRate": null, "status": "completed" },
+  { "id": 109, "locationId": 20, "positionId": 1, "categoryId": 1, "startTime": "2026-08-10T09:00:00Z", "endTime": "2026-08-10T17:00:00Z", "hourlyRate": 400, "bonusRate": null, "status": "completed" },
+  { "id": 110, "locationId": 21, "positionId": 1, "categoryId": 2, "startTime": "2026-08-05T09:00:00Z", "endTime": "2026-08-05T17:00:00Z", "hourlyRate": 400, "bonusRate": null, "status": "completed" },
+  { "id": 111, "locationId": 22, "positionId": 2, "categoryId": 1, "startTime": "2026-08-25T09:00:00Z", "endTime": "2026-08-25T17:00:00Z", "hourlyRate": 450, "bonusRate": null, "status": "booked" },
+  { "id": 112, "locationId": 20, "positionId": 1, "categoryId": 1, "startTime": "2026-09-01T09:00:00Z", "endTime": "2026-09-01T17:00:00Z", "hourlyRate": 400, "bonusRate": null, "status": "booked" },
+  { "id": 113, "locationId": 21, "positionId": 1, "categoryId": 2, "startTime": "2026-07-15T09:00:00Z", "endTime": "2026-07-15T17:00:00Z", "hourlyRate": 400, "bonusRate": null, "status": "cancelled" }
 ]

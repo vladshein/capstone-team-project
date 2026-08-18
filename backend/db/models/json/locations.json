@@ -25,5 +25,26 @@
 "address": "пл. Ринок, 10",
 "latitude": 49.8415,
 "longitude": 24.0324
+},
+{
+  "id": 20,
+  "companyId": 10,
+  "title": "Coffee House — Хрещатик",
+  "city": "Київ",
+  "address": "вул. Хрещатик, 22"
+},
+{
+  "id": 21,
+  "companyId": 11,
+  "title": "Retail Group — ТРЦ Ocean Plaza",
+  "city": "Київ",
+  "address": "Антоновича, 176"
+},
+{
+  "id": 22,
+  "companyId": 12,
+  "title": "Event Staff — Конференц-центр",
+  "city": "Львів",
+  "address": "просп. Свободи, 5"
 }
 ]
