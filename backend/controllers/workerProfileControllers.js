@@ -3,7 +3,7 @@ import {
   getWorkerStatisticsSummary,
   getWorkerShiftsStatistics,
   resolveDateRange,
-} from "../services/worker-statistics.service.js";
+} from "../services/workerStatistics.service.js";
 
 const isValidIsoDate = (value) => {
   if (typeof value !== "string") return false;

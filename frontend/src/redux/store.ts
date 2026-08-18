@@ -15,6 +15,7 @@ import { authReducer } from "./auth/slice";
 import workerProfileSliceReducer from "./worker-profile/slice";
 import companiesProfileReducer from "./companies-profile/slice";
 import { shiftReducer } from "./shift/slice";
+import { workerStatisticsReducer } from "./worker-statistics/slice";
 import type { AuthState } from "./auth/types";
 
 const authPersistConfig: PersistConfig<AuthState> = {
@@ -28,6 +29,7 @@ const rootReducer = combineReducers({
   workerProfile: workerProfileSliceReducer,
   companiesProfile: companiesProfileReducer,
   shift: shiftReducer,
+  workerStatistics: workerStatisticsReducer,
 });
 
 export const store = configureStore({

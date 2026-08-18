@@ -3,7 +3,7 @@ import { jest } from "@jest/globals";
 const getWorkerStatisticsSummary = jest.fn();
 const getWorkerShiftsStatistics = jest.fn();
 
-// Mirrors services/worker-statistics.service.resolveDateRange so the
+// Mirrors services/workerStatistics.service.resolveDateRange so the
 // controller's range validation runs with real dates in these tests.
 const resolveDateRange = jest.fn((dateFrom, dateTo) => {
   let from = dateFrom ? new Date(dateFrom) : null;
@@ -25,7 +25,7 @@ const resolveDateRange = jest.fn((dateFrom, dateTo) => {
 
 jest.unstable_mockModule("../services/workerProfileServices.js", () => ({}));
 
-jest.unstable_mockModule("../services/worker-statistics.service.js", () => ({
+jest.unstable_mockModule("../services/workerStatistics.service.js", () => ({
   getWorkerStatisticsSummary,
   getWorkerShiftsStatistics,
   resolveDateRange,
