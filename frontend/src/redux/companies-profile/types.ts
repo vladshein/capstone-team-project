@@ -23,6 +23,7 @@ export interface CompanyProfile {
   name: string;
   edrpou: string;
   legalAddress: string;
+  description: string | null;
   avatar: string | null;
   Locations?: Location[];
 }

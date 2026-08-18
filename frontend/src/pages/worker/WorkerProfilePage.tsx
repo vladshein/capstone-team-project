@@ -113,6 +113,9 @@ export function WorkerProfilePage() {
             value={Number(profile?.rating) > 0 ? `${Number(profile?.rating).toFixed(2)} / 5` : "Ще немає відгуків"}
           />
         </div>
+        <div className="mt-5 border-t border-border pt-4">
+          <ProfileField label="Про себе" value={profile?.description ?? undefined} />
+        </div>
       </div>
 
       {hasProfile && <ProfileReviewsSection revieweeId={user.id} subject="worker" />}

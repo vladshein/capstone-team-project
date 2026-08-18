@@ -8,6 +8,10 @@ const Company = sequelize.define(
     name: { type: DataTypes.STRING(100), allowNull: false },
     edrpou: { type: DataTypes.STRING(8), unique: true, allowNull: false },
     legalAddress: { type: DataTypes.TEXT },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
     avatar: {
       type: DataTypes.STRING,
       defaultValue: null,

@@ -238,6 +238,7 @@ export function UpdateWorkerProfileModal({
   const [birthDate, setBirthDate] = useState("");
   const [taxNumber, setTaxNumber] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   // Підставляємо дані наявного профілю в поля форми щоразу,
@@ -252,6 +253,7 @@ export function UpdateWorkerProfileModal({
     setBirthDate(profile?.birthDate ?? "");
     setTaxNumber(profile?.taxNumber ?? "");
     setAvatarUrl(profile?.avatarUrl ?? "");
+    setDescription(profile?.description ?? "");
     setError(null);
   }, [isOpen, profile]);
 
@@ -267,6 +269,7 @@ export function UpdateWorkerProfileModal({
     const trimmedLastName = lastName.trim();
     const trimmedTaxNumber = taxNumber.trim();
     const trimmedAvatarUrl = avatarUrl.trim();
+    const trimmedDescription = description.trim();
 
     if (trimmedFirstName && trimmedFirstName.length < 2) {
       setError("Ім'я має містити мінімум 2 символи.");
@@ -299,6 +302,8 @@ export function UpdateWorkerProfileModal({
       ...(birthDate ? { birthDate } : {}),
       ...(trimmedTaxNumber ? { taxNumber: trimmedTaxNumber } : {}),
       ...(trimmedAvatarUrl ? { avatarUrl: trimmedAvatarUrl } : {}),
+      // Порожній рядок передаємо навмисно: так можна прибрати старий опис.
+      description: trimmedDescription,
     };
 
     onSubmit(payload);
@@ -373,6 +378,21 @@ export function UpdateWorkerProfileModal({
               className="mt-1 w-full rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-accent"
               placeholder="https://..."
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-text-muted">
+              Коротко про себе <span className="text-text-subtle">— необов'язково</span>
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              maxLength={500}
+              rows={3}
+              className="mt-1 w-full resize-y rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-accent"
+              placeholder="Розкажіть про свій досвід та сильні сторони"
+            />
+            <p className="mt-1 text-right text-xs text-text-subtle">{description.length}/500</p>
           </div>
 
           <div>

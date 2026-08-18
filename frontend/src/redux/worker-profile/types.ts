@@ -15,14 +15,16 @@ export interface WorkerProfile {
   taxNumber: string | null;
   rating: number;
   avatarUrl: string | null;
+  description: string | null;
   User?: WorkerProfileUser;
 }
 
 export type CreateWorkerProfilePayload = Omit<
   WorkerProfile,
-  "id" | "userId" | "rating" | "User" | "avatarUrl"
+  "id" | "userId" | "rating" | "User" | "avatarUrl" | "description"
 > & {
   avatarUrl?: string;
+  description?: string;
 };
 
 export type UpdateWorkerProfilePayload = Partial<CreateWorkerProfilePayload>;

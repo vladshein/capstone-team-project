@@ -41,6 +41,7 @@ export function CreateWorkerProfileModal({
   const [birthDate, setBirthDate] = useState("");
   const [taxNumber, setTaxNumber] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   if (!isOpen) return null;
@@ -81,6 +82,7 @@ export function CreateWorkerProfileModal({
       birthDate,
       taxNumber: taxNumber.trim(),
       ...(avatarUrl.trim() ? { avatarUrl: avatarUrl.trim() } : {}),
+      ...(description.trim() ? { description: description.trim() } : {}),
     });
   };
 
@@ -153,6 +155,21 @@ export function CreateWorkerProfileModal({
               className="mt-1 w-full rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-accent"
               placeholder="https://..."
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-text-muted">
+              Коротко про себе <span className="text-text-subtle">— необов'язково</span>
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              maxLength={500}
+              rows={3}
+              className="mt-1 w-full resize-y rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-accent"
+              placeholder="Розкажіть про свій досвід та сильні сторони"
+            />
+            <p className="mt-1 text-right text-xs text-text-subtle">{description.length}/500</p>
           </div>
 
           <div>
