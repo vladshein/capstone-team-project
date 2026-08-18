@@ -27,13 +27,12 @@ export function MobileMenu({
     >
       {/* Overlay */}
       <div
-        className="absolute inset-0 bg-ink/40 backdrop-blur-[2px]"
+        className="absolute inset-0 bg-bg-inverse/40 backdrop-blur-[2px]"
         onClick={onClose}
       />
 
       {/* Sidebar */}
       <div
-        style={{ backgroundColor: "#ffffff", opacity: 1 }}
         className={`absolute right-0 top-0 flex h-full w-[85%] max-w-xs flex-col overflow-y-auto border-l border-border bg-bg px-5 py-4 shadow-2xl transition-transform duration-300 sm:px-6 sm:py-5 ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}

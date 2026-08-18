@@ -85,7 +85,6 @@
 //   };
 
 //   return (
-//     <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-4">
 //       <div className="w-full max-w-md rounded-[var(--radius-card)] bg-bg p-6 shadow-lg">
 //         <div className="flex items-center justify-between">
 //           <h2 className="font-heading text-lg font-semibold">Профіль виконавця</h2>
@@ -306,7 +305,7 @@ export function UpdateWorkerProfileModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg-inverse/40 px-4">
       <div className="w-full max-w-md rounded-[var(--radius-card)] bg-bg p-6 shadow-lg">
         <div className="flex items-center justify-between">
           <h2 className="font-heading text-lg font-semibold">Профіль виконавця</h2>

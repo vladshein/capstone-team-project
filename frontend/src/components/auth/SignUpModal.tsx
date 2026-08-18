@@ -108,7 +108,7 @@ export function SignUpModal({
             type="button"
             onClick={() => setRole("worker")}
             className={`flex-1 rounded-[var(--radius-pill)] px-3 py-2 font-medium transition-colors ${
-              role === "worker" ? "bg-ink text-white" : "text-text"
+              role === "worker" ? "bg-bg-inverse text-white" : "text-text"
             }`}
           >
             Я виконавець
@@ -117,7 +117,7 @@ export function SignUpModal({
             type="button"
             onClick={() => setRole("business_client")}
             className={`flex-1 rounded-[var(--radius-pill)] px-3 py-2 font-medium transition-colors ${
-              role === "business_client" ? "bg-ink text-white" : "text-text"
+              role === "business_client" ? "bg-bg-inverse text-white" : "text-text"
             }`}
           >
             Я бізнес
