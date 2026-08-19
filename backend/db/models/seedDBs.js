@@ -179,5 +179,29 @@ export default async function seedAll() {
     console.log("Seed data inserted successfully!");
   } catch (err) {
     console.error("Error seeding data:", err);
+  } finally {
+    // 3. Скидання sequence — ТЕПЕР ВИКОНУЄТЬСЯ ЗАВЖДИ,
+    // незалежно від того, чи впав основний seed чи ні.
+    console.log("🔄 Resetting PostgreSQL sequences...");
+
+    const tablesWithSequences = [
+      "users", "worker_profiles", "companies", "locations",
+      "job_positions", "categories", "shifts",
+      "shift_applications", "wallets", "transactions",
+    ];
+
+    for (const table of tablesWithSequences) {
+      try {
+        await sequelize.query(
+          `SELECT setval(
+             pg_get_serial_sequence('"${table}"', 'id'),
+             (SELECT COALESCE(MAX(id), 1) FROM "${table}"),
+             (SELECT COUNT(*) > 0 FROM "${table}")
+           );`,
+        );
+      } catch (seqError) {
+        console.warn(`⚠️ Could not reset sequence for ${table}:`, seqError.message);
+      }
+    }
   }
 }

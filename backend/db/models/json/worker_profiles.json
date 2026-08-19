@@ -9,14 +9,24 @@
 "rating": 4.80,
 "avatarUrl": "https://example.com/avatars/ivan.jpg"
 },
-{
-"id": 2,
-"userId": 4,
-"firstName": "Марія",
-"lastName": "Коваленко",
-"birthDate": "2001-10-22",
-"taxNumber": "3344556677",
-"rating": 5.00,
-"avatarUrl": "https://example.com/avatars/maria.jpg"
-}
+  {
+    "id": 2,
+    "userId": 4,
+    "firstName": "Марія",
+    "lastName": "Коваленко",
+    "birthDate": "2001-10-22",
+    "taxNumber": "3344556677",
+    "rating": 5.00,
+    "avatarUrl": "https://example.com/avatars/maria.jpg"
+  },
+  {
+    "id": 3,
+    "userId": 6,
+    "firstName": "Олександр",
+    "lastName": "Кузьменко",
+    "birthDate": "1995-03-10",
+    "taxNumber": "4455667788",
+    "rating": 4.90,
+    "avatarUrl": "https://example.com/avatars/alex.jpg"
+  }
 ]

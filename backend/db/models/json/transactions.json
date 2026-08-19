@@ -52,5 +52,23 @@
 "amount": 128.00,
 "type": "release_commission",
 "status": "completed"
+},
+{
+"id": 27,
+"senderId": null,
+"receiverId": 6,
+"shiftId": 3,
+"amount": 128.00,
+"type": "release_commission",
+"status": "completed"
+},
+{
+"id": 28,
+"senderId": null,
+"receiverId": 6,
+"shiftId": 3,
+"amount": 128.00,
+"type": "release_commission",
+"status": "completed"
 }
 ]

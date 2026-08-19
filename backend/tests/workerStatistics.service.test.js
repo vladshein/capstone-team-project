@@ -16,7 +16,7 @@ jest.unstable_mockModule("../db/models/index.js", () => ({
 }));
 
 const { getWorkerStatisticsSummary, getWorkerShiftsStatistics } =
-  await import("../services/worker-statistics.service.js");
+  await import("../services/workerStatistics.service.js");
 
 const applicationAggregateRow = {
   total: "8",

@@ -10,16 +10,9 @@ import {
   ShieldQuestion,
   Gift,
   BellRing,
+  TrendingUp
 } from "lucide-react";
 import type { AuthUser } from "../../redux/auth/types";
-
-/* ---------------------------------------------------------------------- */
-/*  Types — узгоджені з Backend_TZ (GET /verification-status,             */
-/*  GET /engagement/bonuses, GET /shifts/my-calendar,                     */
-/*  POST /shifts/:id/confirm-attendance). Фінансовий блок (баланс,        */
-/*  cash-out, історія виплат) прибрано — ці ендпоінти поза поточним       */
-/*  скоупом застарілого ТЗ.                                               */
-/* ---------------------------------------------------------------------- */
 
 type VerificationState = "verified" | "pending" | "none";
 
@@ -164,7 +157,7 @@ export function WorkerDashboard({
                 <Star className="h-4 w-4 fill-highlight text-highlight" />
                 <span>{rating.toFixed(2)}</span>
               </div>
-            ) : (
+             ) : (
               <p className="mt-2 text-sm text-text-subtle">Ще немає відгуків</p>
             )}
           </div>
@@ -278,28 +271,40 @@ export function WorkerDashboard({
                     </div>
                   )}
               </div>
+              
             </section>
           )}
 
           {/* Вкладки: Пошук змін / Мої зміни */}
           <section>
-            <div className="flex gap-1 border-b border-border">
-              {TABS.map((tab) => (
-                <NavLink
-                  key={tab.key}
-                  to={tab.to}
-                  className={({ isActive }) =>
-                    `px-4 py-2.5 text-sm font-medium transition-colors ${
-                      isActive ||
-                      (tab.key === "bookings" && pathname === "/cabinet")
-                        ? "border-b-2 border-accent text-accent-text"
-                        : "text-text-muted hover:text-ink"
-                    }`
-                  }
-                >
-                  {tab.label}
-                </NavLink>
-              ))}
+            <div className="flex items-end justify-between border-b border-border">
+              {/* Ліва частина: Вкладки */}
+              <div className="flex gap-1">
+                {TABS.map((tab) => (
+                  <NavLink
+                    key={tab.key}
+                    to={tab.to}
+                    className={({ isActive }) =>
+                      `px-4 py-2.5 text-sm font-medium transition-colors ${
+                        isActive || (tab.key === "bookings" && pathname === "/cabinet")
+                          ? "border-b-2 border-accent text-accent-text"
+                          : "text-text-muted hover:text-ink border-b-2 border-transparent"
+                      }`
+                    }
+                  >
+                    {tab.label}
+                  </NavLink>
+                ))}
+              </div>
+
+              {/* Права частина: Статистика */}
+              <NavLink
+                to="/statistics"
+                className="mb-1 mr-2 flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-text-muted transition-colors hover:bg-bg-muted hover:text-ink"
+              >
+                <TrendingUp className="h-4 w-4" />
+                <span className="hidden sm:inline">Статистика</span>
+              </NavLink>
             </div>
 
             <div className="mt-4 rounded-[var(--radius-card)] border border-border bg-bg shadow-sm">
