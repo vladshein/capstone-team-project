@@ -146,8 +146,8 @@ export function buildExpandedShiftFixtures() {
       { id: extraLocationId + 1, companyId, title: `${companyName} — локація 4`, city: fourthCity, address: fourthAddress, latitude: fourthLat, longitude: fourthLng },
     );
     jobPositions.push(
-      { id: firstPositionId, title: `${firstRole} (${companyName})`, description: `Зміна для позиції «${firstRole}».` },
-      { id: firstPositionId + 1, title: `${secondRole} (${companyName})`, description: `Зміна для позиції «${secondRole}».` },
+      { id: firstPositionId, title: `${firstRole} (${companyName})`, description: `Зміна для позиції «${firstRole}».`, categoryId },
+      { id: firstPositionId + 1, title: `${secondRole} (${companyName})`, description: `Зміна для позиції «${secondRole}».`, categoryId },
     );
 
     shiftDates.forEach((date, shiftIndex) => {
@@ -227,6 +227,7 @@ export function buildRegionalShiftFixtures() {
         id: positionIdStart + categoryIndex,
         title: `${role[0].toUpperCase()}${role.slice(1)} (${city})`,
         description: `Тестова позиція «${role}» у місті ${city}.`,
+        categoryId: categoryIndex + 1,
       });
     });
 

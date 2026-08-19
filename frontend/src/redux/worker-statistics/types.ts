@@ -1,7 +1,19 @@
+export type GroupBy = "week" | "month";
+
 export interface StatisticsSummaryQuery {
   dateFrom?: string;
   dateTo?: string;
   companyId?: number;
+}
+
+export interface ShiftsStatisticsQuery {
+  dateFrom?: string;
+  dateTo?: string;
+  groupBy?: GroupBy;
+  companyId?: number;
+  city?: string;
+  positionId?: number;
+  categoryId?: number;
 }
 
 export interface ShiftsStatisticsQuery {

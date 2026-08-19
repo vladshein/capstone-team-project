@@ -1,31 +1,34 @@
 [
-{
-"id": 1,
-"ownerId": 1,
-"name": "ТОВ 'Сільпо-Фуд'",
-"edrpou": "40720198",
-"legalAddress": "м. Київ, вул. Бутлерова, 1"
-},
-{
-"id": 2,
-"ownerId": 2,
-"name": "ФОП Петренко О.М. (Кав'ярня 'Зерно')",
-"edrpou": "12345678",
-"legalAddress": "м. Львів, вул. Галицька, 5"
-},
-{
-  "id": 10,
-  "ownerId": 5,
-  "name": "Coffee House LLC"
-},
-{
-  "id": 11,
-  "ownerId": 6,
-  "name": "Retail Group"
-},
-{
-  "id": 12,
-  "ownerId": 7,
-  "name": "Event Staff Co"
-}
+  {
+    "id": 1,
+    "ownerId": 1,
+    "name": "ТОВ 'Сільпо-Фуд'",
+    "edrpou": "40720198",
+    "legalAddress": "м. Київ, вул. Бутлерова, 1"
+  },
+  {
+    "id": 2,
+    "ownerId": 2,
+    "name": "ФОП Петренко О.М. (Кав'ярня 'Зерно')",
+    "edrpou": "12345678",
+    "legalAddress": "м. Львів, вул. Галицька, 5"
+  },
+  {
+    "id": 10,
+    "ownerId": 1,
+    "name": "Coffee House LLC",
+    "edrpou": "10000010"
+  },
+  {
+    "id": 11,
+    "ownerId": 2,
+    "name": "Retail Group",
+    "edrpou": "10000011"
+  },
+  {
+    "id": 12,
+    "ownerId": 1,
+    "name": "Event Staff Co",
+    "edrpou": "10000012"
+  }
 ]

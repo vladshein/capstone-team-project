@@ -2,14 +2,21 @@ import { DataTypes } from "sequelize";
 
 /** Нормалізує посади: категорія стає даними БД, а не словником фронтенду. */
 export const up = async ({ context: queryInterface }) => {
-  await queryInterface.addColumn("job_positions", "categoryId", {
-    type: DataTypes.TEXT,
-    allowNull: true,
-    references: { model: "categories", key: "id" },
-    onUpdate: "CASCADE",
-    onDelete: "RESTRICT",
-  });
+  const table = await queryInterface.describeTable("job_positions");
 
+  // 1. Додаємо колонку, тільки якщо її ще немає
+  if (!table.categoryId) {
+    await queryInterface.addColumn("job_positions", "categoryId", {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      references: { model: "categories", key: "id" },
+      onUpdate: "CASCADE",
+      onDelete: "RESTRICT",
+    });
+  }
+
+  // 2. Бекфілимо тільки ті рядки, де категорія ще не проставлена
+  //    (WHERE додано навмисно — інакше запит буде переписувати вже готові значення)
   await queryInterface.sequelize.query(`
     UPDATE "job_positions"
     SET "categoryId" = CASE regexp_replace("title", '\\s*\\([^)]*\\)\\s*$', '')
@@ -29,6 +36,7 @@ export const up = async ({ context: queryInterface }) => {
       WHEN 'Водій-експедитор' THEN '14' WHEN 'Працівник автомийки' THEN '14'
       WHEN 'Доглядальник за тваринами' THEN '15' WHEN 'Помічник грумера' THEN '15'
     END
+    WHERE "categoryId" IS NULL
   `);
 
   const [result] = await queryInterface.sequelize.query(
@@ -36,13 +44,16 @@ export const up = async ({ context: queryInterface }) => {
   );
   if (result[0].count > 0) throw new Error(`Не вдалося визначити категорію для ${result[0].count} посад.`);
 
-  await queryInterface.changeColumn("job_positions", "categoryId", {
-    type: DataTypes.TEXT,
-    allowNull: false,
-    references: { model: "categories", key: "id" },
-    onUpdate: "CASCADE",
-    onDelete: "RESTRICT",
-  });
+  // 3. Робимо колонку NOT NULL, тільки якщо вона ще nullable
+  if (table.categoryId?.allowNull !== false) {
+    await queryInterface.changeColumn("job_positions", "categoryId", {
+      type: DataTypes.TEXT,
+      allowNull: false,
+      references: { model: "categories", key: "id" },
+      onUpdate: "CASCADE",
+      onDelete: "RESTRICT",
+    });
+  }
 };
 
 export const down = async ({ context: queryInterface }) => {
