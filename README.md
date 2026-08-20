@@ -95,6 +95,14 @@ docker compose exec backend npm run db:s
 - `GET /health` — liveness: HTTP-застосунок запущений.
 - `GET /ready` — readiness: застосунок запущений і PostgreSQL доступний. Docker healthcheck використовує цей endpoint.
 
+### Фоновий lifecycle worker
+
+Сервіс `lifecycle-worker` працює окремо від API через BullMQ + Valkey і запускає синхронізацію раз на 5 хвилин:
+
+- прострочені `pending` заявки переводить у `rejected`;
+- `open` зміни після завершення переводить у `cancelled`;
+- завершені `booked` зміни не закриває автоматично: компанія має підтвердити виконання або неявку виконавця.
+
 наприклад створити міграцію:
 ```bash
 docker exec -ti backend npm run db:m:generate
