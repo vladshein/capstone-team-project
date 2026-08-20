@@ -20,6 +20,7 @@ import locationRouter from "./routes/locationRouter.js";
 import notFoundHandler from "./middlewares/notFoundHandler.js";
 import errorHandler from "./middlewares/errorHandler.js";
 import connectDatabase from "./db/connectDatabase.js";
+import sequelize from "./db/sequelize.js";
 import { swaggerDocs } from "./middlewares/swaggerDocs.js";
 
 
@@ -44,7 +45,12 @@ const publicDir = path.join(__dirname, "public");
 const tempDir = path.join(__dirname, "temp");
 
 // Middlewares
-app.use(morgan("tiny"));
+app.use(
+  morgan("tiny", {
+    // Docker звертається до readiness endpoint регулярно — не засмічуємо access-логи.
+    skip: (req) => req.path === "/health" || req.path === "/ready",
+  }),
+);
 app.use(
   cors({
     origin: process.env.FRONTEND_URL,
@@ -55,6 +61,25 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(express.static(publicDir));
 app.use("/temp", express.static(tempDir));
+
+// Liveness endpoint для Docker, reverse proxy та зовнішнього моніторингу.
+// Він підтверджує, що HTTP-застосунок запущений; поточну доступність БД
+// перевірятиме окремий readiness endpoint, якщо він знадобиться.
+app.get("/health", (_req, res) => {
+  res.status(200).json({ status: "ok" });
+});
+
+// Readiness endpoint: крім запущеного HTTP-застосунку підтверджує,
+// що PostgreSQL доступний для нових запитів.
+app.get("/ready", async (_req, res) => {
+  try {
+    // Не засмічуємо логи SQL-запитом Docker healthcheck кожні 10 секунд.
+    await sequelize.authenticate({ logging: false });
+    res.status(200).json({ status: "ready" });
+  } catch {
+    res.status(503).json({ status: "unavailable" });
+  }
+});
 
 // Routes
 app.use("/api/auth", authRouter);

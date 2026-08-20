@@ -90,6 +90,11 @@ docker compose exec backend npm run db:s
 
 > Для міграцій використовуємо лише Umzug-команди `db:m*`, які зберігають стан у таблиці `SequelizeMeta`. Не редагуйте вже застосовані файли міграцій: для будь-якої зміни схеми створюйте нову міграцію.
 
+### Стан застосунку
+
+- `GET /health` — liveness: HTTP-застосунок запущений.
+- `GET /ready` — readiness: застосунок запущений і PostgreSQL доступний. Docker healthcheck використовує цей endpoint.
+
 наприклад створити міграцію:
 ```bash
 docker exec -ti backend npm run db:m:generate
