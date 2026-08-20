@@ -13,8 +13,8 @@
     "db:s": "node db/seeder.js up",
     "db:s:undo": "node db/seeder.js down",
     "db:s:generate": "node db/seeder.js create",
-    "db:migrate": "node ./db/migrate.js",
-    "db:migrate:status": "node ./db/migrate.js --status",
+    "db:m:pending": "node db/migrator.js pending",
+    "db:m:executed": "node db/migrator.js executed",
     "db:seed": "node --input-type=module -e \"import('./db/models/seedDBs.js').then(m => m.default()).then(() => { console.log('Seeded'); process.exit(0); })\"",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
