@@ -60,6 +60,13 @@ services:
         condition: service_healthy
       valkey:
         condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:5000/ready').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     networks:
       - basenet
 
