@@ -1,8 +1,5 @@
-import { useMemo } from "react";
-import type {
-  ShiftsStatistics,
-  GroupBy,
-} from "../../redux/worker-statistics/types";
+import { useMemo, useState } from "react";
+import type { ShiftsStatistics, GroupBy } from "../../redux/worker-statistics/types";
 
 interface WorkerShiftsDynamicsProps {
   data: ShiftsStatistics | null;
@@ -13,14 +10,8 @@ interface WorkerShiftsDynamicsProps {
   onRetry: () => void;
 }
 
-const groupByOptions: { value: GroupBy; label: string }[] = [
-  { value: "week", label: "Тижні" },
-  { value: "month", label: "Місяці" },
-];
-
-const currencyFormatter = new Intl.NumberFormat("uk-UA", {
-  maximumFractionDigits: 0,
-});
+const CHART_HEIGHT = 220;
+const BAR_GAP = 8;
 
 export function WorkerShiftsDynamics({
   data,
@@ -30,33 +21,20 @@ export function WorkerShiftsDynamics({
   onGroupByChange,
   onRetry,
 }: WorkerShiftsDynamicsProps) {
-  const maxShifts = useMemo(
-    () => Math.max(1, ...(data?.series.map((p) => p.completedShifts) ?? [0])),
-    [data],
-  );
+  const [hovered, setHovered] = useState<number | null>(null);
+
+  const chartData = useMemo(() => {
+    if (!data || data.series.length === 0) return null;
+    const maxValue = Math.max(
+      1,
+      ...data.series.map((p) => p.completedShifts + p.noShows),
+    );
+    return { points: data.series, maxValue };
+  }, [data]);
 
   return (
     <section>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-heading text-lg font-bold">Динаміка змін</h2>
-        <div className="inline-flex rounded-[var(--radius-card)] border border-border p-0.5">
-          {groupByOptions.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => onGroupByChange(option.value)}
-              className={`rounded-[calc(var(--radius-card)-2px)] px-3 py-1 text-xs font-medium transition-colors ${
-                groupBy === option.value
-                  ? "bg-accent text-white"
-                  : "text-text-muted hover:bg-bg-muted"
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
+      {/* header/tabs без змін */}
       <div className="mt-4 rounded-[var(--radius-card)] border border-border bg-bg p-5 shadow-sm">
         {isLoading && !data && (
           <p className="text-sm text-text-muted">Завантаження…</p>
@@ -66,7 +44,6 @@ export function WorkerShiftsDynamics({
           <div className="flex flex-col items-center gap-3 py-6 text-center">
             <p className="text-sm text-danger">{error}</p>
             <button
-              type="button"
               onClick={onRetry}
               className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-ink hover:bg-bg-muted"
             >
@@ -75,70 +52,71 @@ export function WorkerShiftsDynamics({
           </div>
         )}
 
-        {!isLoading && !error && data && data.series.length === 0 && (
-          <p className="text-sm text-text-subtle">
-            Ще немає завершених змін за цей період.
-          </p>
-        )}
-
-        {!error && data && data.series.length > 0 && (
-          <>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-                  Завершено змін
-                </p>
-                <p className="mt-1 font-heading text-xl font-bold text-ink">
-                  {data.totals.completedShifts}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-                  Відпрацьовано годин
-                </p>
-                <p className="mt-1 font-heading text-xl font-bold text-ink">
-                  {data.totals.scheduledCompletedHours.toFixed(1)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-                  Заробіток
-                </p>
-                <p className="mt-1 font-heading text-xl font-bold text-ink">
-                  {currencyFormatter.format(
-                    data.totals.estimatedCompletedEarnings,
-                  )}{" "}
-                  ₴
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-6 space-y-2">
-              {data.series.map((point) => (
-                <div key={point.period} className="flex items-center gap-3">
-                  <span className="w-20 shrink-0 text-xs text-text-muted">
-                    {point.period}
-                  </span>
-                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-bg-muted">
+        {!error && chartData && (
+          <div className="mt-6">
+            <div
+              className="flex items-end gap-2"
+              style={{ height: CHART_HEIGHT }}
+            >
+              {chartData.points.map((p, i) => {
+                const completedH =
+                  (p.completedShifts / chartData.maxValue) * CHART_HEIGHT;
+                const noShowH =
+                  (p.noShows / chartData.maxValue) * CHART_HEIGHT;
+                return (
+                  <div
+                    key={p.period}
+                    className="relative flex flex-1 flex-col items-center justify-end"
+                    style={{ height: CHART_HEIGHT }}
+                    onMouseEnter={() => setHovered(i)}
+                    onMouseLeave={() => setHovered(null)}
+                  >
+                    {hovered === i && (
+                      <div className="absolute -top-2 -translate-y-full whitespace-nowrap rounded-md border border-border bg-bg px-2 py-1 text-xs shadow-sm">
+                        {p.period}: {p.completedShifts} завершено,{" "}
+                        {p.noShows} no-show
+                      </div>
+                    )}
                     <div
-                      className="h-full rounded-full bg-accent"
+                      className="w-full rounded-t-sm"
                       style={{
-                        width: `${(point.completedShifts / maxShifts) * 100}%`,
+                        height: noShowH,
+                        background: "rgb(var(--color-danger))",
+                        marginBottom: 2,
                       }}
                     />
-                  </div>
-                  <span className="w-8 shrink-0 text-right text-xs font-medium text-ink">
-                    {point.completedShifts}
-                  </span>
-                  {point.noShows > 0 && (
-                    <span className="shrink-0 text-xs text-danger">
-                      −{point.noShows}
+                    <div
+                      className="w-full rounded-t-sm"
+                      style={{
+                        height: completedH,
+                        background: "rgb(var(--color-accent))",
+                      }}
+                    />
+                    <span className="mt-2 text-[10px] text-text-subtle">
+                      {p.period}
                     </span>
-                  )}
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
-          </>
+
+            <div className="mt-4 flex items-center gap-4 text-xs text-text-muted">
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="h-2.5 w-2.5 rounded-sm"
+                  style={{ background: "rgb(var(--color-accent))" }}
+                />
+                Завершено змін
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="h-2.5 w-2.5 rounded-sm"
+                  style={{ background: "rgb(var(--color-danger))" }}
+                />
+                No-show
+              </span>
+            </div>
+          </div>
         )}
       </div>
     </section>

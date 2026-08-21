@@ -149,7 +149,7 @@ export default async function seedAll() {
       "companies",
       "locations",
       "job_positions",
-      "categories",
+      // "categories",
       "shifts",
       "shift_applications",
       "wallets",
@@ -186,7 +186,7 @@ export default async function seedAll() {
 
     const tablesWithSequences = [
       "users", "worker_profiles", "companies", "locations",
-      "job_positions", "categories", "shifts",
+      "job_positions", "shifts",
       "shift_applications", "wallets", "transactions",
     ];
 
