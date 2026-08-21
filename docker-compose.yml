@@ -70,6 +70,29 @@ services:
     networks:
       - basenet
 
+  lifecycle-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: lifecycle-worker
+    restart: always
+    command: node workers/shiftLifecycleWorker.js
+    env_file:
+      - ./backend/.env
+    environment:
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    networks:
+      - basenet
+
   # React
   frontend:
     build:

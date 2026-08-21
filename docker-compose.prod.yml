@@ -94,6 +94,30 @@ services:
     networks:
       - basenet
 
+  lifecycle-worker:
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile.prod
+    container_name: lifecycle-worker
+    restart: always
+    command: ["node", "workers/shiftLifecycleWorker.js"]
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - DATABASE_USERNAME=${POSTGRES_USER}
+      - DATABASE_PASSWORD=${POSTGRES_PASSWORD}
+      - DATABASE_NAME=${POSTGRES_DB}
+      - DATABASE_HOST=${DB_HOST}
+      - DATABASE_PORT=${DB_PORT}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    networks:
+      - basenet
+
   frontend:
     build:
       context: .
