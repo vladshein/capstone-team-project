@@ -84,6 +84,37 @@ services:
     depends_on:
       - postgres
       - valkey
+    healthcheck:
+      test:
+        ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:5000/ready').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - basenet
+
+  lifecycle-worker:
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile.prod
+    container_name: lifecycle-worker
+    restart: always
+    command: ["node", "workers/shiftLifecycleWorker.js"]
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - DATABASE_USERNAME=${POSTGRES_USER}
+      - DATABASE_PASSWORD=${POSTGRES_PASSWORD}
+      - DATABASE_NAME=${POSTGRES_DB}
+      - DATABASE_HOST=${DB_HOST}
+      - DATABASE_PORT=${DB_PORT}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
     networks:
       - basenet
 

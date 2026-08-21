@@ -145,14 +145,25 @@ export function BusinessApplicationsTab() {
         const workerName = profile ? `${profile.firstName} ${profile.lastName}` : "Виконавець";
         const schedule = new Date(application.Shift.startTime).toLocaleString("uk-UA", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
         const isApproved = application.status === "approved";
-        const canComplete = isApproved && new Date(application.Shift.endTime) <= new Date();
+        const requiresCompletionDecision = isApproved && new Date(application.Shift.endTime) <= new Date();
+        const canComplete = requiresCompletionDecision;
+        const applicationLabel = requiresCompletionDecision
+          ? "Потрібне рішення"
+          : isApproved
+            ? "Підтверджено"
+            : "Нова заявка";
+        const applicationLabelClass = requiresCompletionDecision
+          ? "bg-warning/10 text-warning"
+          : isApproved
+            ? "bg-accent/10 text-accent-text"
+            : "bg-warning/10 text-warning";
 
         return (
           <article key={application.id} className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <Link to={`/workers/${application.User.id}`} className="font-heading font-semibold transition-colors hover:text-accent-text hover:underline">{workerName}</Link>
-                <span className={`rounded-[var(--radius-pill)] px-3 py-1 text-xs font-medium ${isApproved ? "bg-accent/10 text-accent-text" : "bg-warning/10 text-warning"}`}>{isApproved ? "Підтверджено" : "Нова заявка"}</span>
+                <span className={`rounded-[var(--radius-pill)] px-3 py-1 text-xs font-medium ${applicationLabelClass}`}>{applicationLabel}</span>
               </div>
               <p className="mt-1 text-sm text-text-muted">
                 На зміну: <Link to={`/shifts/${application.Shift.id}`} className="font-medium text-text transition-colors hover:text-accent-text hover:underline">{application.Shift.JobPosition.title}</Link>

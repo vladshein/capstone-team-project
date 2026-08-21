@@ -11,6 +11,10 @@ import {
   // updateAvatarController,
 } from "../controllers/authControllers.js";
 import authenticate from "../middlewares/authenticate.js";
+import {
+  loginRateLimit,
+  registerRateLimit,
+} from "../middlewares/authRateLimit.js";
 
 const authRouter = express.Router();
 
@@ -40,7 +44,12 @@ const authRouter = express.Router();
  *   }
  * }
  */
-authRouter.post("/register", validateBody(registerSchema), registerController);
+authRouter.post(
+  "/register",
+  registerRateLimit,
+  validateBody(registerSchema),
+  registerController,
+);
 
 
 
@@ -70,7 +79,12 @@ authRouter.post("/register", validateBody(registerSchema), registerController);
  *   }
  * }
  */
-authRouter.post("/login", validateBody(loginSchema), loginController);
+authRouter.post(
+  "/login",
+  loginRateLimit,
+  validateBody(loginSchema),
+  loginController,
+);
 
 
 /**
