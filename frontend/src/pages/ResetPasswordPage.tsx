@@ -79,7 +79,7 @@ export default function ResetPasswordPage({
         icon={<CircleAlert aria-hidden="true" className="h-7 w-7" />}
         iconClassName="bg-danger/10 text-danger"
         title="Посилання недійсне"
-        message="Посилання для відновлення пароля неповне або вже не дійсне. Запросіть нове."
+        message="Посилання для відновлення пароля неповне або вже недійсне. Запросіть нове."
         actionLabel="Надіслати нове посилання"
         onAction={() => openAuthModal(onOpenForgotPassword)}
       />

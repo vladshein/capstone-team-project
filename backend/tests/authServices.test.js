@@ -15,6 +15,7 @@ const createEmailVerificationToken = jest.fn();
 const createPasswordResetToken = jest.fn();
 const createRefreshToken = jest.fn();
 const getPasswordResetTokenUserId = jest.fn();
+const hasCurrentAuthTokenFingerprint = jest.fn();
 const verifyEmailVerificationToken = jest.fn();
 const verifyPasswordResetToken = jest.fn();
 const verifyRefreshToken = jest.fn();
@@ -47,6 +48,7 @@ jest.unstable_mockModule("../helpers/jwt.js", () => ({
   createPasswordResetToken,
   createRefreshToken,
   getPasswordResetTokenUserId,
+  hasCurrentAuthTokenFingerprint,
   verifyEmailVerificationToken,
   verifyPasswordResetToken,
   verifyRefreshToken,
@@ -123,8 +125,14 @@ describe("auth services", () => {
       avatar: "https://avatar.example/generated.png",
       role: "worker",
     });
-    expect(createAccessToken).toHaveBeenCalledWith({ id: storedUser.id });
-    expect(createRefreshToken).toHaveBeenCalledWith({ id: storedUser.id });
+    expect(createAccessToken).toHaveBeenCalledWith({
+      id: storedUser.id,
+      passwordHash: storedUser.passwordHash,
+    });
+    expect(createRefreshToken).toHaveBeenCalledWith({
+      id: storedUser.id,
+      passwordHash: storedUser.passwordHash,
+    });
   });
 
   test("rejects registration when the email is already registered", async () => {
@@ -243,7 +251,10 @@ describe("auth services", () => {
   });
 
   test("rejects a valid refresh token when its user no longer exists", async () => {
-    verifyRefreshToken.mockReturnValue({ data: { id: 42 }, error: null });
+    verifyRefreshToken.mockReturnValue({
+      data: { id: 42, authFingerprint: "current-fingerprint" },
+      error: null,
+    });
     findUser.mockResolvedValue(null);
 
     await expect(refreshUser("valid-token")).rejects.toMatchObject({
@@ -254,8 +265,12 @@ describe("auth services", () => {
 
   test("rotates tokens for a valid refresh request", async () => {
     const user = createStoredUser({ role: "business_client", name: "Кав'ярня" });
-    verifyRefreshToken.mockReturnValue({ data: { id: user.id }, error: null });
+    verifyRefreshToken.mockReturnValue({
+      data: { id: user.id, authFingerprint: "current-fingerprint" },
+      error: null,
+    });
     findUser.mockResolvedValue(user);
+    hasCurrentAuthTokenFingerprint.mockReturnValue(true);
     createAccessToken.mockReturnValue("rotated-access-token");
     createRefreshToken.mockReturnValue("rotated-refresh-token");
 
@@ -274,8 +289,32 @@ describe("auth services", () => {
     });
 
     expect(findWorkerProfile).not.toHaveBeenCalled();
-    expect(createAccessToken).toHaveBeenCalledWith({ id: user.id });
-    expect(createRefreshToken).toHaveBeenCalledWith({ id: user.id });
+    expect(createAccessToken).toHaveBeenCalledWith({
+      id: user.id,
+      passwordHash: user.passwordHash,
+    });
+    expect(createRefreshToken).toHaveBeenCalledWith({
+      id: user.id,
+      passwordHash: user.passwordHash,
+    });
+  });
+
+  test("rejects a refresh token issued before the current password", async () => {
+    const user = createStoredUser();
+    verifyRefreshToken.mockReturnValue({
+      data: { id: user.id, authFingerprint: "old-fingerprint" },
+      error: null,
+    });
+    findUser.mockResolvedValue(user);
+    hasCurrentAuthTokenFingerprint.mockReturnValue(false);
+
+    await expect(refreshUser("old-refresh-token")).rejects.toMatchObject({
+      status: 401,
+      message: "Invalid refresh token",
+    });
+
+    expect(createAccessToken).not.toHaveBeenCalled();
+    expect(createRefreshToken).not.toHaveBeenCalled();
   });
 
   test("creates a verification recipient only for an existing unverified user", async () => {

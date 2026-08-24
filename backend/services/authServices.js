@@ -11,6 +11,7 @@ import {
   createPasswordResetToken,
   createRefreshToken,
   getPasswordResetTokenUserId,
+  hasCurrentAuthTokenFingerprint,
   verifyEmailVerificationToken,
   verifyPasswordResetToken,
   verifyRefreshToken,
@@ -86,8 +87,14 @@ export const registerUser = async (payload) => {
     role: databaseRole,
   });
 
-  const accessToken = createAccessToken({ id: newUser.id });
-  const refreshToken = createRefreshToken({ id: newUser.id });
+  const accessToken = createAccessToken({
+    id: newUser.id,
+    passwordHash: newUser.passwordHash,
+  });
+  const refreshToken = createRefreshToken({
+    id: newUser.id,
+    passwordHash: newUser.passwordHash,
+  });
 
   return { ...buildAuthResponse(newUser, accessToken), refreshToken };
 };
@@ -224,8 +231,8 @@ export const loginUser = async ({ password, email }) => {
     throw HttpError(401, "Email or password invalid");
   }
 
-  const accessToken = createAccessToken({ id: user.id });
-  const refreshToken = createRefreshToken({ id: user.id });
+  const accessToken = createAccessToken({ id: user.id, passwordHash: user.passwordHash });
+  const refreshToken = createRefreshToken({ id: user.id, passwordHash: user.passwordHash });
   const displayName = await getDisplayName(user);
 
   return { ...buildAuthResponse(user, accessToken, displayName), refreshToken };
@@ -246,8 +253,14 @@ export const refreshUser = async (token) => {
     throw HttpError(401, "User not found");
   }
 
-  const accessToken = createAccessToken({ id: user.id });
-  const refreshToken = createRefreshToken({ id: user.id });
+  // Зміна пароля змінює fingerprint, тому refresh з будь-якого старого
+  // пристрою не може випустити нову пару токенів.
+  if (!hasCurrentAuthTokenFingerprint(data, user.passwordHash)) {
+    throw HttpError(401, "Invalid refresh token");
+  }
+
+  const accessToken = createAccessToken({ id: user.id, passwordHash: user.passwordHash });
+  const refreshToken = createRefreshToken({ id: user.id, passwordHash: user.passwordHash });
   const displayName = await getDisplayName(user);
 
   return { ...buildAuthResponse(user, accessToken, displayName), refreshToken };

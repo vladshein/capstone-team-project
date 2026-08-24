@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import { createHmac } from "node:crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 
 const {
   JWT_SECRET,
@@ -10,12 +10,47 @@ const {
 const EMAIL_VERIFICATION_PURPOSE = "email-verification";
 const PASSWORD_RESET_PURPOSE = "password-reset";
 
-export const createAccessToken = (payload) => {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: "15m" });
+/**
+ * Не додаємо passwordHash до JWT: це чутливе значення, а payload токена
+ * можна прочитати без секрету. Натомість зберігаємо HMAC-відбиток хешу.
+ * Після зміни пароля відбиток змінюється, тому всі старі сесії стають
+ * недійсними без окремого поля чи таблиці в БД.
+ */
+export const getAuthTokenFingerprint = (passwordHash) => {
+  if (!passwordHash) {
+    throw new Error("Password hash is required to create an authentication token");
+  }
+
+  return createHmac("sha256", JWT_SECRET)
+    .update(`auth-token:${passwordHash}`)
+    .digest("base64url");
 };
 
-export const createRefreshToken = (payload) => {
-  return jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: "7d" });
+const createAuthTokenPayload = ({ id, passwordHash }) => ({
+  id,
+  authFingerprint: getAuthTokenFingerprint(passwordHash),
+});
+
+export const createAccessToken = (payload) =>
+  jwt.sign(createAuthTokenPayload(payload), JWT_SECRET, { expiresIn: "15m" });
+
+export const createRefreshToken = (payload) =>
+  jwt.sign(createAuthTokenPayload(payload), JWT_REFRESH_SECRET, { expiresIn: "7d" });
+
+/**
+ * Старі JWT без authFingerprint навмисно не приймаються. Так користувача
+ * один раз попросять увійти знову після появи механізму інвалідації сесій.
+ */
+export const hasCurrentAuthTokenFingerprint = (payload, passwordHash) => {
+  if (typeof payload?.authFingerprint !== "string" || !passwordHash) {
+    return false;
+  }
+
+  const expectedFingerprint = getAuthTokenFingerprint(passwordHash);
+  const received = Buffer.from(payload.authFingerprint);
+  const expected = Buffer.from(expectedFingerprint);
+
+  return received.length === expected.length && timingSafeEqual(received, expected);
 };
 
 /**

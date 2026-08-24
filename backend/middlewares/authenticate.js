@@ -1,5 +1,8 @@
 import HttpError from '../helpers/HttpError.js';
-import { verifyAccessToken } from '../helpers/jwt.js';
+import {
+  hasCurrentAuthTokenFingerprint,
+  verifyAccessToken,
+} from '../helpers/jwt.js';
 import { findUser } from '../services/authServices.js';
 
 const authenticate = async (req, res, next) => {
@@ -20,7 +23,10 @@ const authenticate = async (req, res, next) => {
     throw HttpError(401, 'User not found');
   }
 
-  // видалено перевірки user.token !== token — access token самодостатній (stateless)
+  if (!hasCurrentAuthTokenFingerprint(data, user.passwordHash)) {
+    throw HttpError(401, 'Authentication token is no longer valid');
+  }
+
   req.user = user;
   next();
 };
