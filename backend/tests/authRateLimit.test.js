@@ -1,0 +1,35 @@
+import express from "express";
+import request from "supertest";
+
+import {
+  loginRateLimit,
+  registerRateLimit,
+} from "../middlewares/authRateLimit.js";
+
+const createApp = (middleware) => {
+  const app = express();
+  app.post("/", middleware, (_req, res) => res.status(200).json({ ok: true }));
+  return app;
+};
+
+describe("auth rate limits", () => {
+  test("limits registration attempts after five requests from one client", async () => {
+    const app = createApp(registerRateLimit);
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await request(app).post("/").expect(200, { ok: true });
+    }
+
+    await request(app)
+      .post("/")
+      .expect(429, { message: "Забагато спроб. Спробуйте ще раз пізніше." });
+  });
+
+  test("does not limit successful login requests", async () => {
+    const app = createApp(loginRateLimit);
+
+    for (let attempt = 0; attempt < 11; attempt += 1) {
+      await request(app).post("/").expect(200, { ok: true });
+    }
+  });
+});

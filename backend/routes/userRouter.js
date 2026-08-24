@@ -15,7 +15,9 @@ const userRouter = express.Router();
 // Профіль поточного воркер юзера або компанії зі списку поточного бізнес юзера
 userRouter.get("/me/profile", authenticate, resolveProfileStrategy, getCurrentUser);
 
-userRouter.get("/current", authenticate, getCurrentUser);
+// `/current` повертає той самий профільний контекст, що й `/me/profile`.
+// Без resolveProfileStrategy контролер не має `req.profileStrategy` і падає.
+userRouter.get("/current", authenticate, resolveProfileStrategy, getCurrentUser);
 userRouter.patch(
   "/avatars",
   authenticate,
