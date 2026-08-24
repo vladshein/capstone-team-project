@@ -7,6 +7,7 @@ import {
 } from "../schemas/shiftSchemas.js";
 import checkRole from "../middlewares/checkRole.js";
 import authenticate from "../middlewares/authenticate.js";
+import requireVerifiedEmail from "../middlewares/requireVerifiedEmail.js";
 
 const shiftRouter = express.Router();
 
@@ -61,6 +62,7 @@ shiftRouter.patch(
   "/applications/:applicationId/status",
   authenticate,
   checkRole("business_client", "admin"),
+  requireVerifiedEmail,
   shiftController.decideBusinessShiftApplication,
 );
 
@@ -69,6 +71,7 @@ shiftRouter.patch(
   "/applications/:applicationId/complete",
   authenticate,
   checkRole("business_client", "admin"),
+  requireVerifiedEmail,
   shiftController.completeBusinessShiftApplication,
 );
 
@@ -77,6 +80,7 @@ shiftRouter.patch(
   "/applications/:applicationId/no-show",
   authenticate,
   checkRole("business_client", "admin"),
+  requireVerifiedEmail,
   shiftController.markBusinessShiftApplicationNoShow,
 );
 
@@ -104,6 +108,7 @@ shiftRouter.post(
   "/",
   authenticate,
   checkRole("business_client", "admin"),
+  requireVerifiedEmail,
   validateBody(createShiftSchema),
   shiftController.createShift,
 );
@@ -116,6 +121,7 @@ shiftRouter.post(
   "/:id/applications",
   authenticate,
   checkRole("worker"),
+  requireVerifiedEmail,
   shiftController.applyToShift,
 );
 
@@ -127,6 +133,7 @@ shiftRouter.patch(
   "/:id",
   authenticate,
   checkRole("business_client", "admin"),
+  requireVerifiedEmail,
   validateBody(updateShiftSchema),
   shiftController.updateShift,
 );
@@ -139,6 +146,7 @@ shiftRouter.patch(
   "/:id/cancel",
   authenticate,
   checkRole("business_client", "admin"),
+  requireVerifiedEmail,
   shiftController.cancelShift,
 );
 

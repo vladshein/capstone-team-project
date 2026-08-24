@@ -238,6 +238,11 @@ export default function ShiftsDetailPage() {
       return;
     }
 
+    if (user.isVerified === false) {
+      toast.error("Підтвердьте email, щоб відгукнутися на зміну.");
+      return;
+    }
+
     try {
       const createdApplication = await dispatch(applyToShift(shift.id)).unwrap();
       setActiveApplication({
