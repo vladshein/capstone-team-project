@@ -1,13 +1,18 @@
 import {
   ensureEmailIsNotVerified,
+  getPasswordResetRequestUserId,
   registerUser,
   loginUser,
+  resetUserPassword,
   refreshUser,
   updateAvatar,
   getUserFollowers,
   verifyUserEmail,
 } from "../services/authServices.js";
-import { enqueueEmailVerification } from "../queues/shiftLifecycleQueue.js";
+import {
+  enqueueEmailVerification,
+  enqueuePasswordReset,
+} from "../queues/shiftLifecycleQueue.js";
 
 const REFRESH_COOKIE_OPTIONS = {
   httpOnly: true,
@@ -66,6 +71,38 @@ export const resendEmailVerificationController = async (req, res) => {
 
   res.status(202).json({
     message: "Лист для підтвердження надіслано повторно.",
+  });
+};
+
+/**
+ * Завжди повертає однакову відповідь, щоб не розкривати, чи існує акаунт
+ * з конкретною email-адресою.
+ */
+export const forgotPasswordController = async (req, res) => {
+  const userId = await getPasswordResetRequestUserId(req.body.email);
+
+  if (userId) {
+    // Не чекаємо SMTP: відповідь не повинна залежати від існування користувача
+    // чи короткочасної доступності Valkey.
+    void enqueuePasswordReset(userId).catch((error) => {
+      console.error("[email] password reset job was not enqueued", {
+        userId,
+        message: error.message,
+      });
+    });
+  }
+
+  res.status(202).json({
+    message: "Якщо акаунт з такою email-адресою існує, ми надіслали інструкції для відновлення пароля.",
+  });
+};
+
+export const resetPasswordController = async (req, res) => {
+  await resetUserPassword(req.body);
+  // Поточний браузер також має увійти заново з новим паролем.
+  res.clearCookie("refreshToken", { path: "/api/auth" });
+  res.status(200).json({
+    message: "Пароль успішно оновлено. Тепер увійдіть з новим паролем.",
   });
 };
 

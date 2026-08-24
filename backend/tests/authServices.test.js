@@ -4,6 +4,7 @@ import { Op } from "sequelize";
 const findUser = jest.fn();
 const createUser = jest.fn();
 const findUserByPk = jest.fn();
+const updateUser = jest.fn();
 const findWorkerProfile = jest.fn();
 const hashPassword = jest.fn();
 const comparePassword = jest.fn();
@@ -11,8 +12,11 @@ const gravatarUrl = jest.fn();
 const renameFile = jest.fn();
 const createAccessToken = jest.fn();
 const createEmailVerificationToken = jest.fn();
+const createPasswordResetToken = jest.fn();
 const createRefreshToken = jest.fn();
+const getPasswordResetTokenUserId = jest.fn();
 const verifyEmailVerificationToken = jest.fn();
+const verifyPasswordResetToken = jest.fn();
 const verifyRefreshToken = jest.fn();
 
 jest.unstable_mockModule("../db/models/index.js", () => ({
@@ -20,6 +24,7 @@ jest.unstable_mockModule("../db/models/index.js", () => ({
     findOne: findUser,
     create: createUser,
     findByPk: findUserByPk,
+    update: updateUser,
   },
   WorkerProfile: { findOne: findWorkerProfile },
 }));
@@ -39,8 +44,11 @@ jest.unstable_mockModule("node:fs/promises", () => ({
 jest.unstable_mockModule("../helpers/jwt.js", () => ({
   createAccessToken,
   createEmailVerificationToken,
+  createPasswordResetToken,
   createRefreshToken,
+  getPasswordResetTokenUserId,
   verifyEmailVerificationToken,
+  verifyPasswordResetToken,
   verifyRefreshToken,
 }));
 
@@ -51,6 +59,9 @@ const {
   updateAvatar,
   getUserFollowers,
   getEmailVerificationRecipient,
+  getPasswordResetRecipient,
+  getPasswordResetRequestUserId,
+  resetUserPassword,
   verifyUserEmail,
   ensureEmailIsNotVerified,
 } = await import("../services/authServices.js");
@@ -291,6 +302,81 @@ describe("auth services", () => {
     await expect(getEmailVerificationRecipient(42)).resolves.toBeNull();
     await expect(getEmailVerificationRecipient(999)).resolves.toBeNull();
     expect(createEmailVerificationToken).not.toHaveBeenCalled();
+  });
+
+  test("returns only an existing user's id for a password-reset request", async () => {
+    findUser.mockResolvedValueOnce({ id: 42 }).mockResolvedValueOnce(null);
+
+    await expect(getPasswordResetRequestUserId("worker@example.com")).resolves.toBe(42);
+    await expect(getPasswordResetRequestUserId("missing@example.com")).resolves.toBeNull();
+
+    expect(findUser).toHaveBeenNthCalledWith(1, {
+      where: { email: "worker@example.com" },
+      attributes: ["id"],
+    });
+  });
+
+  test("creates a password-reset recipient only for an existing user", async () => {
+    const user = createStoredUser();
+    findUserByPk.mockResolvedValue(user);
+    createPasswordResetToken.mockReturnValue("password-reset-token");
+
+    await expect(getPasswordResetRecipient(user.id)).resolves.toEqual({
+      email: user.email,
+      token: "password-reset-token",
+    });
+
+    expect(findUserByPk).toHaveBeenCalledWith(user.id, {
+      attributes: ["id", "email", "passwordHash"],
+    });
+    expect(createPasswordResetToken).toHaveBeenCalledWith({
+      id: user.id,
+      passwordHash: user.passwordHash,
+    });
+  });
+
+  test("rejects a password reset before hashing when its link is invalid", async () => {
+    getPasswordResetTokenUserId.mockReturnValue(null);
+
+    await expect(
+      resetUserPassword({ token: "invalid-token", password: "new-secure-password" }),
+    ).rejects.toMatchObject({ status: 400 });
+
+    expect(hashPassword).not.toHaveBeenCalled();
+    expect(updateUser).not.toHaveBeenCalled();
+  });
+
+  test("resets a password atomically and confirms mailbox ownership", async () => {
+    const user = createStoredUser();
+    getPasswordResetTokenUserId.mockReturnValue(user.id);
+    findUserByPk.mockResolvedValue(user);
+    verifyPasswordResetToken.mockReturnValue({ data: { id: user.id }, error: null });
+    hashPassword.mockResolvedValue("new-password-hash");
+    updateUser.mockResolvedValue([1]);
+
+    await expect(
+      resetUserPassword({ token: "valid-token", password: "new-secure-password" }),
+    ).resolves.toBeUndefined();
+
+    expect(verifyPasswordResetToken).toHaveBeenCalledWith("valid-token", user.passwordHash);
+    expect(hashPassword).toHaveBeenCalledWith("new-secure-password", 10);
+    expect(updateUser).toHaveBeenCalledWith(
+      { passwordHash: "new-password-hash", isVerified: true },
+      { where: { id: user.id, passwordHash: user.passwordHash } },
+    );
+  });
+
+  test("rejects a reset link that was already consumed by a concurrent request", async () => {
+    const user = createStoredUser();
+    getPasswordResetTokenUserId.mockReturnValue(user.id);
+    findUserByPk.mockResolvedValue(user);
+    verifyPasswordResetToken.mockReturnValue({ data: { id: user.id }, error: null });
+    hashPassword.mockResolvedValue("new-password-hash");
+    updateUser.mockResolvedValue([0]);
+
+    await expect(
+      resetUserPassword({ token: "valid-token", password: "new-secure-password" }),
+    ).rejects.toMatchObject({ status: 400 });
   });
 
   test("marks a user as verified and treats a repeated link as idempotent", async () => {

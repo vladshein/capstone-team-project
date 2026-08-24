@@ -36,3 +36,21 @@ export const resendVerificationRateLimit = rateLimit({
   legacyHeaders: false,
   message: rateLimitMessage,
 });
+
+/** Не дає перетворити відновлення пароля на канал масових листів. */
+export const forgotPasswordRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: rateLimitMessage,
+});
+
+/** Обмежує перебір і навантаження bcrypt на endpoint встановлення пароля. */
+export const resetPasswordRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: rateLimitMessage,
+});

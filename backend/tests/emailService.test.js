@@ -18,6 +18,7 @@ process.env.SMTP_FROM = "notifications@example.com";
 
 const {
   getSmtpConfig,
+  sendPasswordResetEmail,
   sendVerificationEmail,
   verifyEmailTransport,
 } = await import("../services/emailService.js");
@@ -60,6 +61,22 @@ describe("email service", () => {
         "https://zmina.example/email-verification#token=short-lived-token",
       ),
       html: expect.stringContaining("Підтвердити email"),
+    }));
+  });
+
+  test("sends a short-lived password-reset link through the same SMTP transport", async () => {
+    await sendPasswordResetEmail({
+      email: "worker@example.com",
+      token: "short-lived-reset-token",
+    });
+
+    expect(sendMail).toHaveBeenCalledWith(expect.objectContaining({
+      to: "worker@example.com",
+      subject: "Відновлення пароля — Зміна",
+      text: expect.stringContaining(
+        "https://zmina.example/reset-password#token=short-lived-reset-token",
+      ),
+      html: expect.stringContaining("Встановити новий пароль"),
     }));
   });
 

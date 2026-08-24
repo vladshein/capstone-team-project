@@ -42,6 +42,7 @@ DATABASE_PORT=5432
 JWT_SECRET=
 JWT_REFRESH_SECRET=
 JWT_EMAIL_VERIFICATION_SECRET=
+JWT_PASSWORD_RESET_SECRET=
 
 # Email (SMTP)
 SMTP_HOST=
@@ -127,8 +128,9 @@ docker compose exec backend npm run db:s
 
 Для роботи потрібно задати у `backend/.env` (локально) або кореневому `.env`
 (production) змінні `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`,
-`SMTP_PASSWORD`, `SMTP_FROM` та окремий випадковий
-`JWT_EMAIL_VERIFICATION_SECRET`. Пароль SMTP не додавайте до Git.
+`SMTP_PASSWORD`, `SMTP_FROM` та окремі випадкові
+`JWT_EMAIL_VERIFICATION_SECRET` і `JWT_PASSWORD_RESET_SECRET`. Пароль SMTP
+та секрети не додавайте до Git.
 
 Згенерувати окремий secret можна локально:
 
@@ -147,6 +149,14 @@ docker compose logs -f lifecycle-worker
 ```bash
 docker compose exec backend npm run email:verify
 ```
+
+### Відновлення пароля
+
+Запит `POST /api/auth/forgot-password` завжди повертає однакову відповідь,
+щоб не розкривати існування акаунта за email. Для наявного користувача
+`lifecycle-worker` надсилає посилання виду `/reset-password#token=...`.
+Токен діє 15 хвилин і підписаний з урахуванням поточного хешу пароля, тому
+після зміни пароля всі попередні reset-посилання автоматично втрачають силу.
 
 наприклад створити міграцію:
 ```bash

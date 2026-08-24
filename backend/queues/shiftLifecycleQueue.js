@@ -3,6 +3,7 @@ import { createBullMqConnection } from "./bullMqConnection.js";
 
 export const SHIFT_LIFECYCLE_QUEUE = "shift-lifecycle";
 export const EMAIL_VERIFICATION_JOB = "send-email-verification";
+export const PASSWORD_RESET_EMAIL_JOB = "send-password-reset";
 
 export { createBullMqConnection };
 
@@ -47,6 +48,24 @@ export const enqueueEmailVerification = async (userId) => {
 
   return getShiftLifecycleQueue().add(
     EMAIL_VERIFICATION_JOB,
+    { userId: Number(userId) },
+    {
+      attempts: 5,
+      backoff: { type: "exponential", delay: 10_000 },
+      removeOnComplete: 100,
+      removeOnFail: 100,
+    },
+  );
+};
+
+/** Додає лише userId: чутливі дані створюються worker-ом безпосередньо перед SMTP. */
+export const enqueuePasswordReset = async (userId) => {
+  if (!Number.isInteger(Number(userId))) {
+    throw new Error("A valid user id is required for password reset.");
+  }
+
+  return getShiftLifecycleQueue().add(
+    PASSWORD_RESET_EMAIL_JOB,
     { userId: Number(userId) },
     {
       attempts: 5,

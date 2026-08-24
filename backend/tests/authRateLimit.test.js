@@ -3,7 +3,9 @@ import request from "supertest";
 
 import {
   loginRateLimit,
+  forgotPasswordRateLimit,
   registerRateLimit,
+  resetPasswordRateLimit,
   resendVerificationRateLimit,
 } from "../middlewares/authRateLimit.js";
 
@@ -38,6 +40,30 @@ describe("auth rate limits", () => {
     const app = createApp(resendVerificationRateLimit);
 
     await request(app).post("/").expect(200, { ok: true });
+    await request(app)
+      .post("/")
+      .expect(429, { message: "Забагато спроб. Спробуйте ще раз пізніше." });
+  });
+
+  test("limits password-reset email requests after three attempts", async () => {
+    const app = createApp(forgotPasswordRateLimit);
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      await request(app).post("/").expect(200, { ok: true });
+    }
+
+    await request(app)
+      .post("/")
+      .expect(429, { message: "Забагато спроб. Спробуйте ще раз пізніше." });
+  });
+
+  test("limits password changes after five attempts", async () => {
+    const app = createApp(resetPasswordRateLimit);
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await request(app).post("/").expect(200, { ok: true });
+    }
+
     await request(app)
       .post("/")
       .expect(429, { message: "Забагато спроб. Спробуйте ще раз пізніше." });

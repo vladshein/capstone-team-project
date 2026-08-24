@@ -32,6 +32,7 @@ const requiredEnvVars = [
   "JWT_SECRET",
   "JWT_REFRESH_SECRET",
   "JWT_EMAIL_VERIFICATION_SECRET",
+  "JWT_PASSWORD_RESET_SECRET",
 ];
 for (const key of requiredEnvVars) {
   if (!process.env[key]) {

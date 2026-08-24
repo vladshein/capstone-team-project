@@ -1,13 +1,20 @@
 import { Worker } from "bullmq";
 import sequelize from "../db/sequelize.js";
-import { getEmailVerificationRecipient } from "../services/authServices.js";
-import { sendVerificationEmail } from "../services/emailService.js";
+import {
+  getEmailVerificationRecipient,
+  getPasswordResetRecipient,
+} from "../services/authServices.js";
+import {
+  sendPasswordResetEmail,
+  sendVerificationEmail,
+} from "../services/emailService.js";
 import { reconcileShiftLifecycle } from "../services/shiftLifecycleServices.js";
 import {
   createBullMqConnection,
   closeShiftLifecycleQueue,
   EMAIL_VERIFICATION_JOB,
   getShiftLifecycleQueue,
+  PASSWORD_RESET_EMAIL_JOB,
   SHIFT_LIFECYCLE_QUEUE,
 } from "../queues/shiftLifecycleQueue.js";
 
@@ -37,6 +44,18 @@ const worker = new Worker(
       }
 
       await sendVerificationEmail(recipient);
+      return { status: "sent", userId: job.data.userId };
+    }
+
+    if (job.name === PASSWORD_RESET_EMAIL_JOB) {
+      const recipient = await getPasswordResetRecipient(job.data.userId);
+
+      // Акаунт міг бути видалений, поки завдання чекало в черзі.
+      if (!recipient) {
+        return { status: "skipped", userId: job.data.userId };
+      }
+
+      await sendPasswordResetEmail(recipient);
       return { status: "sent", userId: job.data.userId };
     }
 

@@ -4,14 +4,18 @@ import upload from "../middlewares/upload.js";
 
 import {
   registerSchema,
+  forgotPasswordSchema,
   loginSchema,
+  resetPasswordSchema,
   verifyEmailSchema,
 } from "../schemas/authSchemas.js";
 import {
   registerController,
   loginController,
   refreshController,
+  forgotPasswordController,
   logoutController,
+  resetPasswordController,
   resendEmailVerificationController,
   verifyEmailController,
   // updateAvatarController,
@@ -19,7 +23,9 @@ import {
 import authenticate from "../middlewares/authenticate.js";
 import {
   loginRateLimit,
+  forgotPasswordRateLimit,
   registerRateLimit,
+  resetPasswordRateLimit,
   resendVerificationRateLimit,
 } from "../middlewares/authRateLimit.js";
 
@@ -133,6 +139,22 @@ authRouter.post("/refresh", refreshController);
  * }
  */
 authRouter.post("/logout", logoutController);
+
+/** Однакова відповідь для наявного й відсутнього email. */
+authRouter.post(
+  "/forgot-password",
+  forgotPasswordRateLimit,
+  validateBody(forgotPasswordSchema),
+  forgotPasswordController,
+);
+
+/** Token передає frontend із URL fragment тільки в POST body. */
+authRouter.post(
+  "/reset-password",
+  resetPasswordRateLimit,
+  validateBody(resetPasswordSchema),
+  resetPasswordController,
+);
 
 /** Token з fragment обробляє frontend і передає API тільки POST body. */
 authRouter.post("/verify-email", validateBody(verifyEmailSchema), verifyEmailController);

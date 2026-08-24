@@ -6,7 +6,10 @@ const refreshUser = jest.fn();
 const updateAvatar = jest.fn();
 const verifyUserEmail = jest.fn();
 const ensureEmailIsNotVerified = jest.fn();
+const getPasswordResetRequestUserId = jest.fn();
+const resetUserPassword = jest.fn();
 const enqueueEmailVerification = jest.fn();
+const enqueuePasswordReset = jest.fn();
 
 jest.unstable_mockModule("../services/authServices.js", () => ({
   registerUser,
@@ -15,6 +18,8 @@ jest.unstable_mockModule("../services/authServices.js", () => ({
   updateAvatar,
   verifyUserEmail,
   ensureEmailIsNotVerified,
+  getPasswordResetRequestUserId,
+  resetUserPassword,
   // Imported by the controller module, but follower functionality is outside
   // the API coverage scope of this test suite.
   getUserFollowers: jest.fn(),
@@ -22,6 +27,7 @@ jest.unstable_mockModule("../services/authServices.js", () => ({
 
 jest.unstable_mockModule("../queues/shiftLifecycleQueue.js", () => ({
   enqueueEmailVerification,
+  enqueuePasswordReset,
 }));
 
 const controller = await import("../controllers/authControllers.js");
@@ -40,6 +46,7 @@ describe("auth controllers", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     enqueueEmailVerification.mockResolvedValue(undefined);
+    enqueuePasswordReset.mockResolvedValue(undefined);
   });
 
   test("registers a user, sets an httpOnly refresh cookie and keeps the refresh token out of JSON", async () => {
@@ -152,6 +159,48 @@ describe("auth controllers", () => {
     expect(res.status).toHaveBeenCalledWith(202);
     expect(res.json).toHaveBeenCalledWith({
       message: "Лист для підтвердження надіслано повторно.",
+    });
+  });
+
+  test("returns the same accepted response for a password reset request and queues a known user", async () => {
+    getPasswordResetRequestUserId.mockResolvedValue(7);
+    const res = createResponse();
+
+    await controller.forgotPasswordController({ body: { email: "worker@example.com" } }, res);
+
+    expect(getPasswordResetRequestUserId).toHaveBeenCalledWith("worker@example.com");
+    expect(enqueuePasswordReset).toHaveBeenCalledWith(7);
+    expect(res.status).toHaveBeenCalledWith(202);
+    expect(res.json).toHaveBeenCalledWith({
+      message: "Якщо акаунт з такою email-адресою існує, ми надіслали інструкції для відновлення пароля.",
+    });
+  });
+
+  test("does not disclose an unknown email in a password reset request", async () => {
+    getPasswordResetRequestUserId.mockResolvedValue(null);
+    const res = createResponse();
+
+    await controller.forgotPasswordController({ body: { email: "unknown@example.com" } }, res);
+
+    expect(enqueuePasswordReset).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(202);
+    expect(res.json).toHaveBeenCalledWith({
+      message: "Якщо акаунт з такою email-адресою існує, ми надіслали інструкції для відновлення пароля.",
+    });
+  });
+
+  test("resets a password and clears the current refresh cookie", async () => {
+    resetUserPassword.mockResolvedValue(undefined);
+    const body = { token: "reset-token", password: "new-secure-password" };
+    const res = createResponse();
+
+    await controller.resetPasswordController({ body }, res);
+
+    expect(resetUserPassword).toHaveBeenCalledWith(body);
+    expect(res.clearCookie).toHaveBeenCalledWith("refreshToken", { path: "/api/auth" });
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      message: "Пароль успішно оновлено. Тепер увійдіть з новим паролем.",
     });
   });
 

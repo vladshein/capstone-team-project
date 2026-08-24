@@ -8,8 +8,11 @@ import path from "node:path";
 import {
   createAccessToken,
   createEmailVerificationToken,
+  createPasswordResetToken,
   createRefreshToken,
+  getPasswordResetTokenUserId,
   verifyEmailVerificationToken,
+  verifyPasswordResetToken,
   verifyRefreshToken,
 } from "../helpers/jwt.js";
 
@@ -106,6 +109,36 @@ export const getEmailVerificationRecipient = async (userId) => {
   };
 };
 
+/** Повертає одержувача листа або null, не розкриваючи існування email назовні. */
+export const getPasswordResetRequestUserId = async (email) => {
+  const user = await User.findOne({
+    where: { email },
+    attributes: ["id"],
+  });
+
+  return user?.id ?? null;
+};
+
+/**
+ * Token створюється worker-ом безпосередньо перед відправленням. У черзі
+ * лишається лише userId, без email, пароля або reset-токена.
+ */
+export const getPasswordResetRecipient = async (userId) => {
+  const user = await User.findByPk(userId, {
+    attributes: ["id", "email", "passwordHash"],
+  });
+
+  if (!user) return null;
+
+  return {
+    email: user.email,
+    token: createPasswordResetToken({
+      id: user.id,
+      passwordHash: user.passwordHash,
+    }),
+  };
+};
+
 export const verifyUserEmail = async (token) => {
   const { data, error } = verifyEmailVerificationToken(token);
   if (error || !data?.id) {
@@ -123,6 +156,47 @@ export const verifyUserEmail = async (token) => {
 
   await user.update({ isVerified: true });
   return { alreadyVerified: false, userId: user.id };
+};
+
+/**
+ * Змінює пароль за короткочасним токеном. Умова passwordHash у WHERE робить
+ * операцію одноразовою навіть для двох одночасно відкритих посилань.
+ */
+export const resetUserPassword = async ({ token, password }) => {
+  const userId = getPasswordResetTokenUserId(token);
+  if (!userId) {
+    throw HttpError(400, "Посилання для відновлення пароля недійсне або вже застаріло.");
+  }
+
+  const user = await User.findByPk(userId, {
+    attributes: ["id", "passwordHash"],
+  });
+  const { data, error } = user
+    ? verifyPasswordResetToken(token, user.passwordHash)
+    : { data: null, error: new Error("Unknown user") };
+
+  if (error || !data?.id || data.id !== userId) {
+    throw HttpError(400, "Посилання для відновлення пароля недійсне або вже застаріло.");
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  const [updatedRows] = await User.update(
+    {
+      passwordHash,
+      // Отримання листа для reset підтверджує контроль над поштовою скринькою.
+      isVerified: true,
+    },
+    {
+      where: {
+        id: user.id,
+        passwordHash: user.passwordHash,
+      },
+    },
+  );
+
+  if (updatedRows !== 1) {
+    throw HttpError(400, "Посилання для відновлення пароля недійсне або вже застаріло.");
+  }
 };
 
 export const ensureEmailIsNotVerified = async (userId) => {

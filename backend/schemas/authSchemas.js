@@ -38,3 +38,21 @@ export const verifyEmailSchema = Joi.object({
     "string.empty": "Токен підтвердження обов'язковий.",
   }),
 });
+
+export const forgotPasswordSchema = Joi.object({
+  email: Joi.string().trim().lowercase().pattern(emailRegExp).required().messages({
+    "any.required": "Вкажіть email.",
+    "string.pattern.base": "Введіть коректний email.",
+  }),
+});
+
+export const resetPasswordSchema = Joi.object({
+  token: Joi.string().trim().required().messages({
+    "any.required": "Посилання для відновлення неповне або недійсне.",
+    "string.empty": "Посилання для відновлення неповне або недійсне.",
+  }),
+  password: Joi.string().min(8).required().messages({
+    "any.required": "Вкажіть новий пароль.",
+    "string.min": "Пароль має містити щонайменше 8 символів.",
+  }),
+});

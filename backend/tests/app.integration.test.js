@@ -6,6 +6,7 @@ process.env.FRONTEND_URL ??= "http://localhost:5173";
 process.env.JWT_SECRET ??= "test-access-secret";
 process.env.JWT_REFRESH_SECRET ??= "test-refresh-secret";
 process.env.JWT_EMAIL_VERIFICATION_SECRET ??= "test-email-verification-secret";
+process.env.JWT_PASSWORD_RESET_SECRET ??= "test-password-reset-secret";
 process.env.DATABASE_DIALECT_DEV ??= "postgres";
 process.env.DATABASE_USERNAME_DEV ??= "postgres";
 process.env.DATABASE_PASSWORD_DEV ??= "postgres";
