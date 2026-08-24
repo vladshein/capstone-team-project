@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import toast, { Toaster } from "react-hot-toast";
 import { AuthModals, type AuthModalMode } from "./components/auth/AuthModals";
+import { EmailVerificationNotice } from "./components/auth/EmailVerificationNotice";
 import type { SignInPayload } from "./components/auth/SignInModal";
 import type { SignUpPayload, UserRole } from "./components/auth/SignUpModal";
 import Loader from "./components/ui/Loader";
@@ -55,6 +56,9 @@ const PublicWorkerProfilePage = lazy(
 );
 const PublicCompanyProfilePage = lazy(
   () => import("./pages/public/PublicCompanyProfilePage"),
+);
+const EmailVerificationPage = lazy(
+  () => import("./pages/EmailVerificationPage"),
 );
 
 const getApiError = (error: unknown): ApiError => {
@@ -116,7 +120,7 @@ export default function App() {
       dispatch(clearCompaniesProfile());
       void dispatch(fetchMyProfile());
       setAuthModal(null);
-      toast.success("Реєстрація успішна!");
+      toast.success("Реєстрація успішна! Перевірте пошту для підтвердження email.");
     } catch (error) {
       const { status, message } = getApiError(error);
       toast.error(status === 409 ? message : `Помилка реєстрації: ${message}`);
@@ -168,6 +172,7 @@ export default function App() {
         onOpenBusinessSignUp={() => openSignUp("business_client")}
         onLogout={handleLogout}
       >
+        <EmailVerificationNotice />
         <Suspense fallback={<Loader fullScreen />}>
           <HashScroll />
           <Routes>
@@ -181,6 +186,7 @@ export default function App() {
               }
             />
             <Route path="/about" element={<AboutPage />} />
+            <Route path="/email-verification" element={<EmailVerificationPage />} />
             <Route path="/shifts/:id" element={<ShiftsDetailPage />} />
             <Route path="/workers/:workerId" element={<PublicWorkerProfilePage />} />
             <Route path="/companies/:companyId" element={<PublicCompanyProfilePage />} />

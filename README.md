@@ -40,6 +40,16 @@ DATABASE_PORT=5432
 
 # JWT
 JWT_SECRET=
+JWT_REFRESH_SECRET=
+JWT_EMAIL_VERIFICATION_SECRET=
+
+# Email (SMTP)
+SMTP_HOST=
+SMTP_PORT=
+SMTP_SECURE=true
+SMTP_USER=
+SMTP_PASSWORD=
+SMTP_FROM=
 
 DATABASE_DIALECT_DEV=postgres
 DATABASE_USERNAME_DEV=test
@@ -65,6 +75,7 @@ docker compose up -d
 - **valkey** — Redis-сумісний кеш/сховище
 - **backend** — Express API (порт `5000`)
 - **frontend** — React додаток (порт `5173`)
+- **lifecycle-worker** — фонове оновлення життєвого циклу змін і надсилання verification-листів
 
 ### 3. Ініціалізація бази даних
 
@@ -102,6 +113,40 @@ docker compose exec backend npm run db:s
 - прострочені `pending` заявки переводить у `rejected`;
 - `open` зміни після завершення переводить у `cancelled`;
 - завершені `booked` зміни не закриває автоматично: компанія має підтвердити виконання або неявку виконавця.
+
+### Підтвердження email
+
+Після реєстрації API додає job до наявної BullMQ-черги, а `lifecycle-worker`
+надсилає лист для підтвердження адреси через SMTP. SMTP не викликається
+безпосередньо в HTTP-запиті, тому повільна або тимчасово недоступна пошта не
+блокує реєстрацію. Для email job налаштовано до п'яти повторних спроб із
+експоненційною затримкою.
+
+Посилання підтвердження містить короткочасний токен у URL fragment (`#token=`),
+а не в query-параметрі. Браузер не передає fragment у HTTP-логах і Referer.
+
+Для роботи потрібно задати у `backend/.env` (локально) або кореневому `.env`
+(production) змінні `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`,
+`SMTP_PASSWORD`, `SMTP_FROM` та окремий випадковий
+`JWT_EMAIL_VERIFICATION_SECRET`. Пароль SMTP не додавайте до Git.
+
+Згенерувати окремий secret можна локально:
+
+```bash
+node -e "console.log(require('node:crypto').randomBytes(48).toString('hex'))"
+```
+
+Перевірити запуск worker-а можна командою:
+
+```bash
+docker compose logs -f lifecycle-worker
+```
+
+Безпечна перевірка авторизації SMTP без надсилання листа:
+
+```bash
+docker compose exec backend npm run email:verify
+```
 
 наприклад створити міграцію:
 ```bash

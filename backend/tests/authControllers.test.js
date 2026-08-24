@@ -4,15 +4,24 @@ const registerUser = jest.fn();
 const loginUser = jest.fn();
 const refreshUser = jest.fn();
 const updateAvatar = jest.fn();
+const verifyUserEmail = jest.fn();
+const ensureEmailIsNotVerified = jest.fn();
+const enqueueEmailVerification = jest.fn();
 
 jest.unstable_mockModule("../services/authServices.js", () => ({
   registerUser,
   loginUser,
   refreshUser,
   updateAvatar,
+  verifyUserEmail,
+  ensureEmailIsNotVerified,
   // Imported by the controller module, but follower functionality is outside
   // the API coverage scope of this test suite.
   getUserFollowers: jest.fn(),
+}));
+
+jest.unstable_mockModule("../queues/shiftLifecycleQueue.js", () => ({
+  enqueueEmailVerification,
 }));
 
 const controller = await import("../controllers/authControllers.js");
@@ -30,6 +39,7 @@ const createResponse = () => {
 describe("auth controllers", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    enqueueEmailVerification.mockResolvedValue(undefined);
   });
 
   test("registers a user, sets an httpOnly refresh cookie and keeps the refresh token out of JSON", async () => {
@@ -58,6 +68,7 @@ describe("auth controllers", () => {
       accessToken: "access-token",
       user: { id: 7 },
     });
+    expect(enqueueEmailVerification).toHaveBeenCalledWith(7);
   });
 
   test("logs in with the validated request body and rotates the browser refresh cookie", async () => {
@@ -113,6 +124,35 @@ describe("auth controllers", () => {
     expect(res.clearCookie).toHaveBeenCalledWith("refreshToken", { path: "/api/auth" });
     expect(res.status).toHaveBeenCalledWith(204);
     expect(res.send).toHaveBeenCalledTimes(1);
+  });
+
+  test("verifies a token and returns a user-friendly message", async () => {
+    verifyUserEmail.mockResolvedValue({ alreadyVerified: false, userId: 7 });
+    const res = createResponse();
+
+    await controller.verifyEmailController({ body: { token: "verification-token" } }, res);
+
+    expect(verifyUserEmail).toHaveBeenCalledWith("verification-token");
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      message: "Email успішно підтверджено.",
+      alreadyVerified: false,
+      userId: 7,
+    });
+  });
+
+  test("queues a new email only for an unverified authenticated user", async () => {
+    ensureEmailIsNotVerified.mockResolvedValue(undefined);
+    const res = createResponse();
+
+    await controller.resendEmailVerificationController({ user: { id: 7 } }, res);
+
+    expect(ensureEmailIsNotVerified).toHaveBeenCalledWith(7);
+    expect(enqueueEmailVerification).toHaveBeenCalledWith(7);
+    expect(res.status).toHaveBeenCalledWith(202);
+    expect(res.json).toHaveBeenCalledWith({
+      message: "Лист для підтвердження надіслано повторно.",
+    });
   });
 
   test("rejects avatar updates with no uploaded file", async () => {

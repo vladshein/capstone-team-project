@@ -7,7 +7,9 @@ import * as fs from "node:fs/promises";
 import path from "node:path";
 import {
   createAccessToken,
+  createEmailVerificationToken,
   createRefreshToken,
+  verifyEmailVerificationToken,
   verifyRefreshToken,
 } from "../helpers/jwt.js";
 
@@ -85,6 +87,56 @@ export const registerUser = async (payload) => {
   const refreshToken = createRefreshToken({ id: newUser.id });
 
   return { ...buildAuthResponse(newUser, accessToken), refreshToken };
+};
+
+/**
+ * Повертає дані лише для worker-а. Токен формується безпосередньо перед
+ * надсиланням, тому його не потрібно зберігати у Valkey або БД.
+ */
+export const getEmailVerificationRecipient = async (userId) => {
+  const user = await User.findByPk(userId, {
+    attributes: ["id", "email", "isVerified"],
+  });
+
+  if (!user || user.isVerified) return null;
+
+  return {
+    email: user.email,
+    token: createEmailVerificationToken({ id: user.id }),
+  };
+};
+
+export const verifyUserEmail = async (token) => {
+  const { data, error } = verifyEmailVerificationToken(token);
+  if (error || !data?.id) {
+    throw HttpError(400, "Посилання для підтвердження недійсне або вже застаріло.");
+  }
+
+  const user = await User.findByPk(data.id);
+  if (!user) {
+    throw HttpError(404, "Користувача не знайдено.");
+  }
+
+  if (user.isVerified) {
+    return { alreadyVerified: true, userId: user.id };
+  }
+
+  await user.update({ isVerified: true });
+  return { alreadyVerified: false, userId: user.id };
+};
+
+export const ensureEmailIsNotVerified = async (userId) => {
+  const user = await User.findByPk(userId, {
+    attributes: ["id", "isVerified"],
+  });
+
+  if (!user) {
+    throw HttpError(404, "Користувача не знайдено.");
+  }
+
+  if (user.isVerified) {
+    throw HttpError(409, "Email уже підтверджено.");
+  }
 };
 
 export const loginUser = async ({ password, email }) => {

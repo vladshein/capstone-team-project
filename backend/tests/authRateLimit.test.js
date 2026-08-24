@@ -4,6 +4,7 @@ import request from "supertest";
 import {
   loginRateLimit,
   registerRateLimit,
+  resendVerificationRateLimit,
 } from "../middlewares/authRateLimit.js";
 
 const createApp = (middleware) => {
@@ -31,5 +32,14 @@ describe("auth rate limits", () => {
     for (let attempt = 0; attempt < 11; attempt += 1) {
       await request(app).post("/").expect(200, { ok: true });
     }
+  });
+
+  test("allows only one verification resend per five minutes from one client", async () => {
+    const app = createApp(resendVerificationRateLimit);
+
+    await request(app).post("/").expect(200, { ok: true });
+    await request(app)
+      .post("/")
+      .expect(429, { message: "Забагато спроб. Спробуйте ще раз пізніше." });
   });
 });

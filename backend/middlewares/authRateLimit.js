@@ -27,3 +27,12 @@ export const loginRateLimit = rateLimit({
   legacyHeaders: false,
   message: rateLimitMessage,
 });
+
+/** Обмежує повторну відправку, щоб не перетворити SMTP на спам-канал. */
+export const resendVerificationRateLimit = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  limit: 1,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: rateLimitMessage,
+});

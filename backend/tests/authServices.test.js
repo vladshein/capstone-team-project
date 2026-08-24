@@ -10,7 +10,9 @@ const comparePassword = jest.fn();
 const gravatarUrl = jest.fn();
 const renameFile = jest.fn();
 const createAccessToken = jest.fn();
+const createEmailVerificationToken = jest.fn();
 const createRefreshToken = jest.fn();
+const verifyEmailVerificationToken = jest.fn();
 const verifyRefreshToken = jest.fn();
 
 jest.unstable_mockModule("../db/models/index.js", () => ({
@@ -36,7 +38,9 @@ jest.unstable_mockModule("node:fs/promises", () => ({
 
 jest.unstable_mockModule("../helpers/jwt.js", () => ({
   createAccessToken,
+  createEmailVerificationToken,
   createRefreshToken,
+  verifyEmailVerificationToken,
   verifyRefreshToken,
 }));
 
@@ -46,6 +50,9 @@ const {
   refreshUser,
   updateAvatar,
   getUserFollowers,
+  getEmailVerificationRecipient,
+  verifyUserEmail,
+  ensureEmailIsNotVerified,
 } = await import("../services/authServices.js");
 
 const createStoredUser = (overrides = {}) => ({
@@ -258,6 +265,63 @@ describe("auth services", () => {
     expect(findWorkerProfile).not.toHaveBeenCalled();
     expect(createAccessToken).toHaveBeenCalledWith({ id: user.id });
     expect(createRefreshToken).toHaveBeenCalledWith({ id: user.id });
+  });
+
+  test("creates a verification recipient only for an existing unverified user", async () => {
+    const user = createStoredUser();
+    findUserByPk.mockResolvedValue(user);
+    createEmailVerificationToken.mockReturnValue("verification-token");
+
+    await expect(getEmailVerificationRecipient(user.id)).resolves.toEqual({
+      email: user.email,
+      token: "verification-token",
+    });
+
+    expect(findUserByPk).toHaveBeenCalledWith(user.id, {
+      attributes: ["id", "email", "isVerified"],
+    });
+    expect(createEmailVerificationToken).toHaveBeenCalledWith({ id: user.id });
+  });
+
+  test("skips a verification email for an already verified or deleted user", async () => {
+    findUserByPk
+      .mockResolvedValueOnce(createStoredUser({ isVerified: true }))
+      .mockResolvedValueOnce(null);
+
+    await expect(getEmailVerificationRecipient(42)).resolves.toBeNull();
+    await expect(getEmailVerificationRecipient(999)).resolves.toBeNull();
+    expect(createEmailVerificationToken).not.toHaveBeenCalled();
+  });
+
+  test("marks a user as verified and treats a repeated link as idempotent", async () => {
+    const update = jest.fn().mockResolvedValue(undefined);
+    verifyEmailVerificationToken.mockReturnValue({ data: { id: 42 }, error: null });
+    findUserByPk
+      .mockResolvedValueOnce({ id: 42, isVerified: false, update })
+      .mockResolvedValueOnce({ id: 42, isVerified: true });
+
+    await expect(verifyUserEmail("valid-token")).resolves.toEqual({
+      alreadyVerified: false,
+      userId: 42,
+    });
+    await expect(verifyUserEmail("same-token")).resolves.toEqual({
+      alreadyVerified: true,
+      userId: 42,
+    });
+
+    expect(update).toHaveBeenCalledWith({ isVerified: true });
+  });
+
+  test("rejects invalid verification links and prevents resending for a verified user", async () => {
+    verifyEmailVerificationToken.mockReturnValue({ data: null, error: new Error("expired") });
+
+    await expect(verifyUserEmail("expired-token")).rejects.toMatchObject({ status: 400 });
+
+    findUserByPk.mockResolvedValue({ id: 42, isVerified: true });
+    await expect(ensureEmailIsNotVerified(42)).rejects.toMatchObject({
+      status: 409,
+      message: "Email уже підтверджено.",
+    });
   });
 
   test("moves an uploaded avatar and persists the public avatar path", async () => {

@@ -2,18 +2,25 @@ import express from "express";
 import validateBody from "../helpers/validateBody.js";
 import upload from "../middlewares/upload.js";
 
-import { registerSchema, loginSchema } from "../schemas/authSchemas.js";
+import {
+  registerSchema,
+  loginSchema,
+  verifyEmailSchema,
+} from "../schemas/authSchemas.js";
 import {
   registerController,
   loginController,
   refreshController,
   logoutController,
+  resendEmailVerificationController,
+  verifyEmailController,
   // updateAvatarController,
 } from "../controllers/authControllers.js";
 import authenticate from "../middlewares/authenticate.js";
 import {
   loginRateLimit,
   registerRateLimit,
+  resendVerificationRateLimit,
 } from "../middlewares/authRateLimit.js";
 
 const authRouter = express.Router();
@@ -126,6 +133,17 @@ authRouter.post("/refresh", refreshController);
  * }
  */
 authRouter.post("/logout", logoutController);
+
+/** Token з fragment обробляє frontend і передає API тільки POST body. */
+authRouter.post("/verify-email", validateBody(verifyEmailSchema), verifyEmailController);
+
+/** Доступна лише авторизованому власнику непідтвердженої адреси. */
+authRouter.post(
+  "/resend-verification",
+  authenticate,
+  resendVerificationRateLimit,
+  resendEmailVerificationController,
+);
 
 // authRouter.patch("/avatars", authenticate, upload.single("avatar"), updateAvatarController);
 

@@ -31,3 +31,10 @@ export const loginSchema = Joi.object({
     'any.required': 'Email is required',
   }),
 });
+
+export const verifyEmailSchema = Joi.object({
+  token: Joi.string().trim().required().messages({
+    "any.required": "Токен підтвердження обов'язковий.",
+    "string.empty": "Токен підтвердження обов'язковий.",
+  }),
+});
