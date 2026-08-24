@@ -320,6 +320,270 @@ describe("shift controllers: HTTP contracts", () => {
     );
   });
 
+  test("updates an owned open shift that has not started", async () => {
+    const shift = ownerShift();
+    const updated = { ...shift, description: "Оновлений опис" };
+    getShiftById.mockResolvedValue(shift);
+    updateShift.mockResolvedValue(updated);
+    const response = createResponse();
+
+    await shiftController.updateShift(
+      {
+        params: { id: "15" },
+        user: { id: 7 },
+        body: { description: "Оновлений опис", hourlyRate: 280 },
+      },
+      response,
+      jest.fn(),
+    );
+
+    expect(updateShift).toHaveBeenCalledWith("15", {
+      description: "Оновлений опис",
+      hourlyRate: 280,
+    });
+    expect(response.status).toHaveBeenCalledWith(200);
+    expect(response.json).toHaveBeenCalledWith({
+      message: "Зміну успішно оновлено",
+      data: updated,
+    });
+  });
+
+  test("does not update a shift owned by another company", async () => {
+    getShiftById.mockResolvedValue({
+      ...ownerShift(),
+      Location: { Company: { ownerId: 8 } },
+    });
+    const next = jest.fn();
+
+    await shiftController.updateShift(
+      { params: { id: "15" }, user: { id: 7 }, body: { hourlyRate: 280 } },
+      createResponse(),
+      next,
+    );
+
+    expect(updateShift).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: "У вас немає прав на редагування цієї зміни.",
+        status: 403,
+      }),
+    );
+  });
+
+  test("does not update a shift that is no longer open", async () => {
+    getShiftById.mockResolvedValue(ownerShift({ status: "booked" }));
+    const next = jest.fn();
+
+    await shiftController.updateShift(
+      { params: { id: "15" }, user: { id: 7 }, body: { hourlyRate: 280 } },
+      createResponse(),
+      next,
+    );
+
+    expect(updateShift).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: "Не можна редагувати зміну, яка вже заброньована робітником або завершена.",
+        status: 400,
+      }),
+    );
+  });
+
+  test("does not update a shift after its original start time", async () => {
+    getShiftById.mockResolvedValue(ownerShift({ startTime: "2020-01-01T10:00:00.000Z" }));
+    const next = jest.fn();
+
+    await shiftController.updateShift(
+      { params: { id: "15" }, user: { id: 7 }, body: { hourlyRate: 280 } },
+      createResponse(),
+      next,
+    );
+
+    expect(updateShift).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: "Не можна редагувати зміну після її початку.",
+        status: 400,
+      }),
+    );
+  });
+
+  test("does not move an editable shift to a start time in the past", async () => {
+    getShiftById.mockResolvedValue(ownerShift());
+    const next = jest.fn();
+
+    await shiftController.updateShift(
+      {
+        params: { id: "15" },
+        user: { id: 7 },
+        body: { startTime: "2020-01-01T10:00:00.000Z" },
+      },
+      createResponse(),
+      next,
+    );
+
+    expect(updateShift).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: "Час початку зміни має бути в майбутньому.",
+        status: 400,
+      }),
+    );
+  });
+
+  test("returns not found when cancelling a missing shift", async () => {
+    getShiftById.mockResolvedValue(null);
+    const next = jest.fn();
+
+    await shiftController.cancelShift(
+      { params: { id: "15" }, user: { id: 7 } },
+      createResponse(),
+      next,
+    );
+
+    expect(cancelShift).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledWith(
+      expect.objectContaining({ message: "Зміну не знайдено.", status: 404 }),
+    );
+  });
+
+  test("does not cancel a final shift", async () => {
+    getShiftById.mockResolvedValue(ownerShift({ status: "completed" }));
+    const next = jest.fn();
+
+    await shiftController.cancelShift(
+      { params: { id: "15" }, user: { id: 7 } },
+      createResponse(),
+      next,
+    );
+
+    expect(cancelShift).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: "Цю зміну не можна скасувати, вона вже завершена або скасована раніше.",
+        status: 400,
+      }),
+    );
+  });
+
+  test("does not cancel a shift after its start time", async () => {
+    getShiftById.mockResolvedValue(ownerShift({ startTime: "2020-01-01T10:00:00.000Z" }));
+    const next = jest.fn();
+
+    await shiftController.cancelShift(
+      { params: { id: "15" }, user: { id: 7 } },
+      createResponse(),
+      next,
+    );
+
+    expect(cancelShift).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: "Не можна скасувати зміну після її початку.",
+        status: 400,
+      }),
+    );
+  });
+
+  test("maps missing worker applications to a not-found response", async () => {
+    cancelWorkerShiftApplication.mockResolvedValue({ application: null, reason: "not_found" });
+    const next = jest.fn();
+
+    await shiftController.cancelWorkerApplication(
+      { params: { applicationId: "91" }, user: { id: 42 } },
+      createResponse(),
+      next,
+    );
+
+    expect(next).toHaveBeenCalledWith(
+      expect.objectContaining({ message: "Заявку не знайдено.", status: 404 }),
+    );
+  });
+
+  test("maps applications with a final status to a cancellation error", async () => {
+    cancelWorkerShiftApplication.mockResolvedValue({ application: null, reason: "status" });
+    const next = jest.fn();
+
+    await shiftController.cancelWorkerApplication(
+      { params: { applicationId: "91" }, user: { id: 42 } },
+      createResponse(),
+      next,
+    );
+
+    expect(next).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: "Цю заявку вже не можна скасувати.",
+        status: 400,
+      }),
+    );
+  });
+
+  test("returns a success message after a worker withdraws a pending application", async () => {
+    cancelWorkerShiftApplication.mockResolvedValue({ application: { id: 91 }, reason: null });
+    const response = createResponse();
+
+    await shiftController.cancelWorkerApplication(
+      { params: { applicationId: "91" }, user: { id: 42 } },
+      response,
+      jest.fn(),
+    );
+
+    expect(response.status).toHaveBeenCalledWith(200);
+    expect(response.json).toHaveBeenCalledWith({ message: "Заявку скасовано." });
+  });
+
+  test("normalizes worker history query parameters and returns the service result", async () => {
+    const result = { totalItems: 1, totalPages: 1, currentPage: 2, data: [{ id: 91 }] };
+    getWorkerShiftHistory.mockResolvedValue(result);
+    const response = createResponse();
+
+    await shiftController.getWorkerShifts(
+      {
+        user: { id: 42 },
+        query: {
+          page: "2",
+          limit: "8",
+          status: "approved",
+          shiftId: "15",
+          scope: "completed",
+        },
+      },
+      response,
+      jest.fn(),
+    );
+
+    expect(getWorkerShiftHistory).toHaveBeenCalledWith(42, {
+      page: 2,
+      limit: 8,
+      status: "approved",
+      shiftId: 15,
+      scope: "completed",
+    });
+    expect(response.status).toHaveBeenCalledWith(200);
+    expect(response.json).toHaveBeenCalledWith({
+      message: "Історію робіт успішно отримано",
+      ...result,
+    });
+  });
+
+  test("falls back to the active worker history scope for an unsupported value", async () => {
+    getWorkerShiftHistory.mockResolvedValue({ totalItems: 0, data: [] });
+
+    await shiftController.getWorkerShifts(
+      { user: { id: 42 }, query: { scope: "all" } },
+      createResponse(),
+      jest.fn(),
+    );
+
+    expect(getWorkerShiftHistory).toHaveBeenCalledWith(42, {
+      page: 1,
+      limit: 10,
+      status: undefined,
+      shiftId: undefined,
+      scope: "active",
+    });
+  });
+
   test("serves a business application summary without loading the full list", async () => {
     getPendingBusinessShiftApplicationsCount.mockResolvedValue(3);
     const response = createResponse();

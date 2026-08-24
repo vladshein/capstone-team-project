@@ -6,8 +6,6 @@ export function getFilteredNavLinks(
 ) {
   const currentRole = isAuthenticated ? userRole : USER_ROLES.GUEST;
 
-  console.log("isAuthenticated:", isAuthenticated, "userRole:", userRole);
-
   return NAV_LINKS.filter((link) => {
     if (link.authRequired && !isAuthenticated) return false;
 
