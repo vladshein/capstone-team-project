@@ -1,10 +1,4 @@
-import {
-  Shift,
-  User,
-  // FavoriteRecipe,
-  // UserFollowers,
-} from "../db/models/index.js";
-import { fn, col } from "sequelize";
+import { User } from "../db/models/index.js";
 import HttpError from "../helpers/HttpError.js";
 
 /**
@@ -24,53 +18,27 @@ export const findUser = async (where) => {
  * @returns
  */
 export const getCurrentUserInfo = async (userId) => {
-  //
-  return await User.findOne({
+  return User.findOne({
     where: { id: userId },
-
-    attributes: [
-      "id",
-      "avatar",
-      "name",
-      "email",
-    ],
-
-    group: ["user.id", "user.avatar", "user.name", "user.email"],
+    // У моделі User немає поля `name`; мінімальний актуальний набір полів
+    // лишається придатним для внутрішнього current-user сценарію.
+    attributes: ["id", "avatar", "email", "role", "isVerified"],
   });
 };
 
 /**
- * Get user by ID
- *
- * @param {*} userId
- * @returns
+ * Мінімальна картка облікового запису для авторизованих сценаріїв.
+ * Контактні дані не повертаються: для них є окремі публічні профілі
+ * виконавця та компанії з власними правилами видимості.
  */
-// export const getUserById = async (userId) => {
-//   const user = await User.findByPk(userId, {
-//     include: [
-//       {
-//         model: Recipe,
-//         as: "recipesHas",
-//         attributes: ["id"],
-//         where: { ownerId: userId },
-//         required: false,
-//       },
-//     ],
-//   });
+export const getUserById = async (userId) => {
+  const user = await User.findByPk(userId, {
+    attributes: ["id", "role", "avatar", "isVerified"],
+  });
 
-//   const followerCount = await UserFollowers.count({
-//     where: { followingId: userId },
-//   });
+  if (!user) {
+    throw HttpError(404, "User not found");
+  }
 
-//   if (!user) {
-//     throw HttpError(404, "User not found");
-//   }
-//   return {
-//     id: user.id,
-//     name: user.name,
-//     email: user.email,
-//     avatar: user.avatar,
-//     count_user_recipes: user.recipesHas.length,
-//     count_followers: followerCount,
-//   };
-// };
+  return user;
+};

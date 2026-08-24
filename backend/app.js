@@ -23,8 +23,6 @@ import connectDatabase from "./db/connectDatabase.js";
 import sequelize from "./db/sequelize.js";
 import { swaggerDocs } from "./middlewares/swaggerDocs.js";
 
-
-
 const app = express();
 
 // Fail fast: перевіряємо обов'язкові env-змінні до старту сервера,
@@ -89,9 +87,7 @@ app.use("/api/shifts", shiftRouter);
 app.use("/api/companies", companyRouter);
 app.use("/api/worker-profiles", workerProfileRouter);
 app.use("/api/location", locationRouter);
-
 app.use("/api-docs", swaggerDocs());
-
 app.use("/api/reviews", reviewRouter);
 // app.use('/api/recipes'cipesRouter);
 // app.use('/api/following', followRouter);
@@ -114,4 +110,11 @@ const startServer = async () => {
   }
 };
 
-startServer();
+// Під час тестів застосунок імпортується як Express-інстанс. Сервер при цьому
+// не має відкривати порт або підключатися до реальної БД — це робить можливими
+// ізольовані integration-тести через supertest.
+if (process.env.NODE_ENV !== "test") {
+  startServer();
+}
+
+export default app;
