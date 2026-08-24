@@ -21,6 +21,12 @@ services:
     restart: always
     networks:
       - basenet
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
 
   postgres:
     image: postgis/postgis:17-3.5-alpine
