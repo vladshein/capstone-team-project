@@ -18,6 +18,7 @@ import { useAppDispatch, useAppSelector } from "./redux/hooks";
 import type { ApiError } from "./redux/types";
 import { getDashboardPath } from "./redux/auth/helpers";
 import { clearCompaniesProfile } from "./redux/companies-profile/slice";
+import { authService } from "./services/authService";
 
 const HomePage = lazy(() => import("./pages/HomePage"));
 const AboutPage = lazy(() => import("./pages/AboutPage"));
@@ -60,6 +61,7 @@ const PublicCompanyProfilePage = lazy(
 const EmailVerificationPage = lazy(
   () => import("./pages/EmailVerificationPage"),
 );
+const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 
 const getApiError = (error: unknown): ApiError => {
   if (typeof error === "object" && error !== null && "message" in error) {
@@ -128,6 +130,16 @@ export default function App() {
     }
   };
 
+  const handlePasswordResetRequest = async (email: string) => {
+    try {
+      await authService.requestPasswordReset(email);
+    } catch (error) {
+      const { message } = getApiError(error);
+      toast.error(`Не вдалося надіслати інструкції: ${message}`);
+      throw new Error(message);
+    }
+  };
+
   const handleLogout = async () => {
     try {
       await dispatch(logout()).unwrap();
@@ -187,6 +199,15 @@ export default function App() {
             />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/email-verification" element={<EmailVerificationPage />} />
+            <Route
+              path="/reset-password"
+              element={
+                <ResetPasswordPage
+                  onOpenSignIn={() => setAuthModal("signin")}
+                  onOpenForgotPassword={() => setAuthModal("forgot-password")}
+                />
+              }
+            />
             <Route path="/shifts/:id" element={<ShiftsDetailPage />} />
             <Route path="/workers/:workerId" element={<PublicWorkerProfilePage />} />
             <Route path="/companies/:companyId" element={<PublicCompanyProfilePage />} />
@@ -245,6 +266,7 @@ export default function App() {
         onSwitchMode={setAuthModal}
         onSignIn={handleSignIn}
         onSignUp={handleSignUp}
+        onRequestPasswordReset={handlePasswordResetRequest}
       />
       <Toaster position="top-right" reverseOrder={false} />
     </>
