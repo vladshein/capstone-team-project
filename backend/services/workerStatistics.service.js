@@ -155,7 +155,7 @@ export async function getWorkerStatisticsSummary(
       noShow: noShowCount,
     },
     shifts: {
-      completed: completedCount,
+      completed: attendanceCompleted,
       upcoming: numberOrZero(workValues.upcoming),
       scheduledCompletedHours: numberOrZero(workValues.scheduledCompletedHours),
       estimatedCompletedEarnings: numberOrZero(
