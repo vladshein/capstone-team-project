@@ -136,7 +136,13 @@ function BusinessDashboardPage() {
                 </span>
               </label>
             )}
-            <Link to="/profile" state={{ companyId: activeCompany.id }} className="mb-1 text-accent-text hover:underline">Профіль компанії</Link>
+            <Link
+              to="/profile"
+              state={{ companyId: activeCompany.id }}
+              className={`text-accent-text hover:underline ${companies.length > 1 ? "mb-1" : ""}`}
+            >
+              Профіль компанії
+            </Link>
           </div>
         </div>
 

@@ -4,18 +4,24 @@ import { useAppDispatch, useAppSelector } from "../../redux/hooks";
 import { selectCompanies } from "../../redux/companies-profile/selectors";
 import {
   fetchBusinessStatisticsSummary,
+  fetchBusinessShiftsStatistics,
   fetchBusinessWorkersStatistics,
 } from "../../redux/business-statistics/actions";
 import {
   selectBusinessStatisticsSummary,
   selectIsBusinessSummaryLoading,
   selectBusinessSummaryError,
+  selectBusinessShiftsStatistics,
+  selectIsBusinessShiftsStatisticsLoading,
+  selectBusinessShiftsStatisticsError,
   selectBusinessWorkersStatistics,
   selectIsBusinessWorkersLoading,
   selectBusinessWorkersError,
 } from "../../redux/business-statistics/selectors";
+import type { GroupBy } from "../../redux/business-statistics/types";
 import { Loader } from "../../components/ui/Loader";
 import { BusinessStatistics } from "./BusinessStatistics";
+import { BusinessShiftsDynamics } from "./BusinessShiftsDynamics";
 import { BusinessWorkersTable } from "./BusinessWorkersTable";
 
 const WORKERS_PER_PAGE = 10;
@@ -28,6 +34,10 @@ export function BusinessStatisticsPage() {
   const isSummaryLoading = useAppSelector(selectIsBusinessSummaryLoading);
   const summaryError = useAppSelector(selectBusinessSummaryError);
 
+  const shiftsStatistics = useAppSelector(selectBusinessShiftsStatistics);
+  const isShiftsLoading = useAppSelector(selectIsBusinessShiftsStatisticsLoading);
+  const shiftsError = useAppSelector(selectBusinessShiftsStatisticsError);
+
   const workers = useAppSelector(selectBusinessWorkersStatistics);
   const isWorkersLoading = useAppSelector(selectIsBusinessWorkersLoading);
   const workersError = useAppSelector(selectBusinessWorkersError);
@@ -35,11 +45,21 @@ export function BusinessStatisticsPage() {
   // null = "Усі компанії" — власний скоуп цієї сторінки, незалежний від
   // activeCompany у шапці кабінету (та керує лише вкладками змін/заявок).
   const [companyId, setCompanyId] = useState<number | null>(null);
+  const [groupBy, setGroupBy] = useState<GroupBy>("month");
   const [workersPage, setWorkersPage] = useState(1);
 
   const loadSummary = useCallback(() => {
     void dispatch(fetchBusinessStatisticsSummary({ companyId: companyId ?? undefined }));
   }, [dispatch, companyId]);
+
+  const loadShiftsStatistics = useCallback(
+    (nextGroupBy: GroupBy) => {
+      void dispatch(
+        fetchBusinessShiftsStatistics({ groupBy: nextGroupBy, companyId: companyId ?? undefined }),
+      );
+    },
+    [dispatch, companyId],
+  );
 
   const loadWorkers = useCallback(
     (page: number) => {
@@ -57,6 +77,11 @@ export function BusinessStatisticsPage() {
   useEffect(() => {
     loadSummary();
   }, [loadSummary]);
+
+  useEffect(() => {
+    loadShiftsStatistics(groupBy);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupBy, companyId]);
 
   useEffect(() => {
     setWorkersPage(1);
@@ -124,6 +149,17 @@ export function BusinessStatisticsPage() {
 
       <div className="mt-6">
         <BusinessStatistics summary={summary} />
+      </div>
+
+      <div className="mt-10">
+        <BusinessShiftsDynamics
+          data={shiftsStatistics}
+          isLoading={isShiftsLoading}
+          error={shiftsError}
+          groupBy={groupBy}
+          onGroupByChange={setGroupBy}
+          onRetry={() => loadShiftsStatistics(groupBy)}
+        />
       </div>
 
       <section className="mt-10">

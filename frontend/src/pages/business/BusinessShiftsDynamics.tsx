@@ -1,8 +1,12 @@
-import type { ShiftsStatistics, ShiftsStatisticsPeriod, GroupBy } from "../../redux/worker-statistics/types";
+import type {
+  BusinessShiftsStatistics,
+  BusinessShiftsStatisticsPeriod,
+  GroupBy,
+} from "../../redux/business-statistics/types";
 import { PeriodBarChart, type PeriodMetric } from "../../components/charts/PeriodBarChart";
 
-interface WorkerShiftsDynamicsProps {
-  data: ShiftsStatistics | null;
+interface BusinessShiftsDynamicsProps {
+  data: BusinessShiftsStatistics | null;
   isLoading: boolean;
   error: string | null;
   groupBy: GroupBy;
@@ -12,7 +16,7 @@ interface WorkerShiftsDynamicsProps {
 
 const currencyFormatter = new Intl.NumberFormat("uk-UA", { maximumFractionDigits: 0 });
 
-const METRICS: PeriodMetric<ShiftsStatisticsPeriod>[] = [
+const METRICS: PeriodMetric<BusinessShiftsStatisticsPeriod>[] = [
   {
     key: "count",
     label: "Кількість змін",
@@ -30,23 +34,23 @@ const METRICS: PeriodMetric<ShiftsStatisticsPeriod>[] = [
     formatTooltip: (p) => `${p.period}: ${p.scheduledHours.toFixed(1)} год`,
   },
   {
-    key: "earnings",
-    label: "Орієнтовний заробіток, ₴",
+    key: "spend",
+    label: "Орієнтовні виплати, ₴",
     buttonLabel: "Гроші",
-    getPrimary: (p) => p.estimatedEarnings,
-    formatTooltip: (p) => `${p.period}: ${currencyFormatter.format(p.estimatedEarnings)} ₴`,
+    getPrimary: (p) => p.spend,
+    formatTooltip: (p) => `${p.period}: ${currencyFormatter.format(p.spend)} ₴`,
     formatYTick: (value) => currencyFormatter.format(value),
   },
 ];
 
-export function WorkerShiftsDynamics({
+export function BusinessShiftsDynamics({
   data,
   isLoading,
   error,
   groupBy,
   onGroupByChange,
   onRetry,
-}: WorkerShiftsDynamicsProps) {
+}: BusinessShiftsDynamicsProps) {
   return (
     <PeriodBarChart
       series={data?.series ?? null}
@@ -60,4 +64,4 @@ export function WorkerShiftsDynamics({
   );
 }
 
-export default WorkerShiftsDynamics;
+export default BusinessShiftsDynamics;
