@@ -112,8 +112,6 @@ export function WorkerShiftsDynamics({
   const [hovered, setHovered] = useState<number | null>(null);
   const [metric, setMetric] = useState<Metric>("count");
 
-  const MIN_SLOTS = groupBy === "week" ? 6 : 6;
-
   const chartData = useMemo(() => {
     if (!data || data.series.length === 0) return null;
 
