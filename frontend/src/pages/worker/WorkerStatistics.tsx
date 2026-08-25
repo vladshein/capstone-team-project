@@ -1,4 +1,3 @@
-import type { LucideIcon } from "lucide-react";
 import {
   Briefcase,
   Building2,
@@ -10,34 +9,10 @@ import {
   XCircle,
 } from "lucide-react";
 import type { StatisticsSummary } from "../../redux/worker-statistics/types";
+import { StatCard } from "../../components/ui/StatCard";
 
 interface WorkerStatisticsProps {
   summary: StatisticsSummary;
-}
-
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  hint,
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: string;
-  hint?: string;
-}) {
-  return (
-    <div className="rounded-[var(--radius-card)] border border-border bg-bg p-5 shadow-sm">
-      <div className="flex items-center gap-2 text-text-muted">
-        <Icon className="h-4 w-4 text-accent" />
-        <span className="text-xs font-semibold uppercase tracking-wide">
-          {label}
-        </span>
-      </div>
-      <p className="mt-3 font-heading text-2xl font-bold text-ink">{value}</p>
-      {hint && <p className="mt-1 text-xs text-text-subtle">{hint}</p>}
-    </div>
-  );
 }
 
 const currencyFormatter = new Intl.NumberFormat("uk-UA", {
