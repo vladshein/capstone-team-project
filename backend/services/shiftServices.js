@@ -414,7 +414,10 @@ export const getBusinessShifts = async ({ companyId, ownerId, scope, page = 1, l
   };
 };
 
-/** Повертає нові й підтверджені заявки конкретної компанії лише її власнику. */
+/**
+ * Повертає зміни компанії з активними заявками. Пагінація застосовується до
+ * змін, а не до заявок: усі кандидати на одну зміну завжди приходять разом.
+ */
 export const getBusinessShiftApplications = async ({ companyId, ownerId, page = 1, limit = 8 }) => {
   const company = await Company.findOne({ where: { id: companyId, ownerId } });
 
@@ -424,51 +427,38 @@ export const getBusinessShiftApplications = async ({ companyId, ownerId, page = 
     throw error;
   }
 
-  const { count, rows } = await ShiftApplication.findAndCountAll({
-    where: { status: { [Op.in]: ["pending", "approved"] } },
-    // `Reviews` — hasMany. За стандартного `subQuery: true` Sequelize виносить
-    // Shift у підзапит, а JobPosition приєднує зовні, де alias Shift уже
-    // недоступний. Це давало SQL-помилку `Shift.positionId does not exist`.
-    subQuery: false,
+  const { count, rows } = await Shift.findAndCountAll({
     include: [
       {
-        model: Shift,
-        attributes: ["id", "startTime", "endTime", "status"],
+        model: ShiftApplication,
+        attributes: ["id", "shiftId", "workerId", "status", "appliedAt"],
         required: true,
+        where: { status: { [Op.in]: ["pending", "approved"] } },
         include: [
-          { model: JobPosition, attributes: ["id", "title"] },
-          // Повертаємо тільки відгук поточного власника компанії. Відгук
-          // виконавця не потрібен для керування заявками бізнесу.
           {
-            model: Review,
-            attributes: ["id", "rating", "comment"],
-            where: { reviewerId: ownerId },
-            required: false,
-          },
-          {
-            model: Location,
-            attributes: ["id", "title", "city", "address"],
-            where: { companyId: company.id },
-            required: true,
+            model: User,
+            attributes: ["id", "phone", "avatar"],
+            include: [
+              {
+                model: WorkerProfile,
+                attributes: ["firstName", "lastName", "rating", "avatarUrl"],
+              },
+            ],
           },
         ],
       },
+      { model: JobPosition, attributes: ["id", "title"] },
       {
-        model: User,
-        attributes: ["id", "phone", "avatar"],
-        include: [
-          {
-            model: WorkerProfile,
-            attributes: ["firstName", "lastName", "rating", "avatarUrl"],
-          },
-        ],
+        model: Location,
+        attributes: ["id", "title", "city", "address"],
+        where: { companyId: company.id },
+        required: true,
       },
     ],
-    order: [["appliedAt", "DESC"]],
+    order: [["startTime", "ASC"]],
     limit,
     offset: (page - 1) * limit,
     distinct: true,
-    subQuery: false,
   });
 
   return {
