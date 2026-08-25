@@ -11,6 +11,13 @@ import {
 import * as companyController from "../controllers/companyControllers.js";
 const companyRouter = express.Router();
 
+// Має бути перед /public/:id, щоб "shifts" не стало значенням :id.
+companyRouter.get(
+  "/public/:id/shifts",
+  optionalAuthenticate,
+  companyController.getPublicCompanyOpenShifts,
+);
+
 // Окремий шлях не конфліктує з /my та не вимагає сесії.
 companyRouter.get("/public/:id", optionalAuthenticate, companyController.getCompanyById);
 
