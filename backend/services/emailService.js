@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { getShiftNotificationEventDetails } from "../constants/shiftNotificationConstants.js";
 
 const parseBoolean = (value) => String(value).toLowerCase() === "true";
 
@@ -61,8 +62,45 @@ const buildFrontendTokenUrl = (pathname, token) => {
   return url.toString();
 };
 
-const buildVerificationUrl = (token) => buildFrontendTokenUrl("/email-verification", token);
-const buildPasswordResetUrl = (token) => buildFrontendTokenUrl("/reset-password", token);
+const buildFrontendUrl = (pathname) => {
+  const frontendUrl = process.env.FRONTEND_URL;
+  if (!frontendUrl) {
+    throw new Error("FRONTEND_URL is required to build an email link.");
+  }
+
+  return new URL(pathname, frontendUrl).toString();
+};
+
+const buildVerificationUrl = (token) =>
+  buildFrontendTokenUrl("/email-verification", token);
+const buildPasswordResetUrl = (token) =>
+  buildFrontendTokenUrl("/reset-password", token);
+const buildShiftDetailsUrl = (shiftId) =>
+  buildFrontendUrl(`/shifts/${shiftId}`);
+
+const escapeHtml = (value) =>
+  String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+
+const formatShiftDate = (value) =>
+  new Intl.DateTimeFormat("uk-UA", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "Europe/Kyiv",
+  }).format(new Date(value));
+
+const formatShiftTime = (value) =>
+  new Intl.DateTimeFormat("uk-UA", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    timeZone: "Europe/Kyiv",
+  }).format(new Date(value));
 
 /** Надсилає короткий лист без персональних даних, окрім адреси одержувача. */
 export const sendVerificationEmail = async ({ email, token }) => {
@@ -112,6 +150,53 @@ export const sendPasswordResetEmail = async ({ email, token }) => {
       <p>Щоб встановити новий пароль, натисніть кнопку:</p>
       <p><a href="${resetUrl}">Встановити новий пароль</a></p>
       <p>Посилання дійсне 15 хвилин. Якщо це були не ви, просто проігноруйте цей лист.</p>
+    `,
+  });
+};
+
+/**
+ * Єдиний шаблон подій для змін. Дані з БД екрануємо перед HTML-інтерполяцією,
+ * бо назва посади, компанії та адреса можуть бути введені користувачем.
+ */
+export const sendShiftNotificationEmail = async ({ email, event, shift }) => {
+  const eventDetails = getShiftNotificationEventDetails(event);
+  const shiftDetailsUrl = buildShiftDetailsUrl(shift.id);
+  const from = process.env.SMTP_FROM || process.env.SMTP_USER;
+  const schedule = `${formatShiftDate(shift.startTime)}, ${formatShiftTime(shift.startTime)}–${formatShiftTime(shift.endTime)}`;
+  const location = [shift.locationTitle, shift.address, shift.city]
+    .filter(Boolean)
+    .join(", ");
+  const safeTitle = escapeHtml(shift.title);
+  const safeCompanyName = escapeHtml(shift.companyName);
+  const safeSchedule = escapeHtml(schedule);
+  const safeLocation = escapeHtml(location);
+
+  return getEmailTransport().sendMail({
+    from: `Зміна <${from}>`,
+    to: email,
+    subject: eventDetails.subject,
+    text: [
+      eventDetails.heading,
+      "",
+      eventDetails.message,
+      "",
+      `Зміна: ${shift.title}`,
+      `Компанія: ${shift.companyName}`,
+      `Коли: ${schedule}`,
+      `Де: ${location}`,
+      "",
+      `Переглянути деталі: ${shiftDetailsUrl}`,
+    ].join("\n"),
+    html: `
+      <p><strong>${escapeHtml(eventDetails.heading)}</strong></p>
+      <p>${escapeHtml(eventDetails.message)}</p>
+      <p>
+        <strong>Зміна:</strong> ${safeTitle}<br>
+        <strong>Компанія:</strong> ${safeCompanyName}<br>
+        <strong>Коли:</strong> ${safeSchedule}<br>
+        <strong>Де:</strong> ${safeLocation}
+      </p>
+      <p><a href="${shiftDetailsUrl}">Переглянути деталі зміни</a></p>
     `,
   });
 };

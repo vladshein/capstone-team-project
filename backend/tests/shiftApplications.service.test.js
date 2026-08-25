@@ -2,6 +2,7 @@ import { jest } from "@jest/globals";
 
 const findApplicationByPk = jest.fn();
 const findApplication = jest.fn();
+const findApplications = jest.fn();
 const updateApplications = jest.fn();
 const findShiftByPk = jest.fn();
 const shiftTransaction = jest.fn();
@@ -16,6 +17,7 @@ jest.unstable_mockModule("../db/models/index.js", () => ({
   ShiftApplication: {
     findByPk: findApplicationByPk,
     findOne: findApplication,
+    findAll: findApplications,
     update: updateApplications,
   },
   Location: {},
@@ -31,6 +33,7 @@ const {
   decideBusinessShiftApplication,
   completeBusinessShiftApplication,
   markBusinessShiftApplicationNoShow,
+  cancelShift,
   cancelWorkerShiftApplication,
 } = await import("../services/shiftServices.js");
 
@@ -65,6 +68,7 @@ describe("shift application lifecycle", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     shiftTransaction.mockImplementation(async (callback) => callback(transaction));
+    findApplications.mockResolvedValue([]);
   });
 
   test("approves a pending application and rejects other pending applications", async () => {
@@ -77,7 +81,7 @@ describe("shift application lifecycle", () => {
       decision: "approved",
     });
 
-    expect(result).toEqual({ application, reason: null });
+    expect(result).toEqual({ application, reason: null, autoRejectedWorkerIds: [] });
     expect(application.update).toHaveBeenCalledWith(
       { status: "approved" },
       { transaction },
@@ -105,13 +109,35 @@ describe("shift application lifecycle", () => {
       decision: "rejected",
     });
 
-    expect(result).toEqual({ application, reason: null });
+    expect(result).toEqual({ application, reason: null, autoRejectedWorkerIds: [] });
     expect(application.update).toHaveBeenCalledWith(
       { status: "rejected" },
       { transaction },
     );
     expect(application.Shift.update).not.toHaveBeenCalled();
     expect(updateApplications).not.toHaveBeenCalled();
+  });
+
+  test("returns workers whose pending applications were rejected after approval", async () => {
+    const application = createBusinessApplication();
+    findApplicationByPk.mockResolvedValue(application);
+    findApplications.mockResolvedValue([
+      { workerId: "42" },
+      { workerId: 43 },
+      { workerId: "42" },
+    ]);
+
+    await expect(
+      decideBusinessShiftApplication({
+        applicationId: application.id,
+        ownerId: 7,
+        decision: "approved",
+      }),
+    ).resolves.toEqual({
+      application,
+      reason: null,
+      autoRejectedWorkerIds: [42, 43],
+    });
   });
 
   test("does not allow a different company owner to decide an application", async () => {
@@ -209,6 +235,51 @@ describe("shift application lifecycle", () => {
 
     expect(result).toEqual({ application, reason: null });
     expect(application.destroy).toHaveBeenCalledTimes(1);
+  });
+
+  test("returns all workers affected by a company shift cancellation", async () => {
+    const shift = { id: 15, update: jest.fn().mockResolvedValue(undefined) };
+    findShiftByPk.mockResolvedValue(shift);
+    findApplications.mockResolvedValue([
+      { workerId: "42" },
+      { workerId: 43 },
+      { workerId: "42" },
+    ]);
+
+    await expect(cancelShift(15)).resolves.toEqual({
+      shift,
+      affectedWorkerIds: [42, 43],
+      reason: null,
+    });
+    expect(findApplications).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ shiftId: 15 }),
+        attributes: ["workerId"],
+        transaction,
+      }),
+    );
+    expect(updateApplications).toHaveBeenCalledWith(
+      { status: "rejected" },
+      expect.objectContaining({ transaction }),
+    );
+  });
+
+  test("does not cancel a shift that became final before its transaction lock", async () => {
+    const shift = {
+      id: 15,
+      status: "completed",
+      startTime: futureDate,
+      update: jest.fn(),
+    };
+    findShiftByPk.mockResolvedValue(shift);
+
+    await expect(cancelShift(15)).resolves.toEqual({
+      shift: null,
+      affectedWorkerIds: [],
+      reason: "final",
+    });
+    expect(shift.update).not.toHaveBeenCalled();
+    expect(updateApplications).not.toHaveBeenCalled();
   });
 
   test("does not allow a worker to withdraw an already approved application", async () => {

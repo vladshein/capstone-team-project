@@ -5,7 +5,12 @@ import {
   getPasswordResetRecipient,
 } from "../services/authServices.js";
 import {
+  getShiftNotificationAudience,
+  getShiftNotificationRecipient,
+} from "../services/shiftNotificationServices.js";
+import {
   sendPasswordResetEmail,
+  sendShiftNotificationEmail,
   sendVerificationEmail,
 } from "../services/emailService.js";
 import { reconcileShiftLifecycle } from "../services/shiftLifecycleServices.js";
@@ -13,14 +18,62 @@ import {
   createBullMqConnection,
   closeShiftLifecycleQueue,
   EMAIL_VERIFICATION_JOB,
+  enqueueShiftNotification,
   getShiftLifecycleQueue,
   PASSWORD_RESET_EMAIL_JOB,
+  SHIFT_NOTIFICATION_EMAIL_JOB,
   SHIFT_LIFECYCLE_QUEUE,
 } from "../queues/shiftLifecycleQueue.js";
 
 const RECONCILE_JOB = "reconcile-shifts";
 const SCHEDULER_ID = "reconcile-shifts-every-five-minutes";
 const INTERVAL_MS = 5 * 60 * 1000;
+
+// Lifecycle уже завершив транзакцію до цього моменту. Якщо Valkey тимчасово
+// недоступний, не повторюємо reconciliation і не ризикуємо дублювати зміни
+// статусів — лише фіксуємо збій постановки листа в чергу.
+const queueAutoCompletionNotifications = async (autoCompletedApplications = []) => {
+  const jobs = autoCompletedApplications.map(async ({ shiftId, workerId }) => {
+    const audience = await getShiftNotificationAudience(shiftId, {
+      applicationStatuses: ["completed"],
+    });
+    const recipientUserIds = new Set([
+      workerId,
+      audience?.companyOwnerId,
+      ...(audience?.workerIds ?? []),
+    ]);
+
+    await Promise.all(
+      [...recipientUserIds]
+        .filter((recipientUserId) => {
+          const normalizedRecipientUserId = Number(recipientUserId);
+          return (
+            Number.isInteger(normalizedRecipientUserId) &&
+            normalizedRecipientUserId > 0
+          );
+        })
+        .map((recipientUserId) =>
+          enqueueShiftNotification({
+            event: "application_auto_completed",
+            recipientUserId,
+            shiftId,
+          }),
+        ),
+    );
+  });
+
+  const results = await Promise.allSettled(jobs);
+  for (const result of results) {
+    if (result.status === "rejected") {
+      console.error(
+        "[shift-lifecycle] failed to enqueue auto-completion email",
+        {
+          message: result.reason?.message ?? String(result.reason),
+        },
+      );
+    }
+  }
+};
 
 await sequelize.authenticate();
 const shiftLifecycleQueue = getShiftLifecycleQueue();
@@ -31,6 +84,7 @@ const worker = new Worker(
   async (job) => {
     if (job.name === RECONCILE_JOB) {
       const result = await reconcileShiftLifecycle();
+      await queueAutoCompletionNotifications(result.autoCompletedApplications);
       console.info("[shift-lifecycle] reconciliation completed", result);
       return result;
     }
@@ -57,6 +111,33 @@ const worker = new Worker(
 
       await sendPasswordResetEmail(recipient);
       return { status: "sent", userId: job.data.userId };
+    }
+
+    if (job.name === SHIFT_NOTIFICATION_EMAIL_JOB) {
+      const recipient = await getShiftNotificationRecipient(job.data);
+
+      // За час очікування job користувач міг відписатися/не підтвердити email,
+      // а зміна або її обов'язковий контекст — бути видаленими.
+      if (!recipient) {
+        return {
+          status: "skipped",
+          event: job.data.event,
+          recipientUserId: job.data.recipientUserId,
+          shiftId: job.data.shiftId,
+        };
+      }
+
+      await sendShiftNotificationEmail({
+        event: job.data.event,
+        ...recipient,
+      });
+
+      return {
+        status: "sent",
+        event: job.data.event,
+        recipientUserId: job.data.recipientUserId,
+        shiftId: job.data.shiftId,
+      };
     }
 
     throw new Error(`Unknown background job: ${job.name}`);

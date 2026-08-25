@@ -19,6 +19,7 @@ process.env.SMTP_FROM = "notifications@example.com";
 const {
   getSmtpConfig,
   sendPasswordResetEmail,
+  sendShiftNotificationEmail,
   sendVerificationEmail,
   verifyEmailTransport,
 } = await import("../services/emailService.js");
@@ -78,6 +79,37 @@ describe("email service", () => {
       ),
       html: expect.stringContaining("Встановити новий пароль"),
     }));
+  });
+
+  test("sends an escaped shift notification with a direct details link", async () => {
+    await sendShiftNotificationEmail({
+      email: "business@example.com",
+      event: "application_created",
+      shift: {
+        id: 19,
+        title: '<img src=x onerror="alert(1)">',
+        companyName: "ТОВ <Тест>",
+        locationTitle: "ТРЦ Small",
+        city: "Вінниця",
+        address: "проспект Юності, 18",
+        startTime: "2026-08-25T09:00:00.000Z",
+        endTime: "2026-08-25T17:00:00.000Z",
+      },
+    });
+
+    expect(sendMail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "business@example.com",
+        subject: "Нова заявка на зміну — Зміна",
+        text: expect.stringContaining("https://zmina.example/shifts/19"),
+        html: expect.stringContaining(
+          "&lt;img src=x onerror=&quot;alert(1)&quot;&gt;",
+        ),
+      }),
+    );
+    expect(sendMail.mock.calls[0][0].html).not.toContain(
+      '<img src=x onerror="alert(1)">',
+    );
   });
 
   test("rejects an empty or invalid SMTP port", () => {

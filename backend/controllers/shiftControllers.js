@@ -1,4 +1,36 @@
 import * as shiftService from "../services/shiftServices.js";
+import { enqueueShiftNotification } from "../queues/shiftLifecycleQueue.js";
+
+// Надсилання листа не має ламати вже успішну дію користувача, якщо Valkey або
+// SMTP тимчасово недоступні. Worker повторить job, якщо він уже потрапив у чергу.
+const queueShiftNotification = ({ event, recipientUserId, shiftId }) => {
+  const normalizedRecipientUserId = Number(recipientUserId);
+  const normalizedShiftId = Number(shiftId);
+
+  if (
+    !Number.isInteger(normalizedRecipientUserId) ||
+    normalizedRecipientUserId < 1 ||
+    !Number.isInteger(normalizedShiftId) ||
+    normalizedShiftId < 1
+  ) {
+    return;
+  }
+
+  void Promise.resolve(
+    enqueueShiftNotification({
+      event,
+      recipientUserId: normalizedRecipientUserId,
+      shiftId: normalizedShiftId,
+    }),
+  ).catch((error) => {
+    console.error("[shift-notification] failed to enqueue email", {
+      event,
+      recipientUserId: normalizedRecipientUserId,
+      shiftId: normalizedShiftId,
+      message: error?.message ?? String(error),
+    });
+  });
+};
 
 const parseList = (value) =>
   typeof value === "string"
@@ -210,6 +242,25 @@ export const decideBusinessShiftApplication = async (req, res, next) => {
     if (result.reason === "status") return res.status(400).json({ message: "Цю заявку вже розглянуто." });
     if (result.reason === "unavailable") return res.status(400).json({ message: "Зміна вже недоступна для призначення виконавця." });
 
+    queueShiftNotification({
+      event:
+        decision === "approved"
+          ? "application_approved"
+          : "application_rejected",
+      recipientUserId: result.application.workerId,
+      shiftId: result.application.shiftId,
+    });
+
+    // Після вибору виконавця всі інші pending-заявки переходять у rejected.
+    // Кожному такому виконавцю також надсилаємо окреме повідомлення.
+    for (const workerId of result.autoRejectedWorkerIds ?? []) {
+      queueShiftNotification({
+        event: "application_rejected",
+        recipientUserId: workerId,
+        shiftId: result.application.shiftId,
+      });
+    }
+
     res.set("Cache-Control", "no-store");
     res.status(200).json({ message: decision === "approved" ? "Заявку підтверджено." : "Заявку відхилено.", data: result.application });
   } catch (error) {
@@ -234,6 +285,12 @@ export const completeBusinessShiftApplication = async (req, res, next) => {
     if (result.reason === "status") return res.status(400).json({ message: "Можна завершити лише підтверджену зміну." });
     if (result.reason === "not_finished") return res.status(400).json({ message: "Підтвердити виконання можна після завершення зміни." });
 
+    queueShiftNotification({
+      event: "application_completed",
+      recipientUserId: result.application.workerId,
+      shiftId: result.application.shiftId,
+    });
+
     res.set("Cache-Control", "no-store");
     res.status(200).json({ message: "Виконання зміни підтверджено.", data: result.application });
   } catch (error) {
@@ -257,6 +314,12 @@ export const markBusinessShiftApplicationNoShow = async (req, res, next) => {
     if (result.reason === "forbidden") return res.status(403).json({ message: "У вас немає доступу до цієї заявки." });
     if (result.reason === "status") return res.status(400).json({ message: "Неявку можна позначити лише для підтвердженої зміни." });
     if (result.reason === "not_finished") return res.status(400).json({ message: "Позначити неявку можна після завершення зміни." });
+
+    queueShiftNotification({
+      event: "application_no_show",
+      recipientUserId: result.application.workerId,
+      shiftId: result.application.shiftId,
+    });
 
     res.set("Cache-Control", "no-store");
     res.status(200).json({ message: "Неявку виконавця зафіксовано.", data: result.application });
@@ -366,6 +429,12 @@ export const applyToShift = async (req, res, next) => {
       workerId,
     );
 
+    queueShiftNotification({
+      event: "application_created",
+      recipientUserId: shift.Location?.Company?.ownerId,
+      shiftId,
+    });
+
     res.status(201).json({
       message: "Відгук на зміну надіслано.",
       data: application,
@@ -401,6 +470,12 @@ export const cancelWorkerApplication = async (req, res, next) => {
       error.status = 400;
       throw error;
     }
+
+    queueShiftNotification({
+      event: "application_withdrawn",
+      recipientUserId: result.application.Shift?.Location?.Company?.ownerId,
+      shiftId: result.application.shiftId,
+    });
 
     res.status(200).json({ message: "Заявку скасовано." });
   } catch (error) {
@@ -501,7 +576,33 @@ export const cancelShift = async (req, res, next) => {
     // TODO в майбутньому: якщо статус був 'booked' (робітник вже знайшовся),
     // тут треба додати логіку повернення коштів з холду (Frozen Balance) на звичайний баланс бізнесу.
 
-    const cancelledShift = await shiftService.cancelShift(shiftId);
+    const cancellationResult = await shiftService.cancelShift(shiftId);
+    if (cancellationResult?.reason === "not_found") {
+      const error = new Error("Зміну не знайдено.");
+      error.status = 404;
+      throw error;
+    }
+    if (cancellationResult?.reason === "final") {
+      const error = new Error(
+        "Цю зміну не можна скасувати, вона вже завершена або скасована раніше.",
+      );
+      error.status = 400;
+      throw error;
+    }
+    if (cancellationResult?.reason === "started") {
+      const error = new Error("Не можна скасувати зміну після її початку.");
+      error.status = 400;
+      throw error;
+    }
+    const { shift: cancelledShift, affectedWorkerIds } = cancellationResult;
+
+    for (const workerId of affectedWorkerIds) {
+      queueShiftNotification({
+        event: "shift_cancelled",
+        recipientUserId: workerId,
+        shiftId,
+      });
+    }
 
     res.status(200).json({
       message: "Зміну успішно скасовано",

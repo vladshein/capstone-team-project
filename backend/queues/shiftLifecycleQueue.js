@@ -1,14 +1,21 @@
 import { Queue } from "bullmq";
+import { isShiftNotificationEvent } from "../constants/shiftNotificationConstants.js";
 import { createBullMqConnection } from "./bullMqConnection.js";
 
 export const SHIFT_LIFECYCLE_QUEUE = "shift-lifecycle";
 export const EMAIL_VERIFICATION_JOB = "send-email-verification";
 export const PASSWORD_RESET_EMAIL_JOB = "send-password-reset";
+export const SHIFT_NOTIFICATION_EMAIL_JOB = "send-shift-notification";
 
 export { createBullMqConnection };
 
 let shiftLifecycleRedis;
 let shiftLifecycleQueue;
+
+const isPositiveInteger = (value) => {
+  const parsedValue = Number(value);
+  return Number.isInteger(parsedValue) && parsedValue > 0;
+};
 
 /**
  * Одна producer-черга для невеликих фонових задач MVP. Ініціалізуємо її
@@ -67,6 +74,45 @@ export const enqueuePasswordReset = async (userId) => {
   return getShiftLifecycleQueue().add(
     PASSWORD_RESET_EMAIL_JOB,
     { userId: Number(userId) },
+    {
+      attempts: 5,
+      backoff: { type: "exponential", delay: 10_000 },
+      removeOnComplete: 100,
+      removeOnFail: 100,
+    },
+  );
+};
+
+/**
+ * У чергу кладемо лише ідентифікатори та тип події. Worker перед відправкою
+ * повторно зчитує підтверджений email і актуальні дані зміни з PostgreSQL.
+ */
+export const enqueueShiftNotification = async ({
+  event,
+  recipientUserId,
+  shiftId,
+}) => {
+  if (!isShiftNotificationEvent(event)) {
+    throw new Error(`Unsupported shift notification event: ${event}`);
+  }
+
+  if (!isPositiveInteger(recipientUserId)) {
+    throw new Error(
+      "A valid recipient user id is required for shift notification.",
+    );
+  }
+
+  if (!isPositiveInteger(shiftId)) {
+    throw new Error("A valid shift id is required for shift notification.");
+  }
+
+  return getShiftLifecycleQueue().add(
+    SHIFT_NOTIFICATION_EMAIL_JOB,
+    {
+      event,
+      recipientUserId: Number(recipientUserId),
+      shiftId: Number(shiftId),
+    },
     {
       attempts: 5,
       backoff: { type: "exponential", delay: 10_000 },

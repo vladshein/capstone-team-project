@@ -22,6 +22,12 @@ const normalizeNow = (value) => {
   return now;
 };
 
+const normalizeAutoCompletedApplications = (applications) =>
+  applications.map(({ shiftId, workerId }) => ({
+    shiftId: Number(shiftId),
+    workerId: Number(workerId),
+  }));
+
 /**
  * Приводить часові статуси до узгодженого стану.
  *
@@ -33,7 +39,10 @@ const normalizeNow = (value) => {
  *
  * dryRun дозволяє безпечно побачити майбутні зміни до запуску worker-а.
  */
-export const reconcileShiftLifecycle = async ({ now: currentTime = new Date(), dryRun = false } = {}) => {
+export const reconcileShiftLifecycle = async ({
+  now: currentTime = new Date(),
+  dryRun = false,
+} = {}) => {
   const now = normalizeNow(currentTime);
   const bookedShiftAutoCompletionCutoff = new Date(
     now.getTime() - BOOKED_SHIFT_AUTO_COMPLETION_DELAY_MS,
@@ -99,6 +108,8 @@ export const reconcileShiftLifecycle = async ({ now: currentTime = new Date(), d
       transaction,
     );
 
+    let autoCompletedApplications = [];
+
     if (!dryRun) {
       await sequelize.query(
         `
@@ -124,7 +135,7 @@ export const reconcileShiftLifecycle = async ({ now: currentTime = new Date(), d
 
       // Оновлюємо заявку та зміну одним SQL-виразом, щоб не лишити їх
       // у суперечливих статусах у разі помилки між двома окремими UPDATE.
-      await sequelize.query(
+      const completedApplications = await sequelize.query(
         `
           WITH "completed_applications" AS (
             UPDATE "shift_applications" AS "application"
@@ -134,20 +145,36 @@ export const reconcileShiftLifecycle = async ({ now: currentTime = new Date(), d
               AND "shift"."status" = 'booked'
               AND "application"."status" = 'approved'
               AND "shift"."endTime" <= :bookedShiftAutoCompletionCutoff
-            RETURNING "application"."shiftId"
+            RETURNING
+              "application"."shiftId" AS "shiftId",
+              "application"."workerId" AS "workerId"
+          ),
+          "completed_shifts" AS (
+            UPDATE "shifts" AS "shift"
+            SET "status" = 'completed'
+            WHERE "shift"."status" = 'booked'
+              AND "shift"."id" IN (
+                SELECT DISTINCT "shiftId"
+                FROM "completed_applications"
+              )
+            RETURNING "shift"."id" AS "shiftId"
           )
-          UPDATE "shifts" AS "shift"
-          SET "status" = 'completed'
-          WHERE "shift"."status" = 'booked'
-            AND "shift"."id" IN (
-              SELECT DISTINCT "shiftId"
-              FROM "completed_applications"
-            )
+          SELECT
+            "application"."shiftId",
+            "application"."workerId"
+          FROM "completed_applications" AS "application"
+          INNER JOIN "completed_shifts" AS "shift"
+            ON "shift"."shiftId" = "application"."shiftId"
         `,
         {
           replacements: { bookedShiftAutoCompletionCutoff },
           transaction,
+          type: QueryTypes.SELECT,
         },
+      );
+
+      autoCompletedApplications = normalizeAutoCompletedApplications(
+        completedApplications,
       );
     }
 
@@ -158,6 +185,7 @@ export const reconcileShiftLifecycle = async ({ now: currentTime = new Date(), d
       expiredOpenShifts,
       bookedShiftsAwaitingDecision,
       bookedShiftsDueForAutoCompletion,
+      autoCompletedApplications,
     };
   });
 };

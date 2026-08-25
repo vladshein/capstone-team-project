@@ -41,6 +41,7 @@ describe("reconcileShiftLifecycle", () => {
       expiredOpenShifts: 3,
       bookedShiftsAwaitingDecision: 1,
       bookedShiftsDueForAutoCompletion: 4,
+      autoCompletedApplications: [],
     });
     expect(query).toHaveBeenCalledTimes(4);
     expect(transaction).toHaveBeenCalledTimes(1);
@@ -69,9 +70,20 @@ describe("reconcileShiftLifecycle", () => {
 
   test("rejects and cancels expired records, then auto-completes booked shifts after 12 hours", async () => {
     mockCounts(4, 2, 1, 3);
-    query.mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    query
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        { shiftId: "101", workerId: "201" },
+        { shiftId: "102", workerId: "202" },
+      ]);
 
-    await reconcileShiftLifecycle({ now: "2026-08-23T10:00:00.000Z" });
+    const result = await reconcileShiftLifecycle({ now: "2026-08-23T10:00:00.000Z" });
+
+    expect(result.autoCompletedApplications).toEqual([
+      { shiftId: 101, workerId: 201 },
+      { shiftId: 102, workerId: 202 },
+    ]);
 
     expect(query).toHaveBeenCalledTimes(7);
 
@@ -94,14 +106,19 @@ describe("reconcileShiftLifecycle", () => {
       }),
     );
     expect(autoCompleteSql).toContain('WITH "completed_applications" AS');
+    expect(autoCompleteSql).toContain('"completed_shifts" AS (');
     expect(autoCompleteSql).toContain('SET "status" = \'completed\'');
     expect(autoCompleteSql).toContain('"application"."status" = \'approved\'');
+    expect(autoCompleteSql).toContain(
+      'RETURNING\n              "application"."shiftId" AS "shiftId"',
+    );
     expect(autoCompleteOptions).toEqual(
       expect.objectContaining({
         replacements: {
           bookedShiftAutoCompletionCutoff: new Date("2026-08-22T22:00:00.000Z"),
         },
         transaction: transactionContext,
+        type: "SELECT",
       }),
     );
   });
