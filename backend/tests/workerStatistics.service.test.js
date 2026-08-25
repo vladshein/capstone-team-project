@@ -153,6 +153,7 @@ describe("getWorkerStatisticsSummary", () => {
     expect(result.applications.total).toBe(8);
     expect(result.applications.completed).toBe(3);
     expect(result.shifts.estimatedCompletedEarnings).toBe(1500);
+    expect(result.shifts.completed).toBe(1);
     expect(result.attendance).toEqual({ completed: 1, noShow: 0, rate: 100 });
     expect(findOneApplication.mock.calls[0][0].include).toBeUndefined();
     const shiftDateFilter =
