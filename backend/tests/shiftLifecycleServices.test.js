@@ -12,11 +12,12 @@ const { reconcileShiftLifecycle } =
 
 const transactionContext = { id: "test-transaction" };
 
-const mockCounts = (pending, open, booked) => {
+const mockCounts = (pending, open, awaitingDecision, dueForAutoCompletion) => {
   query
     .mockResolvedValueOnce([{ count: String(pending) }])
     .mockResolvedValueOnce([{ count: String(open) }])
-    .mockResolvedValueOnce([{ count: String(booked) }]);
+    .mockResolvedValueOnce([{ count: String(awaitingDecision) }])
+    .mockResolvedValueOnce([{ count: String(dueForAutoCompletion) }]);
 };
 
 describe("reconcileShiftLifecycle", () => {
@@ -26,7 +27,7 @@ describe("reconcileShiftLifecycle", () => {
   });
 
   test("reports expired records in dry-run mode without changing data", async () => {
-    mockCounts(2, 3, 1);
+    mockCounts(2, 3, 1, 4);
 
     const result = await reconcileShiftLifecycle({
       now: "2026-08-23T10:00:00.000Z",
@@ -39,21 +40,44 @@ describe("reconcileShiftLifecycle", () => {
       expiredPendingApplications: 2,
       expiredOpenShifts: 3,
       bookedShiftsAwaitingDecision: 1,
+      bookedShiftsDueForAutoCompletion: 4,
     });
-    expect(query).toHaveBeenCalledTimes(3);
+    expect(query).toHaveBeenCalledTimes(4);
     expect(transaction).toHaveBeenCalledTimes(1);
+
+    const [awaitingDecisionSql, awaitingDecisionOptions] = query.mock.calls[2];
+    const [autoCompletionSql, autoCompletionOptions] = query.mock.calls[3];
+    const autoCompletionCutoff = new Date("2026-08-22T22:00:00.000Z");
+
+    expect(awaitingDecisionSql).toContain('"endTime" > :bookedShiftAutoCompletionCutoff');
+    expect(awaitingDecisionOptions).toEqual(
+      expect.objectContaining({
+        replacements: {
+          now: new Date("2026-08-23T10:00:00.000Z"),
+          bookedShiftAutoCompletionCutoff: autoCompletionCutoff,
+        },
+      }),
+    );
+    expect(autoCompletionSql).toContain('"endTime" <= :bookedShiftAutoCompletionCutoff');
+    expect(autoCompletionSql).toContain('"application"."status" = \'approved\'');
+    expect(autoCompletionOptions).toEqual(
+      expect.objectContaining({
+        replacements: { bookedShiftAutoCompletionCutoff: autoCompletionCutoff },
+      }),
+    );
   });
 
-  test("rejects expired pending applications and cancels expired open shifts", async () => {
-    mockCounts(4, 2, 1);
-    query.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+  test("rejects and cancels expired records, then auto-completes booked shifts after 12 hours", async () => {
+    mockCounts(4, 2, 1, 3);
+    query.mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
     await reconcileShiftLifecycle({ now: "2026-08-23T10:00:00.000Z" });
 
-    expect(query).toHaveBeenCalledTimes(5);
+    expect(query).toHaveBeenCalledTimes(7);
 
-    const [rejectApplicationsSql, rejectApplicationsOptions] = query.mock.calls[3];
-    const [cancelShiftsSql, cancelShiftsOptions] = query.mock.calls[4];
+    const [rejectApplicationsSql, rejectApplicationsOptions] = query.mock.calls[4];
+    const [cancelShiftsSql, cancelShiftsOptions] = query.mock.calls[5];
+    const [autoCompleteSql, autoCompleteOptions] = query.mock.calls[6];
 
     expect(rejectApplicationsSql).toContain('SET "status" = \'rejected\'');
     expect(rejectApplicationsOptions).toEqual(
@@ -66,6 +90,17 @@ describe("reconcileShiftLifecycle", () => {
     expect(cancelShiftsOptions).toEqual(
       expect.objectContaining({
         replacements: { now: new Date("2026-08-23T10:00:00.000Z") },
+        transaction: transactionContext,
+      }),
+    );
+    expect(autoCompleteSql).toContain('WITH "completed_applications" AS');
+    expect(autoCompleteSql).toContain('SET "status" = \'completed\'');
+    expect(autoCompleteSql).toContain('"application"."status" = \'approved\'');
+    expect(autoCompleteOptions).toEqual(
+      expect.objectContaining({
+        replacements: {
+          bookedShiftAutoCompletionCutoff: new Date("2026-08-22T22:00:00.000Z"),
+        },
         transaction: transactionContext,
       }),
     );
