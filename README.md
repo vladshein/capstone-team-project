@@ -217,6 +217,22 @@ Seeder seeder-1786204972180.js created successfully!
 - Backend API: [http://localhost:5000](http://localhost:5000)
 - Frontend: [http://localhost:5173](http://localhost:5173)
 
+### Тести
+
+Обидва сервіси використовують Jest.
+
+Бекенд:
+```bash
+docker compose exec backend npm test
+```
+
+Фронтенд:
+```bash
+docker compose exec frontend npm run test
+```
+
+Без Docker (з відповідної папки, `backend` або `frontend`): `npm test` / `npm run test`. Для фронтенду є також watch-режим для розробки: `npm run test:watch`.
+
 ### Корисні команди
 
 Перегляд логів
