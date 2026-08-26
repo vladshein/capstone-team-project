@@ -223,7 +223,7 @@ export const settleDispute = async ({ disputeId, user }) =>
         403,
         "Лише інша сторона спору може погодитися з вимогою.",
       );
-    if (!['open', 'awaiting_response'].includes(dispute.status))
+    if (!["open", "awaiting_response"].includes(dispute.status))
       throw HttpError(409, "Цей спір уже має остаточний статус.");
     await dispute.update(
       { status: "closed", resolvedAt: new Date() },
@@ -242,7 +242,7 @@ export const escalateDispute = async ({ disputeId, user }) =>
         403,
         "Лише інша сторона спору може передати спір адміністратору.",
       );
-    if (!['open', 'awaiting_response'].includes(dispute.status))
+    if (!["open", "awaiting_response"].includes(dispute.status))
       throw HttpError(409, "Цей спір уже має остаточний статус.");
     await dispute.update({ status: "under_review" }, { transaction });
     await addEvent(disputeId, user.id, "escalated_to_admin", null, transaction);
@@ -284,7 +284,10 @@ export const appealDispute = async ({ disputeId, user, message }) =>
       { disputeId, authorId: user.id, message },
       { transaction },
     );
-    await dispute.update({ status: "appealed", resolvedAt: null }, { transaction });
+    await dispute.update(
+      { status: "appealed", resolvedAt: null },
+      { transaction },
+    );
     await addEvent(disputeId, user.id, "appealed", null, transaction);
     return getDisputeById(disputeId, user, transaction);
   });
@@ -293,7 +296,7 @@ export const resolveDispute = async ({ disputeId, adminId, payload }) =>
   Dispute.sequelize.transaction(async (transaction) => {
     const dispute = await Dispute.findByPk(disputeId, { transaction });
     if (!dispute) throw HttpError(404, "Спір не знайдено.");
-    if (dispute.status === "closed")
+    if (["resolved", "closed"].includes(dispute.status))
       throw HttpError(409, "Цей спір уже закрито.");
     await dispute.update(
       {

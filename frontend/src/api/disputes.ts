@@ -96,8 +96,11 @@ export const updateAdminDisputeStatus = async (
   id: number,
   status: "awaiting_response" | "under_review",
 ) =>
-  (await api.patch<{ data: Dispute }>(`/admin/disputes/${id}/status`, { status }))
-    .data.data;
+  (
+    await api.patch<{ data: Dispute }>(`/admin/disputes/${id}/status`, {
+      status,
+    })
+  ).data.data;
 export const resolveDispute = async (
   id: number,
   payload: {

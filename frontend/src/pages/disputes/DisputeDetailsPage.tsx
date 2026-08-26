@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   addDisputeMessage,
+  appealDispute,
   escalateDispute,
   getDispute,
   settleDispute,
@@ -66,6 +67,8 @@ export default function DisputeDetailsPage() {
   const [responseAction, setResponseAction] = useState<
     "settle" | "escalate" | null
   >(null);
+  const [appealMessage, setAppealMessage] = useState("");
+  const [isAppealing, setIsAppealing] = useState(false);
   const listPath =
     user?.role === "business_client"
       ? "/dashboard/disputes"
@@ -125,6 +128,23 @@ export default function DisputeDetailsPage() {
     }
   };
 
+  const appeal = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!dispute || !appealMessage.trim()) return;
+    setIsAppealing(true);
+    try {
+      setDispute(await appealDispute(dispute.id, appealMessage.trim()));
+      setAppealMessage("");
+      toast.success("Апеляцію передано адміністратору.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Не вдалося подати апеляцію.",
+      );
+    } finally {
+      setIsAppealing(false);
+    }
+  };
+
   if (isLoading) return <Loader label="Завантажуємо спір…" />;
   if (!dispute) {
     return <p className="p-6 text-sm text-text-muted">Спір не знайдено.</p>;
@@ -133,7 +153,9 @@ export default function DisputeDetailsPage() {
   const status = statusMeta[dispute.status];
   const isClosed = ["resolved", "closed"].includes(dispute.status);
   const canRespond =
-    dispute.status === "open" && dispute.Respondent.id === user?.id;
+    ["open", "awaiting_response"].includes(dispute.status) &&
+    dispute.Respondent.id === user?.id;
+  const canAppeal = dispute.status === "resolved";
   const companyName = dispute.Shift.Location?.Company?.name;
   const participantName = (participant: Dispute["Initiator"]) =>
     participant.WorkerProfile
@@ -208,6 +230,39 @@ export default function DisputeDetailsPage() {
               Інша сторона погодилася з вимогою, тому рішення адміністратора не
               потрібне.
             </p>
+          </section>
+        )}
+        {canAppeal && (
+          <section className="rounded-[var(--radius-card)] border border-amber-200 bg-amber-50 p-5">
+            <h2 className="font-heading text-lg font-bold text-amber-950">
+              Не погоджуєтеся з рішенням?
+            </h2>
+            <p className="mt-1 text-sm leading-6 text-amber-900">
+              Подайте апеляцію з поясненням. Спір знову надійде адміністратору.
+            </p>
+            <form onSubmit={appeal} className="mt-4">
+              <label className="block text-sm font-semibold text-amber-950">
+                Причина апеляції
+                <textarea
+                  value={appealMessage}
+                  onChange={(event) => setAppealMessage(event.target.value)}
+                  minLength={1}
+                  maxLength={5000}
+                  required
+                  placeholder="Опишіть, з якою частиною рішення ви не погоджуєтеся…"
+                  className="mt-2 min-h-24 w-full rounded-[var(--radius-card)] border border-amber-200 bg-bg p-3 font-normal text-text outline-none focus:border-accent"
+                />
+              </label>
+              <div className="mt-3 flex justify-end">
+                <button
+                  type="submit"
+                  disabled={isAppealing || !appealMessage.trim()}
+                  className="min-h-[42px] rounded-[var(--radius-pill)] bg-amber-700 px-4 text-sm font-medium text-white hover:bg-amber-800 disabled:opacity-60"
+                >
+                  {isAppealing ? "Надсилаємо…" : "Подати апеляцію"}
+                </button>
+              </div>
+            </form>
           </section>
         )}
 

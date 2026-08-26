@@ -228,12 +228,14 @@ export const sendDisputeNotificationEmail = async ({
   const eventDetails = getDisputeNotificationEventDetails(event);
   const disputeDetailsUrl = buildDisputeDetailsUrl(role, dispute.id);
   const from = process.env.SMTP_FROM || process.env.SMTP_USER;
-  const amount = dispute.resolvedAmount
-    ? `${Number(dispute.resolvedAmount).toLocaleString("uk-UA")} ₴`
-    : null;
-  const decision = dispute.decision
-    ? disputeDecisionLabel(dispute.decision)
-    : null;
+  const amount =
+    event === "dispute_resolved" && dispute.resolvedAmount
+      ? `${Number(dispute.resolvedAmount).toLocaleString("uk-UA")} ₴`
+      : null;
+  const decision =
+    event === "dispute_resolved" && dispute.decision
+      ? disputeDecisionLabel(dispute.decision)
+      : null;
 
   return getEmailTransport().sendMail({
     from: `Зміна <${from}>`,

@@ -6,6 +6,7 @@ import { Loader } from "../../components/ui/Loader";
 import {
   getDispute,
   resolveDispute,
+  updateAdminDisputeStatus,
   type Dispute,
   type DisputeDecision,
 } from "../../api/disputes";
@@ -29,6 +30,7 @@ const eventLabels: Record<string, string> = {
   message_added: "Додано пояснення",
   settled_by_parties: "Сторони врегулювали спір",
   escalated_to_admin: "Спір передано адміністратору",
+  appealed: "Подано апеляцію на рішення",
   status_changed: "Адміністратор змінив статус",
   resolved: "Адміністратор ухвалив рішення",
 };
@@ -52,13 +54,17 @@ const money = (amount: string | null) =>
 const statusLabel = (status: Dispute["status"]) =>
   status === "open"
     ? "Очікує погодження іншої сторони"
-    : status === "under_review"
-      ? "Передано адміністратору"
-      : status === "resolved"
-        ? "Вирішений"
-        : status === "closed"
-          ? "Врегульовано сторонами"
-          : status;
+    : status === "awaiting_response"
+      ? "Очікує відповіді сторін"
+      : status === "under_review"
+        ? "Передано адміністратору"
+        : status === "appealed"
+          ? "Оскаржений — повторний розгляд"
+          : status === "resolved"
+            ? "Вирішений"
+            : status === "closed"
+              ? "Врегульовано сторонами"
+              : status;
 
 export default function AdminDisputeDetailsPage() {
   const { disputeId } = useParams();
@@ -69,11 +75,23 @@ export default function AdminDisputeDetailsPage() {
   const [amount, setAmount] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [nextStatus, setNextStatus] = useState<
+    "awaiting_response" | "under_review"
+  >("under_review");
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   useEffect(() => {
     if (!disputeId) return;
     void getDispute(Number(disputeId))
-      .then(setDispute)
+      .then((data) => {
+        setDispute(data);
+        if (
+          data.status === "awaiting_response" ||
+          data.status === "under_review"
+        ) {
+          setNextStatus(data.status);
+        }
+      })
       .catch((error: unknown) =>
         toast.error(
           error instanceof Error ? error.message : "Не вдалося відкрити спір.",
@@ -100,6 +118,20 @@ export default function AdminDisputeDetailsPage() {
       );
     } finally {
       setIsSubmitting(false);
+    }
+  };
+  const updateStatus = async () => {
+    if (!dispute) return;
+    setIsUpdatingStatus(true);
+    try {
+      setDispute(await updateAdminDisputeStatus(dispute.id, nextStatus));
+      toast.success("Статус спору оновлено.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Не вдалося оновити статус.",
+      );
+    } finally {
+      setIsUpdatingStatus(false);
     }
   };
   if (isLoading) return <Loader label="Завантажуємо спір…" fullScreen />;
@@ -331,6 +363,36 @@ export default function AdminDisputeDetailsPage() {
             </div>
           ) : (
             <div className="mt-4 space-y-4">
+              <div className="rounded-[var(--radius-card)] border border-border p-4">
+                <label className="block text-sm font-semibold">
+                  Статус розгляду
+                  <select
+                    value={nextStatus}
+                    onChange={(event) =>
+                      setNextStatus(
+                        event.target.value as
+                          "awaiting_response" | "under_review",
+                      )
+                    }
+                    className="mt-2 min-h-[44px] w-full rounded-[var(--radius-card)] border border-border bg-bg px-3 font-normal outline-none focus:border-accent"
+                  >
+                    <option value="awaiting_response">
+                      Очікує відповіді сторін
+                    </option>
+                    <option value="under_review">
+                      На розгляді адміністратора
+                    </option>
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => void updateStatus()}
+                  disabled={isUpdatingStatus || dispute.status === nextStatus}
+                  className="mt-3 min-h-[40px] w-full rounded-[var(--radius-pill)] border border-border px-4 text-sm font-medium text-text hover:border-accent disabled:opacity-50"
+                >
+                  {isUpdatingStatus ? "Зберігаємо…" : "Оновити статус"}
+                </button>
+              </div>
               <label className="block text-sm font-semibold">
                 Рішення
                 <select

@@ -193,6 +193,16 @@ export const updateStatus = async (req, res, next) => {
       adminId: req.user.id,
       status: req.body.status,
     });
+    for (const recipientUserId of new Set([
+      data.Initiator?.id,
+      data.Respondent?.id,
+    ])) {
+      queueDisputeNotification({
+        event: "dispute_status_changed",
+        recipientUserId,
+        disputeId: data.id,
+      });
+    }
     res.json({ data });
   } catch (error) {
     next(error);
