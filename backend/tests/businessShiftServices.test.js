@@ -131,10 +131,10 @@ describe("business shift services", () => {
     );
   });
 
-  test("returns only pending and approved applications belonging to the company", async () => {
+  test("returns shifts with all pending and approved applications belonging to the company", async () => {
     const rows = [{ id: 501 }];
     findCompany.mockResolvedValue({ id: 12 });
-    findAndCountApplications.mockResolvedValue({ count: 9, rows });
+    findAndCountBusinessShifts.mockResolvedValue({ count: 9, rows });
 
     const result = await getBusinessShiftApplications({
       companyId: 12,
@@ -150,26 +150,28 @@ describe("business shift services", () => {
       data: rows,
     });
 
-    const options = findAndCountApplications.mock.calls[0][0];
+    const options = findAndCountBusinessShifts.mock.calls[0][0];
     expect(options).toEqual(
       expect.objectContaining({
-        where: { status: { [Op.in]: ["pending", "approved"] } },
         limit: 4,
         offset: 4,
         distinct: true,
-        subQuery: false,
-        order: [["appliedAt", "DESC"]],
+        order: [["startTime", "ASC"]],
       }),
     );
 
-    const shiftInclude = options.include[0];
-    const locationInclude = shiftInclude.include.find((item) => item.where?.companyId);
+    const applicationsInclude = options.include.find(
+      (item) => item.model === ShiftApplicationModel,
+    );
+    expect(applicationsInclude).toEqual(
+      expect.objectContaining({
+        required: true,
+        where: { status: { [Op.in]: ["pending", "approved"] } },
+      }),
+    );
+    const locationInclude = options.include.find((item) => item.where?.companyId);
     expect(locationInclude).toEqual(
       expect.objectContaining({ where: { companyId: 12 }, required: true }),
-    );
-    const reviewInclude = shiftInclude.include.find((item) => item.model === ReviewModel);
-    expect(reviewInclude).toEqual(
-      expect.objectContaining({ where: { reviewerId: 7 }, required: false }),
     );
   });
 

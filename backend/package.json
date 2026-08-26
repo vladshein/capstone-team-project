@@ -15,6 +15,7 @@
     "db:s:generate": "node db/seeder.js create",
     "db:m:pending": "node db/migrator.js pending",
     "db:m:executed": "node db/migrator.js executed",
+    "email:verify": "node scripts/verifySmtp.js",
     "db:seed": "node --input-type=module -e \"import('./db/models/seedDBs.js').then(m => m.default()).then(() => { console.log('Seeded'); process.exit(0); })\"",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
@@ -36,6 +37,7 @@
     "morgan": "^1.10.1",
     "multer": "^2.0.2",
     "nanoid": "^5.1.6",
+    "nodemailer": "^9.0.5",
     "pg": "^8.16.3",
     "pg-hstore": "^2.3.4",
     "sequelize": "^6.37.7",

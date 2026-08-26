@@ -10,6 +10,7 @@ import {
   shiftIdParamsSchema,
 } from "../schemas/reviewSchemas.js";
 import authenticate from "../middlewares/authenticate.js";
+import requireVerifiedEmail from "../middlewares/requireVerifiedEmail.js";
 
 const reviewRouter = express.Router();
 
@@ -28,12 +29,12 @@ reviewRouter.get(
 );
 
 reviewRouter.use(authenticate);
+reviewRouter.use(requireVerifiedEmail);
 
 reviewRouter.post(
   "/:shiftId",
   validateParams(shiftIdParamsSchema),
   validateBody(createReviewSchema),
-  authenticate,
   reviewController.createReview,
 );
 
@@ -41,14 +42,12 @@ reviewRouter.patch(
   "/:reviewId",
   validateParams(reviewIdParamsSchema),
   validateBody(updateReviewSchema),
-  authenticate,
   reviewController.updateReview,
 );
 
 reviewRouter.delete(
   "/:reviewId",
   validateParams(reviewIdParamsSchema),
-  authenticate,
   reviewController.deleteReview,
 );
 

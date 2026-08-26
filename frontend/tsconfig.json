@@ -23,5 +23,6 @@
 
     "types": ["vite/client", "jest", "@testing-library/jest-dom"]
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/test"]
 }

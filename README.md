@@ -40,6 +40,17 @@ DATABASE_PORT=5432
 
 # JWT
 JWT_SECRET=
+JWT_REFRESH_SECRET=
+JWT_EMAIL_VERIFICATION_SECRET=
+JWT_PASSWORD_RESET_SECRET=
+
+# Email (SMTP)
+SMTP_HOST=
+SMTP_PORT=
+SMTP_SECURE=true
+SMTP_USER=
+SMTP_PASSWORD=
+SMTP_FROM=
 
 DATABASE_DIALECT_DEV=postgres
 DATABASE_USERNAME_DEV=test
@@ -65,6 +76,7 @@ docker compose up -d
 - **valkey** — Redis-сумісний кеш/сховище
 - **backend** — Express API (порт `5000`)
 - **frontend** — React додаток (порт `5173`)
+- **lifecycle-worker** — фонове оновлення статусів змін і надсилання email-сповіщень
 
 ### 3. Ініціалізація бази даних
 
@@ -101,7 +113,57 @@ docker compose exec backend npm run db:s
 
 - прострочені `pending` заявки переводить у `rejected`;
 - `open` зміни після завершення переводить у `cancelled`;
-- завершені `booked` зміни не закриває автоматично: компанія має підтвердити виконання або неявку виконавця.
+- після завершення `booked` зміни компанія має 12 годин, щоб підтвердити виконання або неявку; після цього зміна та підтверджена заявка автоматично переходять у `completed`.
+
+### Email-повідомлення
+
+Після реєстрації, подачі заявки або зміни її статусу API додає job до наявної
+BullMQ-черги, а `lifecycle-worker` надсилає лист через SMTP. SMTP не
+викликається безпосередньо в HTTP-запиті, тому повільна або тимчасово
+недоступна пошта не блокує реєстрацію, заявку чи зміну статусу. Для email job
+налаштовано до п'яти повторних спроб із експоненційною затримкою.
+
+Листи отримують лише користувачі з підтвердженою адресою email. Підтримано такі
+події: нова або відкликана заявка для компанії; підтвердження, відхилення,
+виконання чи неявка для виконавця; скасування зміни для її кандидатів; а також
+автоматичне завершення зміни для обох сторін.
+
+### Підтвердження email
+
+Посилання підтвердження містить короткочасний токен у URL fragment (`#token=`),
+а не в query-параметрі. Браузер не передає fragment у HTTP-логах і Referer.
+
+Для роботи потрібно задати у `backend/.env` (локально) або кореневому `.env`
+(production) змінні `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`,
+`SMTP_PASSWORD`, `SMTP_FROM` та окремі випадкові
+`JWT_EMAIL_VERIFICATION_SECRET` і `JWT_PASSWORD_RESET_SECRET`. Пароль SMTP
+та секрети не додавайте до Git.
+
+Згенерувати окремий secret можна локально:
+
+```bash
+node -e "console.log(require('node:crypto').randomBytes(48).toString('hex'))"
+```
+
+Перевірити запуск worker-а можна командою:
+
+```bash
+docker compose logs -f lifecycle-worker
+```
+
+Безпечна перевірка авторизації SMTP без надсилання листа:
+
+```bash
+docker compose exec backend npm run email:verify
+```
+
+### Відновлення пароля
+
+Запит `POST /api/auth/forgot-password` завжди повертає однакову відповідь,
+щоб не розкривати існування акаунта за email. Для наявного користувача
+`lifecycle-worker` надсилає посилання виду `/reset-password#token=...`.
+Токен діє 15 хвилин і підписаний з урахуванням поточного хешу пароля, тому
+після зміни пароля всі попередні reset-посилання автоматично втрачають силу.
 
 наприклад створити міграцію:
 ```bash

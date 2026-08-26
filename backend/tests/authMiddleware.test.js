@@ -3,9 +3,13 @@ import express from "express";
 import request from "supertest";
 
 const verifyAccessToken = jest.fn();
+const hasCurrentAuthTokenFingerprint = jest.fn();
 const findUser = jest.fn();
 
-jest.unstable_mockModule("../helpers/jwt.js", () => ({ verifyAccessToken }));
+jest.unstable_mockModule("../helpers/jwt.js", () => ({
+  hasCurrentAuthTokenFingerprint,
+  verifyAccessToken,
+}));
 jest.unstable_mockModule("../services/authServices.js", () => ({ findUser }));
 
 const { default: authenticate } = await import("../middlewares/authenticate.js");
@@ -35,14 +39,35 @@ describe("authentication and role middleware", () => {
   });
 
   test("adds the authenticated user to the request", async () => {
-    verifyAccessToken.mockReturnValue({ data: { id: 42 }, error: null });
-    findUser.mockResolvedValue({ id: 42, role: "worker" });
+    verifyAccessToken.mockReturnValue({
+      data: { id: 42, authFingerprint: "current-fingerprint" },
+      error: null,
+    });
+    findUser.mockResolvedValue({ id: 42, role: "worker", passwordHash: "current-hash" });
+    hasCurrentAuthTokenFingerprint.mockReturnValue(true);
     const app = createApp(authenticate);
 
     await request(app)
       .get("/")
       .set("Authorization", "Bearer valid-token")
-      .expect(200, { user: { id: 42, role: "worker" } });
+      .expect(200, {
+        user: { id: 42, role: "worker", passwordHash: "current-hash" },
+      });
+  });
+
+  test("rejects an access token issued before a password change", async () => {
+    verifyAccessToken.mockReturnValue({
+      data: { id: 42, authFingerprint: "old-fingerprint" },
+      error: null,
+    });
+    findUser.mockResolvedValue({ id: 42, role: "worker", passwordHash: "new-hash" });
+    hasCurrentAuthTokenFingerprint.mockReturnValue(false);
+    const app = createApp(authenticate);
+
+    await request(app)
+      .get("/")
+      .set("Authorization", "Bearer old-token")
+      .expect(401, { message: "Authentication token is no longer valid" });
   });
 
   test("does not block a guest on an optional authentication route", async () => {
@@ -58,6 +83,21 @@ describe("authentication and role middleware", () => {
     await request(app)
       .get("/")
       .set("Authorization", "Bearer invalid-token")
+      .expect(200, { user: null });
+  });
+
+  test("treats an outdated optional token as a guest session", async () => {
+    verifyAccessToken.mockReturnValue({
+      data: { id: 42, authFingerprint: "old-fingerprint" },
+      error: null,
+    });
+    findUser.mockResolvedValue({ id: 42, passwordHash: "new-hash" });
+    hasCurrentAuthTokenFingerprint.mockReturnValue(false);
+    const app = createApp(optionalAuthenticate);
+
+    await request(app)
+      .get("/")
+      .set("Authorization", "Bearer old-token")
       .expect(200, { user: null });
   });
 

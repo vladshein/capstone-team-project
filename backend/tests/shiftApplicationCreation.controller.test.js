@@ -3,11 +3,15 @@ import { jest } from "@jest/globals";
 const getShiftById = jest.fn();
 const findShiftApplication = jest.fn();
 const createShiftApplication = jest.fn();
+const enqueueShiftNotification = jest.fn();
 
 jest.unstable_mockModule("../services/shiftServices.js", () => ({
   getShiftById,
   findShiftApplication,
   createShiftApplication,
+}));
+jest.unstable_mockModule("../queues/shiftLifecycleQueue.js", () => ({
+  enqueueShiftNotification,
 }));
 
 const { applyToShift } = await import("../controllers/shiftControllers.js");
@@ -22,6 +26,7 @@ const createResponse = () => {
 describe("applyToShift controller", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    enqueueShiftNotification.mockResolvedValue(undefined);
   });
 
   test("creates a pending application for an open future shift", async () => {
@@ -30,6 +35,7 @@ describe("applyToShift controller", () => {
       id: 15,
       status: "open",
       startTime: "2035-01-01T10:00:00.000Z",
+      Location: { Company: { ownerId: 1241 } },
     });
     findShiftApplication.mockResolvedValue(null);
     createShiftApplication.mockResolvedValue(application);
@@ -39,6 +45,11 @@ describe("applyToShift controller", () => {
     await applyToShift({ params: { id: "15" }, user: { id: 42 } }, response, next);
 
     expect(createShiftApplication).toHaveBeenCalledWith(15, 42);
+    expect(enqueueShiftNotification).toHaveBeenCalledWith({
+      event: "application_created",
+      recipientUserId: 1241,
+      shiftId: 15,
+    });
     expect(response.status).toHaveBeenCalledWith(201);
     expect(response.json).toHaveBeenCalledWith({
       message: "Відгук на зміну надіслано.",

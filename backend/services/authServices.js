@@ -7,7 +7,13 @@ import * as fs from "node:fs/promises";
 import path from "node:path";
 import {
   createAccessToken,
+  createEmailVerificationToken,
+  createPasswordResetToken,
   createRefreshToken,
+  getPasswordResetTokenUserId,
+  hasCurrentAuthTokenFingerprint,
+  verifyEmailVerificationToken,
+  verifyPasswordResetToken,
   verifyRefreshToken,
 } from "../helpers/jwt.js";
 
@@ -81,10 +87,137 @@ export const registerUser = async (payload) => {
     role: databaseRole,
   });
 
-  const accessToken = createAccessToken({ id: newUser.id });
-  const refreshToken = createRefreshToken({ id: newUser.id });
+  const accessToken = createAccessToken({
+    id: newUser.id,
+    passwordHash: newUser.passwordHash,
+  });
+  const refreshToken = createRefreshToken({
+    id: newUser.id,
+    passwordHash: newUser.passwordHash,
+  });
 
   return { ...buildAuthResponse(newUser, accessToken), refreshToken };
+};
+
+/**
+ * Повертає дані лише для worker-а. Токен формується безпосередньо перед
+ * надсиланням, тому його не потрібно зберігати у Valkey або БД.
+ */
+export const getEmailVerificationRecipient = async (userId) => {
+  const user = await User.findByPk(userId, {
+    attributes: ["id", "email", "isVerified"],
+  });
+
+  if (!user || user.isVerified) return null;
+
+  return {
+    email: user.email,
+    token: createEmailVerificationToken({ id: user.id }),
+  };
+};
+
+/** Повертає одержувача листа або null, не розкриваючи існування email назовні. */
+export const getPasswordResetRequestUserId = async (email) => {
+  const user = await User.findOne({
+    where: { email },
+    attributes: ["id"],
+  });
+
+  return user?.id ?? null;
+};
+
+/**
+ * Token створюється worker-ом безпосередньо перед відправленням. У черзі
+ * лишається лише userId, без email, пароля або reset-токена.
+ */
+export const getPasswordResetRecipient = async (userId) => {
+  const user = await User.findByPk(userId, {
+    attributes: ["id", "email", "passwordHash"],
+  });
+
+  if (!user) return null;
+
+  return {
+    email: user.email,
+    token: createPasswordResetToken({
+      id: user.id,
+      passwordHash: user.passwordHash,
+    }),
+  };
+};
+
+export const verifyUserEmail = async (token) => {
+  const { data, error } = verifyEmailVerificationToken(token);
+  if (error || !data?.id) {
+    throw HttpError(400, "Посилання для підтвердження недійсне або вже застаріло.");
+  }
+
+  const user = await User.findByPk(data.id);
+  if (!user) {
+    throw HttpError(404, "Користувача не знайдено.");
+  }
+
+  if (user.isVerified) {
+    return { alreadyVerified: true, userId: user.id };
+  }
+
+  await user.update({ isVerified: true });
+  return { alreadyVerified: false, userId: user.id };
+};
+
+/**
+ * Змінює пароль за короткочасним токеном. Умова passwordHash у WHERE робить
+ * операцію одноразовою навіть для двох одночасно відкритих посилань.
+ */
+export const resetUserPassword = async ({ token, password }) => {
+  const userId = getPasswordResetTokenUserId(token);
+  if (!userId) {
+    throw HttpError(400, "Посилання для відновлення пароля недійсне або вже застаріло.");
+  }
+
+  const user = await User.findByPk(userId, {
+    attributes: ["id", "passwordHash"],
+  });
+  const { data, error } = user
+    ? verifyPasswordResetToken(token, user.passwordHash)
+    : { data: null, error: new Error("Unknown user") };
+
+  if (error || !data?.id || data.id !== userId) {
+    throw HttpError(400, "Посилання для відновлення пароля недійсне або вже застаріло.");
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  const [updatedRows] = await User.update(
+    {
+      passwordHash,
+      // Отримання листа для reset підтверджує контроль над поштовою скринькою.
+      isVerified: true,
+    },
+    {
+      where: {
+        id: user.id,
+        passwordHash: user.passwordHash,
+      },
+    },
+  );
+
+  if (updatedRows !== 1) {
+    throw HttpError(400, "Посилання для відновлення пароля недійсне або вже застаріло.");
+  }
+};
+
+export const ensureEmailIsNotVerified = async (userId) => {
+  const user = await User.findByPk(userId, {
+    attributes: ["id", "isVerified"],
+  });
+
+  if (!user) {
+    throw HttpError(404, "Користувача не знайдено.");
+  }
+
+  if (user.isVerified) {
+    throw HttpError(409, "Email уже підтверджено.");
+  }
 };
 
 export const loginUser = async ({ password, email }) => {
@@ -98,8 +231,8 @@ export const loginUser = async ({ password, email }) => {
     throw HttpError(401, "Email or password invalid");
   }
 
-  const accessToken = createAccessToken({ id: user.id });
-  const refreshToken = createRefreshToken({ id: user.id });
+  const accessToken = createAccessToken({ id: user.id, passwordHash: user.passwordHash });
+  const refreshToken = createRefreshToken({ id: user.id, passwordHash: user.passwordHash });
   const displayName = await getDisplayName(user);
 
   return { ...buildAuthResponse(user, accessToken, displayName), refreshToken };
@@ -120,8 +253,14 @@ export const refreshUser = async (token) => {
     throw HttpError(401, "User not found");
   }
 
-  const accessToken = createAccessToken({ id: user.id });
-  const refreshToken = createRefreshToken({ id: user.id });
+  // Зміна пароля змінює fingerprint, тому refresh з будь-якого старого
+  // пристрою не може випустити нову пару токенів.
+  if (!hasCurrentAuthTokenFingerprint(data, user.passwordHash)) {
+    throw HttpError(401, "Invalid refresh token");
+  }
+
+  const accessToken = createAccessToken({ id: user.id, passwordHash: user.passwordHash });
+  const refreshToken = createRefreshToken({ id: user.id, passwordHash: user.passwordHash });
   const displayName = await getDisplayName(user);
 
   return { ...buildAuthResponse(user, accessToken, displayName), refreshToken };

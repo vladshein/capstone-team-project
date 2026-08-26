@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import toast, { Toaster } from "react-hot-toast";
 import { AuthModals, type AuthModalMode } from "./components/auth/AuthModals";
+import { EmailVerificationNotice } from "./components/auth/EmailVerificationNotice";
 import type { SignInPayload } from "./components/auth/SignInModal";
 import type { SignUpPayload, UserRole } from "./components/auth/SignUpModal";
 import Loader from "./components/ui/Loader";
@@ -17,6 +18,7 @@ import { useAppDispatch, useAppSelector } from "./redux/hooks";
 import type { ApiError } from "./redux/types";
 import { getDashboardPath } from "./redux/auth/helpers";
 import { clearCompaniesProfile } from "./redux/companies-profile/slice";
+import { authService } from "./services/authService";
 
 const HomePage = lazy(() => import("./pages/HomePage"));
 const AboutPage = lazy(() => import("./pages/AboutPage"));
@@ -56,6 +58,10 @@ const PublicWorkerProfilePage = lazy(
 const PublicCompanyProfilePage = lazy(
   () => import("./pages/public/PublicCompanyProfilePage"),
 );
+const EmailVerificationPage = lazy(
+  () => import("./pages/EmailVerificationPage"),
+);
+const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 
 const getApiError = (error: unknown): ApiError => {
   if (typeof error === "object" && error !== null && "message" in error) {
@@ -116,10 +122,20 @@ export default function App() {
       dispatch(clearCompaniesProfile());
       void dispatch(fetchMyProfile());
       setAuthModal(null);
-      toast.success("Реєстрація успішна!");
+      toast.success("Реєстрація успішна! Перевірте пошту для підтвердження email.");
     } catch (error) {
       const { status, message } = getApiError(error);
       toast.error(status === 409 ? message : `Помилка реєстрації: ${message}`);
+      throw new Error(message);
+    }
+  };
+
+  const handlePasswordResetRequest = async (email: string) => {
+    try {
+      await authService.requestPasswordReset(email);
+    } catch (error) {
+      const { message } = getApiError(error);
+      toast.error(`Не вдалося надіслати інструкції: ${message}`);
       throw new Error(message);
     }
   };
@@ -168,6 +184,7 @@ export default function App() {
         onOpenBusinessSignUp={() => openSignUp("business_client")}
         onLogout={handleLogout}
       >
+        <EmailVerificationNotice />
         <Suspense fallback={<Loader fullScreen />}>
           <HashScroll />
           <Routes>
@@ -181,6 +198,16 @@ export default function App() {
               }
             />
             <Route path="/about" element={<AboutPage />} />
+            <Route path="/email-verification" element={<EmailVerificationPage />} />
+            <Route
+              path="/reset-password"
+              element={
+                <ResetPasswordPage
+                  onOpenSignIn={() => setAuthModal("signin")}
+                  onOpenForgotPassword={() => setAuthModal("forgot-password")}
+                />
+              }
+            />
             <Route path="/shifts/:id" element={<ShiftsDetailPage />} />
             <Route path="/workers/:workerId" element={<PublicWorkerProfilePage />} />
             <Route path="/companies/:companyId" element={<PublicCompanyProfilePage />} />
@@ -239,6 +266,7 @@ export default function App() {
         onSwitchMode={setAuthModal}
         onSignIn={handleSignIn}
         onSignUp={handleSignUp}
+        onRequestPasswordReset={handlePasswordResetRequest}
       />
       <Toaster position="top-right" reverseOrder={false} />
     </>

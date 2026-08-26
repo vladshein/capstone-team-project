@@ -154,10 +154,12 @@ export const getShiftsStatistics = async (req, res, next) => {
         message: "dateFrom must be earlier than dateTo.",
       });
     }
-    const rangeMonths =
-      (resolvedTo.getFullYear() - resolvedFrom.getFullYear()) * 12 +
-      (resolvedTo.getMonth() - resolvedFrom.getMonth());
-    if (rangeMonths > 12) {
+    // Порівняння лише номерів місяців дає хибний результат на межі місяця
+    // (наприклад, 390 днів може виглядати як рівно 12 календарних місяців).
+    // Віднімаємо рівно один рік від кінцевої точки діапазону.
+    const oldestAllowedDate = new Date(resolvedTo);
+    oldestAllowedDate.setFullYear(oldestAllowedDate.getFullYear() - 1);
+    if (resolvedFrom < oldestAllowedDate) {
       return res.status(400).json({
         message: "Date range must not exceed 12 months.",
       });

@@ -158,7 +158,18 @@ export interface BusinessShiftApplicationsResponse {
   totalItems: number;
   totalPages: number;
   currentPage: number;
-  data: BusinessShiftApplication[];
+  data: BusinessShiftApplicationGroup[];
+}
+
+/** Одна зміна та всі її активні кандидати в кабінеті компанії. */
+export interface BusinessShiftApplicationGroup {
+  id: number;
+  startTime: string;
+  endTime: string;
+  status: ShiftStatus;
+  JobPosition: ShiftJobPosition;
+  Location: Pick<ShiftLocation, "id" | "title" | "city" | "address">;
+  ShiftApplications: Array<Omit<BusinessShiftApplication, "Shift">>;
 }
 
 export interface BusinessShiftWorkerSummary {

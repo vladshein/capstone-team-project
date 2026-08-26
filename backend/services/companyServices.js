@@ -1,4 +1,5 @@
-import { Company, Location, User } from "../db/models/index.js";
+import { Company, Location, User, Shift, JobPosition, Category } from "../db/models/index.js";
+import { Op } from "sequelize";
 
 /**
  * Отримує компанію за ID разом з локаціями.
@@ -24,6 +25,50 @@ export const getCompanyById = async (companyId, { includePhone = false } = {}) =
   }
 
   return company;
+};
+
+/**
+ * Повертає лише доступні для відгуку зміни конкретної компанії.
+ * Не використовуємо загальний пошук за назвою партнера: назви компаній
+ * можуть повторюватися, тому фільтруємо за надійним companyId локації.
+ */
+export const getPublicCompanyOpenShifts = async (companyId, { page = 1, limit = 6 } = {}) => {
+  const company = await Company.findByPk(companyId, { attributes: ["id"] });
+
+  if (!company) {
+    const error = new Error("Компанію не знайдено");
+    error.status = 404;
+    throw error;
+  }
+
+  const safePage = Math.max(Number(page) || 1, 1);
+  const safeLimit = Math.min(Math.max(Number(limit) || 6, 1), 12);
+  const { count, rows } = await Shift.findAndCountAll({
+    where: {
+      status: "open",
+      startTime: { [Op.gt]: new Date() },
+    },
+    include: [
+      { model: Category, attributes: ["id", "name"] },
+      { model: JobPosition, attributes: ["id", "title"] },
+      {
+        model: Location,
+        attributes: ["id", "title", "city", "address"],
+        where: { companyId: company.id },
+        required: true,
+      },
+    ],
+    order: [["startTime", "ASC"]],
+    limit: safeLimit,
+    offset: (safePage - 1) * safeLimit,
+  });
+
+  return {
+    totalItems: count,
+    totalPages: Math.ceil(count / safeLimit),
+    currentPage: safePage,
+    data: rows,
+  };
 };
 
 /**

@@ -27,7 +27,13 @@ const app = express();
 
 // Fail fast: перевіряємо обов'язкові env-змінні до старту сервера,
 // щоб уникнути неявних помилок пізніше (напр. в JWT-функціях).
-const requiredEnvVars = ["FRONTEND_URL", "JWT_SECRET", "JWT_REFRESH_SECRET"];
+const requiredEnvVars = [
+  "FRONTEND_URL",
+  "JWT_SECRET",
+  "JWT_REFRESH_SECRET",
+  "JWT_EMAIL_VERIFICATION_SECRET",
+  "JWT_PASSWORD_RESET_SECRET",
+];
 for (const key of requiredEnvVars) {
   if (!process.env[key]) {
     throw new Error(`${key} is not set in .env`);

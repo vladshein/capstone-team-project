@@ -14,11 +14,17 @@ const Company = {
 };
 const Location = { create: createLocationRecord };
 const User = {};
+const Shift = {};
+const JobPosition = {};
+const Category = {};
 
 jest.unstable_mockModule("../db/models/index.js", () => ({
   Company,
   Location,
   User,
+  Shift,
+  JobPosition,
+  Category,
 }));
 
 const {

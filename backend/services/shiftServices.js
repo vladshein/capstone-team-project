@@ -414,7 +414,10 @@ export const getBusinessShifts = async ({ companyId, ownerId, scope, page = 1, l
   };
 };
 
-/** Повертає нові й підтверджені заявки конкретної компанії лише її власнику. */
+/**
+ * Повертає зміни компанії з активними заявками. Пагінація застосовується до
+ * змін, а не до заявок: усі кандидати на одну зміну завжди приходять разом.
+ */
 export const getBusinessShiftApplications = async ({ companyId, ownerId, page = 1, limit = 8 }) => {
   const company = await Company.findOne({ where: { id: companyId, ownerId } });
 
@@ -424,51 +427,38 @@ export const getBusinessShiftApplications = async ({ companyId, ownerId, page = 
     throw error;
   }
 
-  const { count, rows } = await ShiftApplication.findAndCountAll({
-    where: { status: { [Op.in]: ["pending", "approved"] } },
-    // `Reviews` — hasMany. За стандартного `subQuery: true` Sequelize виносить
-    // Shift у підзапит, а JobPosition приєднує зовні, де alias Shift уже
-    // недоступний. Це давало SQL-помилку `Shift.positionId does not exist`.
-    subQuery: false,
+  const { count, rows } = await Shift.findAndCountAll({
     include: [
       {
-        model: Shift,
-        attributes: ["id", "startTime", "endTime", "status"],
+        model: ShiftApplication,
+        attributes: ["id", "shiftId", "workerId", "status", "appliedAt"],
         required: true,
+        where: { status: { [Op.in]: ["pending", "approved"] } },
         include: [
-          { model: JobPosition, attributes: ["id", "title"] },
-          // Повертаємо тільки відгук поточного власника компанії. Відгук
-          // виконавця не потрібен для керування заявками бізнесу.
           {
-            model: Review,
-            attributes: ["id", "rating", "comment"],
-            where: { reviewerId: ownerId },
-            required: false,
-          },
-          {
-            model: Location,
-            attributes: ["id", "title", "city", "address"],
-            where: { companyId: company.id },
-            required: true,
+            model: User,
+            attributes: ["id", "phone", "avatar"],
+            include: [
+              {
+                model: WorkerProfile,
+                attributes: ["firstName", "lastName", "rating", "avatarUrl"],
+              },
+            ],
           },
         ],
       },
+      { model: JobPosition, attributes: ["id", "title"] },
       {
-        model: User,
-        attributes: ["id", "phone", "avatar"],
-        include: [
-          {
-            model: WorkerProfile,
-            attributes: ["firstName", "lastName", "rating", "avatarUrl"],
-          },
-        ],
+        model: Location,
+        attributes: ["id", "title", "city", "address"],
+        where: { companyId: company.id },
+        required: true,
       },
     ],
-    order: [["appliedAt", "DESC"]],
+    order: [["startTime", "ASC"]],
     limit,
     offset: (page - 1) * limit,
     distinct: true,
-    subQuery: false,
   });
 
   return {
@@ -570,7 +560,29 @@ export const decideBusinessShiftApplication = async ({ applicationId, ownerId, d
       return { application: null, reason: "unavailable" };
     }
 
+    let autoRejectedWorkerIds = [];
+
     if (decision === "approved") {
+      // Зчитуємо адресатів у тій самій транзакції до масового оновлення, інакше
+      // після зміни статусу буде неможливо визначити, кому надіслати відмову.
+      const otherPendingApplications = await ShiftApplication.findAll({
+        where: {
+          shiftId: application.shiftId,
+          status: "pending",
+          id: { [Op.ne]: application.id },
+        },
+        attributes: ["workerId"],
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      autoRejectedWorkerIds = [
+        ...new Set(
+          otherPendingApplications
+            .map((pendingApplication) => Number(pendingApplication.workerId))
+            .filter((workerId) => Number.isInteger(workerId) && workerId > 0),
+        ),
+      ];
+
       await application.update({ status: "approved" }, { transaction });
       await application.Shift.update({ status: "booked" }, { transaction });
       // Одна зміна — один виконавець: інші нерозглянуті заявки закриваємо.
@@ -585,7 +597,7 @@ export const decideBusinessShiftApplication = async ({ applicationId, ownerId, d
       await application.update({ status: "rejected" }, { transaction });
     }
 
-    return { application, reason: null };
+    return { application, reason: null, autoRejectedWorkerIds };
   });
 };
 
@@ -673,9 +685,33 @@ export const updateShift = async (shiftId, updateData) => {
  * Переводить зміну в статус скасованої
  */
 export const cancelShift = async (shiftId) => {
-  const shift = await Shift.findByPk(shiftId);
-  if (!shift) return null;
-  await Shift.sequelize.transaction(async (transaction) => {
+  return Shift.sequelize.transaction(async (transaction) => {
+    // Зберігаємо адресатів до масового оновлення заявок. Це дає можливість
+    // повідомити кожного виконавця лише після успішного commit транзакції.
+    // Спочатку блокуємо заявки, як і в рішенні щодо заявки, щоб не створювати
+    // зворотний порядок блокувань під час одночасних дій бізнесу.
+    const affectedApplications = await ShiftApplication.findAll({
+      where: {
+        shiftId,
+        status: { [Op.in]: ["pending", "approved"] },
+      },
+      attributes: ["workerId"],
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+
+    const shift = await Shift.findByPk(shiftId, {
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+    if (!shift) return { shift: null, affectedWorkerIds: [], reason: "not_found" };
+    if (["cancelled", "completed"].includes(shift.status)) {
+      return { shift: null, affectedWorkerIds: [], reason: "final" };
+    }
+    if (new Date(shift.startTime) <= new Date()) {
+      return { shift: null, affectedWorkerIds: [], reason: "started" };
+    }
+
     await shift.update({ status: "cancelled" }, { transaction });
     await ShiftApplication.update(
       { status: "rejected" },
@@ -687,8 +723,17 @@ export const cancelShift = async (shiftId) => {
         transaction,
       },
     );
+
+    const affectedWorkerIds = [
+      ...new Set(
+        affectedApplications
+          .map((application) => Number(application.workerId))
+          .filter((workerId) => Number.isInteger(workerId) && workerId > 0),
+      ),
+    ];
+
+    return { shift, affectedWorkerIds, reason: null };
   });
-  return shift;
 };
 
 export const findShiftApplication = async (shiftId, workerId) => {
@@ -706,7 +751,15 @@ export const createShiftApplication = async (shiftId, workerId) => {
 export const cancelWorkerShiftApplication = async (applicationId, workerId) => {
   const application = await ShiftApplication.findOne({
     where: { id: applicationId, workerId },
-    include: [{ model: Shift, attributes: ["id", "startTime"] }],
+    include: [{
+      model: Shift,
+      attributes: ["id", "startTime"],
+      include: [{
+        model: Location,
+        attributes: ["id"],
+        include: [{ model: Company, attributes: ["ownerId"] }],
+      }],
+    }],
   });
 
   if (!application) return { application: null, reason: "not_found" };

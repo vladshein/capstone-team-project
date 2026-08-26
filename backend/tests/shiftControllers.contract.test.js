@@ -18,6 +18,7 @@ const cancelWorkerShiftApplication = jest.fn();
 const updateShift = jest.fn();
 const cancelShift = jest.fn();
 const getWorkerShiftHistory = jest.fn();
+const enqueueShiftNotification = jest.fn();
 
 jest.unstable_mockModule("../services/shiftServices.js", () => ({
   getAllShifts,
@@ -38,6 +39,9 @@ jest.unstable_mockModule("../services/shiftServices.js", () => ({
   updateShift,
   cancelShift,
   getWorkerShiftHistory,
+}));
+jest.unstable_mockModule("../queues/shiftLifecycleQueue.js", () => ({
+  enqueueShiftNotification,
 }));
 
 const shiftController = await import("../controllers/shiftControllers.js");
@@ -60,6 +64,7 @@ const ownerShift = ({ status = "open", startTime = "2035-01-01T10:00:00.000Z" } 
 describe("shift controllers: HTTP contracts", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    enqueueShiftNotification.mockResolvedValue(undefined);
   });
 
   test("normalizes list filters, page and limit before loading shifts", async () => {
@@ -219,8 +224,17 @@ describe("shift controllers: HTTP contracts", () => {
   });
 
   test("maps a successful business decision to a no-store response", async () => {
-    const application = { id: 91, status: "approved" };
-    decideBusinessShiftApplication.mockResolvedValue({ application, reason: null });
+    const application = {
+      id: 91,
+      shiftId: 15,
+      workerId: 42,
+      status: "approved",
+    };
+    decideBusinessShiftApplication.mockResolvedValue({
+      application,
+      reason: null,
+      autoRejectedWorkerIds: [43],
+    });
     const response = createResponse();
 
     await shiftController.decideBusinessShiftApplication(
@@ -233,6 +247,16 @@ describe("shift controllers: HTTP contracts", () => {
       applicationId: 91,
       ownerId: 7,
       decision: "approved",
+    });
+    expect(enqueueShiftNotification).toHaveBeenNthCalledWith(1, {
+      event: "application_approved",
+      recipientUserId: 42,
+      shiftId: 15,
+    });
+    expect(enqueueShiftNotification).toHaveBeenNthCalledWith(2, {
+      event: "application_rejected",
+      recipientUserId: 43,
+      shiftId: 15,
     });
     expect(response.set).toHaveBeenCalledWith("Cache-Control", "no-store");
     expect(response.status).toHaveBeenCalledWith(200);
@@ -255,6 +279,86 @@ describe("shift controllers: HTTP contracts", () => {
     expect(response.status).toHaveBeenCalledWith(400);
     expect(response.json).toHaveBeenCalledWith({
       message: "Зміна вже недоступна для призначення виконавця.",
+    });
+  });
+
+  test("notifies a worker when the company rejects their application", async () => {
+    const application = {
+      id: 91,
+      shiftId: 15,
+      workerId: 42,
+      status: "rejected",
+    };
+    decideBusinessShiftApplication.mockResolvedValue({
+      application,
+      reason: null,
+      autoRejectedWorkerIds: [],
+    });
+
+    await shiftController.decideBusinessShiftApplication(
+      {
+        params: { applicationId: "91" },
+        body: { status: "rejected" },
+        user: { id: 7 },
+      },
+      createResponse(),
+      jest.fn(),
+    );
+
+    expect(enqueueShiftNotification).toHaveBeenCalledWith({
+      event: "application_rejected",
+      recipientUserId: 42,
+      shiftId: 15,
+    });
+  });
+
+  test("notifies a worker after the company records a completed shift", async () => {
+    const application = {
+      id: 91,
+      shiftId: 15,
+      workerId: 42,
+      status: "completed",
+    };
+    completeBusinessShiftApplication.mockResolvedValue({
+      application,
+      reason: null,
+    });
+
+    await shiftController.completeBusinessShiftApplication(
+      { params: { applicationId: "91" }, user: { id: 7 } },
+      createResponse(),
+      jest.fn(),
+    );
+
+    expect(enqueueShiftNotification).toHaveBeenCalledWith({
+      event: "application_completed",
+      recipientUserId: 42,
+      shiftId: 15,
+    });
+  });
+
+  test("notifies a worker when the company records a no-show", async () => {
+    const application = {
+      id: 91,
+      shiftId: 15,
+      workerId: 42,
+      status: "no_show",
+    };
+    markBusinessShiftApplicationNoShow.mockResolvedValue({
+      application,
+      reason: null,
+    });
+
+    await shiftController.markBusinessShiftApplicationNoShow(
+      { params: { applicationId: "91" }, user: { id: 7 } },
+      createResponse(),
+      jest.fn(),
+    );
+
+    expect(enqueueShiftNotification).toHaveBeenCalledWith({
+      event: "application_no_show",
+      recipientUserId: 42,
+      shiftId: 15,
     });
   });
 
@@ -281,7 +385,10 @@ describe("shift controllers: HTTP contracts", () => {
     const shift = ownerShift();
     const cancelled = { ...shift, status: "cancelled" };
     getShiftById.mockResolvedValue(shift);
-    cancelShift.mockResolvedValue(cancelled);
+    cancelShift.mockResolvedValue({
+      shift: cancelled,
+      affectedWorkerIds: [42, 43],
+    });
     const response = createResponse();
 
     await shiftController.cancelShift(
@@ -291,6 +398,16 @@ describe("shift controllers: HTTP contracts", () => {
     );
 
     expect(cancelShift).toHaveBeenCalledWith("15");
+    expect(enqueueShiftNotification).toHaveBeenNthCalledWith(1, {
+      event: "shift_cancelled",
+      recipientUserId: 42,
+      shiftId: 15,
+    });
+    expect(enqueueShiftNotification).toHaveBeenNthCalledWith(2, {
+      event: "shift_cancelled",
+      recipientUserId: 43,
+      shiftId: 15,
+    });
     expect(response.status).toHaveBeenCalledWith(200);
     expect(response.json).toHaveBeenCalledWith({
       message: "Зміну успішно скасовано",
@@ -519,7 +636,14 @@ describe("shift controllers: HTTP contracts", () => {
   });
 
   test("returns a success message after a worker withdraws a pending application", async () => {
-    cancelWorkerShiftApplication.mockResolvedValue({ application: { id: 91 }, reason: null });
+    cancelWorkerShiftApplication.mockResolvedValue({
+      application: {
+        id: 91,
+        shiftId: 15,
+        Shift: { Location: { Company: { ownerId: 1241 } } },
+      },
+      reason: null,
+    });
     const response = createResponse();
 
     await shiftController.cancelWorkerApplication(
@@ -530,6 +654,11 @@ describe("shift controllers: HTTP contracts", () => {
 
     expect(response.status).toHaveBeenCalledWith(200);
     expect(response.json).toHaveBeenCalledWith({ message: "Заявку скасовано." });
+    expect(enqueueShiftNotification).toHaveBeenCalledWith({
+      event: "application_withdrawn",
+      recipientUserId: 1241,
+      shiftId: 15,
+    });
   });
 
   test("normalizes worker history query parameters and returns the service result", async () => {

@@ -164,8 +164,10 @@ export default function ShiftsDetailPage() {
   // робити запит, доки деталі зміни ще завантажуються або це не її власник.
   useEffect(() => {
     const isOwner = user?.role === "business_client" && shift?.Location?.Company?.ownerId === user.id;
-    const isFinished = shift ? new Date(shift.endTime) <= new Date() : false;
-    if (!shift || !isOwner || !isFinished) {
+    // Дані виконавця існують лише після фактичного завершення зміни.
+    // Для скасованих або просто прострочених open/booked змін endpoint повертає 404.
+    const hasCompletedShift = shift?.status === "completed";
+    if (!shift || !isOwner || !hasCompletedShift) {
       setWorkerSummary(null);
       return;
     }
@@ -209,6 +211,8 @@ export default function ShiftsDetailPage() {
   const isShiftFinished = new Date(shift.endTime) <= now;
   const canApply = shift.status === "open" && !isShiftStarted;
   const hasApplied = activeApplication?.shiftId === shift.id;
+  const canCancelApplication =
+    activeApplication?.status === "pending" && !isShiftStarted;
   const isShiftOwner = user?.role === "business_client" && shift.Location?.Company?.ownerId === user.id;
   const canManageShift = isShiftOwner && shift.status === "open" && !isShiftStarted;
   const canRepeatShift = isShiftOwner && (isShiftFinished || ["completed", "cancelled"].includes(shift.status));
@@ -235,6 +239,11 @@ export default function ShiftsDetailPage() {
 
     if (user?.role !== "worker") {
       toast.error("Відгукуватися на зміни можуть лише виконавці.");
+      return;
+    }
+
+    if (user.isVerified === false) {
+      toast.error("Підтвердьте email, щоб відгукнутися на зміну.");
       return;
     }
 
@@ -490,7 +499,7 @@ export default function ShiftsDetailPage() {
                       ? "Компанія підтвердила вашу участь"
                       : "Ваш відгук надіслано"}
                   </p>
-                  {new Date(shift.startTime) > new Date() && (
+                  {canCancelApplication && (
                     <button
                       type="button"
                       onClick={() => setIsCancelModalOpen(true)}

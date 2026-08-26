@@ -1,4 +1,5 @@
 import api from "./client";
+import type { Shift } from "./shifts";
 
 export type PublicWorkerProfile = {
   id: number;
@@ -23,6 +24,13 @@ export type PublicCompanyProfile = {
 
 type ApiResponse<T> = { data: T };
 
+export type PublicCompanyOpenShiftsResponse = {
+  totalItems: number;
+  totalPages: number;
+  currentPage: number;
+  data: Shift[];
+};
+
 export async function getPublicWorkerProfile(userId: number) {
   const { data } = await api.get<ApiResponse<PublicWorkerProfile>>(`/worker-profiles/public/${userId}`);
   return data.data;
@@ -30,5 +38,13 @@ export async function getPublicWorkerProfile(userId: number) {
 
 export async function getPublicCompanyProfile(companyId: number) {
   const { data } = await api.get<ApiResponse<PublicCompanyProfile>>(`/companies/public/${companyId}`);
+  return data.data;
+}
+
+export async function getPublicCompanyOpenShifts(companyId: number, page = 1) {
+  const { data } = await api.get<ApiResponse<PublicCompanyOpenShiftsResponse>>(
+    `/companies/public/${companyId}/shifts`,
+    { params: { page, limit: 6 } },
+  );
   return data.data;
 }
