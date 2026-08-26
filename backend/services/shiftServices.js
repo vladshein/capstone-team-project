@@ -23,6 +23,7 @@ const buildShiftSearchQuery = ({
   dateFrom,
   dateTo,
   durationFilters,
+  search,
   sort = "relevance",
   latitude,
   longitude,
@@ -53,6 +54,7 @@ const buildShiftSearchQuery = ({
   }
 
   const durationHours = 'EXTRACT(EPOCH FROM ("Shift"."endTime" - "Shift"."startTime")) / 3600';
+  const andConditions = [];
   const durationConditions = [];
   if (durationFilters?.includes("До 4 год")) {
     durationConditions.push(where(literal(durationHours), { [Op.lte]: 4 }));
@@ -65,7 +67,17 @@ const buildShiftSearchQuery = ({
   if (durationFilters?.includes("Понад 8 год")) {
     durationConditions.push(where(literal(durationHours), { [Op.gt]: 8 }));
   }
-  if (durationConditions.length) whereCondition[Op.or] = durationConditions;
+  if (durationConditions.length) andConditions.push({ [Op.or]: durationConditions });
+
+  if (search) {
+    const searchPattern = `%${search}%`;
+    andConditions.push({
+      [Op.or]: [
+        { description: { [Op.iLike]: searchPattern } },
+        { "$JobPosition.title$": { [Op.iLike]: searchPattern } },
+      ],
+    });
+  }
 
   const companyInclude = {
     model: Company,
@@ -93,10 +105,9 @@ const buildShiftSearchQuery = ({
     : null;
 
   if (radiusKm && distance) {
-    whereCondition[Op.and] = [
-      where(literal(distance), { [Op.lte]: radiusKm }),
-    ];
+    andConditions.push(where(literal(distance), { [Op.lte]: radiusKm }));
   }
+  if (andConditions.length) whereCondition[Op.and] = andConditions;
 
   let order = [["startTime", "ASC"]];
   if (sort === "date_desc") order = [["startTime", "DESC"]];
@@ -148,6 +159,7 @@ export const getAllShifts = async ({
   dateFrom,
   dateTo,
   durationFilters,
+  search,
   sort = "relevance",
   latitude,
   longitude,
@@ -165,6 +177,7 @@ export const getAllShifts = async ({
     dateFrom,
     dateTo,
     durationFilters,
+    search,
     sort,
   });
 
@@ -190,6 +203,7 @@ export const getAllShifts = async ({
     dateFrom,
     dateTo,
     durationFilters,
+    search,
     sort,
     latitude,
     longitude,
@@ -212,13 +226,16 @@ export const getAllShifts = async ({
       ],
     };
     const partnerFacetLocation = buildPartnerFacetLocation(city);
+    const searchFacetInclude = search
+      ? [{ model: JobPosition, attributes: [] }]
+      : [];
 
     const [listResult, partnerRows] = await Promise.all([
       Shift.findAndCountAll(listOptions),
       Shift.findAll({
         attributes: [[fn("COUNT", col("Shift.id")), "count"]],
         where: whereCondition,
-        include: [partnerFacetLocation],
+        include: [...searchFacetInclude, partnerFacetLocation],
         group: ["Location.Company.id", "Location.Company.name"],
         order: [[literal('COUNT("Shift"."id")'), "DESC"], [literal('"Location->Company"."name"'), "ASC"]],
         raw: true,
@@ -255,6 +272,9 @@ export const getAllShifts = async ({
 export const getShiftMapMarkers = async (filters) => {
   const { whereCondition, locationInclude, order } = buildShiftSearchQuery(filters);
   const partnerFacetLocation = buildPartnerFacetLocation(filters.city);
+  const searchFacetInclude = filters.search
+    ? [{ model: JobPosition, attributes: [] }]
+    : [];
 
   const [rows, partnerRows] = await Promise.all([
     Shift.findAll({
@@ -270,7 +290,7 @@ export const getShiftMapMarkers = async (filters) => {
     Shift.findAll({
       attributes: [[fn("COUNT", col("Shift.id")), "count"]],
       where: whereCondition,
-      include: [partnerFacetLocation],
+      include: [...searchFacetInclude, partnerFacetLocation],
       group: ["Location.Company.id", "Location.Company.name"],
       order: [[literal('COUNT("Shift"."id")'), "DESC"], [literal('"Location->Company"."name"'), "ASC"]],
       raw: true,
@@ -331,6 +351,11 @@ export const verifyLocationOwnership = async (locationId, userId) => {
  */
 export const createShift = async (shiftData) => {
   return await Shift.create(shiftData);
+};
+
+/** Створює серію однакових щоденних змін одним запитом. */
+export const createShifts = async (shiftsData) => {
+  return await Shift.bulkCreate(shiftsData);
 };
 
 /** Повертає зміни однієї компанії лише її власнику. */

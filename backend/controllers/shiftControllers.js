@@ -50,6 +50,7 @@ const parseShiftFilters = (query) => {
     dateFrom,
     dateTo,
     durationFilters,
+    search,
     sort,
     latitude,
     longitude,
@@ -66,6 +67,7 @@ const parseShiftFilters = (query) => {
     dateFrom: typeof dateFrom === "string" && !Number.isNaN(Date.parse(dateFrom)) ? dateFrom : undefined,
     dateTo: typeof dateTo === "string" && !Number.isNaN(Date.parse(dateTo)) ? dateTo : undefined,
     durationFilters: parseList(durationFilters),
+    search: typeof search === "string" ? search.trim().slice(0, 100) || undefined : undefined,
     sort: ["relevance", "price_desc", "date_asc", "date_desc", "nearest"].includes(sort)
       ? sort
       : "relevance",
@@ -345,6 +347,7 @@ export const createShift = async (req, res, next) => {
       hourlyRate,
       bonusRate,
       description,
+      repeatDays = 1,
     } = req.body;
 
     if (new Date(startTime) <= new Date()) {
@@ -366,8 +369,7 @@ export const createShift = async (req, res, next) => {
       throw error;
     }
 
-    // 2. Створення зміни
-    const newShift = await shiftService.createShift({
+    const shiftData = {
       locationId,
       positionId,
       categoryId,
@@ -377,11 +379,31 @@ export const createShift = async (req, res, next) => {
       bonusRate: bonusRate || 0.0,
       description,
       status: "open", // За замовчуванням нова зміна є відкритою
-    });
+    };
+    // 2. Створення однієї зміни або серії щоденних змін
+    let createdShifts;
+    if (repeatDays === 1) {
+      createdShifts = [await shiftService.createShift(shiftData)];
+    } else {
+      const shifts = Array.from({ length: repeatDays }, (_, index) => {
+        const nextStartTime = new Date(startTime);
+        const nextEndTime = new Date(endTime);
+        nextStartTime.setUTCDate(nextStartTime.getUTCDate() + index);
+        nextEndTime.setUTCDate(nextEndTime.getUTCDate() + index);
+
+        return {
+          ...shiftData,
+          startTime: nextStartTime,
+          endTime: nextEndTime,
+        };
+      });
+      createdShifts = await shiftService.createShifts(shifts);
+    }
 
     res.status(201).json({
-      message: "Зміну успішно створено",
-      data: newShift,
+      message: repeatDays === 1 ? "Зміну успішно створено" : `Успішно створено змін: ${createdShifts.length}`,
+      data: createdShifts[0],
+      createdCount: createdShifts.length,
     });
   } catch (error) {
     next(error); // Передаємо помилку в центральний errorHandler

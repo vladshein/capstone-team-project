@@ -66,6 +66,7 @@ export interface GetShiftsParams {
   dateFrom?: string;
   dateTo?: string;
   durationFilters?: string;
+  search?: string;
   sort?: "relevance" | "price_desc" | "date_asc" | "date_desc" | "nearest";
   latitude?: number;
   longitude?: number;
@@ -106,6 +107,8 @@ export interface CreateShiftPayload {
   hourlyRate: number;
   bonusRate?: number;
   description?: string;
+  /** Кількість однакових щоденних змін, включно з першою. */
+  repeatDays?: number;
 }
 
 export interface ShiftApplication {
