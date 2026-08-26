@@ -63,6 +63,7 @@ interface WorkerDashboardProps {
 const TABS = [
   { key: "search", label: "Пошук змін", to: "search" },
   { key: "bookings", label: "Мої зміни", to: "bookings" },
+  { key: "disputes", label: "Спори", to: "disputes" },
   { key: "favorites", label: "Збережені зміни", to: "favorites" },
 ];
 

@@ -1,9 +1,8 @@
-import { Op } from "sequelize";
+import { Op, UniqueConstraintError } from "sequelize";
 import {
   Company,
   Dispute,
   DisputeEvent,
-  DisputeEvidence,
   DisputeMessage,
   JobPosition,
   Location,
@@ -52,6 +51,7 @@ const activeStatuses = [
   "under_review",
   "appealed",
 ];
+const DISPUTE_OPEN_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 const addEvent = (disputeId, actorId, type, payload, transaction) =>
   DisputeEvent.create({ disputeId, actorId, type, payload }, { transaction });
@@ -76,6 +76,11 @@ const getShiftParticipants = async (shiftId, transaction) => {
   if (!shift) throw HttpError(404, "Зміну не знайдено.");
   if (shift.status !== "completed")
     throw HttpError(400, "Спір можна відкрити лише для завершеної зміни.");
+  if (Date.now() > new Date(shift.endTime).getTime() + DISPUTE_OPEN_WINDOW_MS)
+    throw HttpError(
+      400,
+      "Спір можна відкрити протягом 7 днів після завершення зміни.",
+    );
   const workerId = shift.ShiftApplications?.[0]?.workerId;
   const companyOwnerId = shift.Location?.Company?.ownerId;
   if (!workerId || !companyOwnerId)
@@ -93,36 +98,48 @@ const assertParticipant = (dispute, user) => {
   throw HttpError(403, "Ви не є учасником цього спору.");
 };
 
-export const createDispute = async ({ user, payload }) =>
-  Dispute.sequelize.transaction(async (transaction) => {
-    const { workerId, companyOwnerId } = await getShiftParticipants(
-      payload.shiftId,
-      transaction,
-    );
-    if (![workerId, companyOwnerId].includes(user.id))
-      throw HttpError(403, "Ви не є стороною цієї зміни.");
-    const respondentId = user.id === workerId ? companyOwnerId : workerId;
-    const existing = await Dispute.findOne({
-      where: { shiftId: payload.shiftId, status: { [Op.in]: activeStatuses } },
-      transaction,
+export const createDispute = async ({ user, payload }) => {
+  try {
+    return await Dispute.sequelize.transaction(async (transaction) => {
+      const { workerId, companyOwnerId } = await getShiftParticipants(
+        payload.shiftId,
+        transaction,
+      );
+      if (![workerId, companyOwnerId].includes(user.id))
+        throw HttpError(403, "Ви не є стороною цієї зміни.");
+      const respondentId = user.id === workerId ? companyOwnerId : workerId;
+      const existing = await Dispute.findOne({
+        where: {
+          shiftId: payload.shiftId,
+          status: { [Op.in]: activeStatuses },
+        },
+        transaction,
+      });
+      if (existing)
+        throw HttpError(409, "Для цієї зміни вже є відкритий спір.");
+      const dispute = await Dispute.create(
+        { ...payload, initiatorId: user.id, respondentId, status: "open" },
+        { transaction },
+      );
+      await addEvent(
+        dispute.id,
+        user.id,
+        "created",
+        {
+          reason: payload.reason,
+          disputedAmount: payload.disputedAmount ?? null,
+        },
+        transaction,
+      );
+      return getDisputeById(dispute.id, user, transaction);
     });
-    if (existing) throw HttpError(409, "Для цієї зміни вже є відкритий спір.");
-    const dispute = await Dispute.create(
-      { ...payload, initiatorId: user.id, respondentId, status: "open" },
-      { transaction },
-    );
-    await addEvent(
-      dispute.id,
-      user.id,
-      "created",
-      {
-        reason: payload.reason,
-        disputedAmount: payload.disputedAmount ?? null,
-      },
-      transaction,
-    );
-    return getDisputeById(dispute.id, user, transaction);
-  });
+  } catch (error) {
+    if (error instanceof UniqueConstraintError) {
+      throw HttpError(409, "Для цієї зміни вже є відкритий спір.");
+    }
+    throw error;
+  }
+};
 
 export const getDisputeById = async (disputeId, user, transaction) => {
   const dispute = await Dispute.findByPk(disputeId, {
@@ -133,13 +150,6 @@ export const getDisputeById = async (disputeId, user, transaction) => {
         model: DisputeMessage,
         as: "Messages",
         include: [userInclude("Author")],
-        separate: true,
-        order: [["created_at", "ASC"]],
-      },
-      {
-        model: DisputeEvidence,
-        as: "Evidence",
-        include: [userInclude("Uploader")],
         separate: true,
         order: [["created_at", "ASC"]],
       },
@@ -161,13 +171,15 @@ export const getDisputeById = async (disputeId, user, transaction) => {
 
 export const getMyDisputes = async (
   user,
-  { page = 1, limit = 20, status } = {},
+  { page = 1, limit = 20, status, shiftId, active = false } = {},
 ) => {
   const where =
     user.role === "admin"
       ? {}
       : { [Op.or]: [{ initiatorId: user.id }, { respondentId: user.id }] };
   if (status) where.status = status;
+  if (active) where.status = { [Op.in]: activeStatuses };
+  if (shiftId) where.shiftId = shiftId;
   const { count, rows } = await Dispute.findAndCountAll({
     where,
     include: disputeInclude,
@@ -198,37 +210,43 @@ export const addMessage = async ({ disputeId, user, message }) =>
       { disputeId, authorId: user.id, message },
       { transaction },
     );
-    if (dispute.status === "open" && user.id === dispute.respondentId)
-      await dispute.update({ status: "under_review" }, { transaction });
     await addEvent(disputeId, user.id, "message_added", null, transaction);
     return record;
   });
 
-export const addEvidence = async ({ disputeId, user, files }) =>
+export const settleDispute = async ({ disputeId, user }) =>
   Dispute.sequelize.transaction(async (transaction) => {
     const dispute = await Dispute.findByPk(disputeId, { transaction });
     if (!dispute) throw HttpError(404, "Спір не знайдено.");
-    assertParticipant(dispute, user);
-    if (["resolved", "closed"].includes(dispute.status))
-      throw HttpError(409, "До закритого спору не можна додавати докази.");
-    const evidence = await DisputeEvidence.bulkCreate(
-      files.map((file) => ({
-        disputeId,
-        uploadedBy: user.id,
-        fileUrl: `/temp/${file.filename}`,
-        originalName: file.originalname,
-        mimeType: file.mimetype,
-      })),
-      { transaction, returning: true },
+    if (dispute.respondentId !== user.id)
+      throw HttpError(
+        403,
+        "Лише інша сторона спору може погодитися з вимогою.",
+      );
+    if (!['open', 'awaiting_response'].includes(dispute.status))
+      throw HttpError(409, "Цей спір уже має остаточний статус.");
+    await dispute.update(
+      { status: "closed", resolvedAt: new Date() },
+      { transaction },
     );
-    await addEvent(
-      disputeId,
-      user.id,
-      "evidence_added",
-      { count: evidence.length },
-      transaction,
-    );
-    return evidence;
+    await addEvent(disputeId, user.id, "settled_by_parties", null, transaction);
+    return getDisputeById(disputeId, user, transaction);
+  });
+
+export const escalateDispute = async ({ disputeId, user }) =>
+  Dispute.sequelize.transaction(async (transaction) => {
+    const dispute = await Dispute.findByPk(disputeId, { transaction });
+    if (!dispute) throw HttpError(404, "Спір не знайдено.");
+    if (dispute.respondentId !== user.id)
+      throw HttpError(
+        403,
+        "Лише інша сторона спору може передати спір адміністратору.",
+      );
+    if (!['open', 'awaiting_response'].includes(dispute.status))
+      throw HttpError(409, "Цей спір уже має остаточний статус.");
+    await dispute.update({ status: "under_review" }, { transaction });
+    await addEvent(disputeId, user.id, "escalated_to_admin", null, transaction);
+    return getDisputeById(disputeId, user, transaction);
   });
 
 export const updateDisputeStatus = async ({ disputeId, adminId, status }) =>
@@ -255,11 +273,27 @@ export const updateDisputeStatus = async ({ disputeId, adminId, status }) =>
     );
   });
 
+export const appealDispute = async ({ disputeId, user, message }) =>
+  Dispute.sequelize.transaction(async (transaction) => {
+    const dispute = await Dispute.findByPk(disputeId, { transaction });
+    if (!dispute) throw HttpError(404, "Спір не знайдено.");
+    assertParticipant(dispute, user);
+    if (dispute.status !== "resolved")
+      throw HttpError(409, "Оскаржити можна лише рішення адміністратора.");
+    await DisputeMessage.create(
+      { disputeId, authorId: user.id, message },
+      { transaction },
+    );
+    await dispute.update({ status: "appealed", resolvedAt: null }, { transaction });
+    await addEvent(disputeId, user.id, "appealed", null, transaction);
+    return getDisputeById(disputeId, user, transaction);
+  });
+
 export const resolveDispute = async ({ disputeId, adminId, payload }) =>
   Dispute.sequelize.transaction(async (transaction) => {
     const dispute = await Dispute.findByPk(disputeId, { transaction });
     if (!dispute) throw HttpError(404, "Спір не знайдено.");
-    if (["resolved", "closed"].includes(dispute.status))
+    if (dispute.status === "closed")
       throw HttpError(409, "Цей спір уже закрито.");
     await dispute.update(
       {

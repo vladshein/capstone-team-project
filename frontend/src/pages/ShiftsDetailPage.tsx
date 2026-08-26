@@ -261,6 +261,7 @@ export default function ShiftsDetailPage() {
     (isShiftFinished || ["completed", "cancelled"].includes(shift.status));
   const canOpenDispute =
     shift.status === "completed" &&
+    Date.now() <= new Date(shift.endTime).getTime() + 7 * 24 * 60 * 60 * 1000 &&
     ((isShiftOwner && Boolean(workerSummary)) ||
       (user?.role === "worker" &&
         ["completed", "no_show"].includes(activeApplication?.status ?? "")));

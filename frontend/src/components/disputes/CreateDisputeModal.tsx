@@ -3,7 +3,6 @@ import toast from "react-hot-toast";
 import { Modal } from "../ui/Modal";
 import {
   createDispute,
-  uploadDisputeEvidence,
   type Dispute,
 } from "../../api/disputes";
 
@@ -29,13 +28,11 @@ export function CreateDisputeModal({
   const [reason, setReason] = useState<Dispute["reason"]>("payment");
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
-  const [files, setFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const close = () => {
     if (!isSubmitting) {
       setDescription("");
       setAmount("");
-      setFiles([]);
       onClose();
     }
   };
@@ -50,7 +47,6 @@ export function CreateDisputeModal({
         description: description.trim(),
         ...(amount ? { disputedAmount: Number(amount) } : {}),
       });
-      if (files.length) await uploadDisputeEvidence(dispute.id, files);
       toast.success("Спір передано на розгляд адміністратора.");
       close();
       onCreated?.();
@@ -66,8 +62,7 @@ export function CreateDisputeModal({
     <Modal isOpen={isOpen} onClose={close} title="Відкрити спір">
       <form onSubmit={submit} className="space-y-4">
         <p className="text-sm leading-6 text-text-muted">
-          Опишіть ситуацію та додайте докази. Інша сторона зможе надати
-          відповідь.
+          Опишіть ситуацію. Інша сторона зможе надати відповідь.
         </p>
         <label className="block text-sm font-medium">
           Причина
@@ -107,20 +102,6 @@ export function CreateDisputeModal({
             value={amount}
             onChange={(event) => setAmount(event.target.value)}
             className="mt-1.5 min-h-[44px] w-full rounded-[var(--radius-card)] border border-border bg-bg px-3 font-normal outline-none focus:border-accent"
-          />
-        </label>
-        <label className="block text-sm font-medium">
-          Докази{" "}
-          <span className="font-normal text-text-subtle">
-            (до 5 файлів, 5 МБ кожен)
-          </span>
-          <input
-            type="file"
-            multiple
-            onChange={(event) =>
-              setFiles(Array.from(event.target.files ?? []).slice(0, 5))
-            }
-            className="mt-1.5 block w-full text-sm text-text-muted file:mr-3 file:rounded-[var(--radius-pill)] file:border-0 file:bg-bg-muted file:px-3 file:py-2 file:text-sm file:font-medium"
           />
         </label>
         <div className="flex justify-end gap-3 pt-2">

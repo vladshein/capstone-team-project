@@ -37,6 +37,10 @@ const NearbyWorkerShiftsTab = lazy(
   () => import("./pages/worker/NearbyWorkerShiftsTab"),
 );
 const BookingsTab = lazy(() => import("./pages/worker/BookingsTab"));
+const MyDisputesTab = lazy(() => import("./components/disputes/MyDisputesTab"));
+const DisputeDetailsPage = lazy(
+  () => import("./pages/disputes/DisputeDetailsPage"),
+);
 const FavoriteShiftsTab = lazy(
   () => import("./pages/worker/FavoriteShiftsTab"),
 );
@@ -73,6 +77,9 @@ const EmailVerificationPage = lazy(
 );
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 const AdminDisputesPage = lazy(() => import("./pages/admin/AdminDisputesPage"));
+const AdminDisputeDetailsPage = lazy(
+  () => import("./pages/admin/AdminDisputeDetailsPage"),
+);
 
 const getApiError = (error: unknown): ApiError => {
   if (typeof error === "object" && error !== null && "message" in error) {
@@ -253,6 +260,11 @@ export default function App() {
               <Route index element={<BookingsTab />} />
               <Route path="search" element={<NearbyWorkerShiftsTab />} />
               <Route path="bookings" element={<BookingsTab />} />
+              <Route path="disputes" element={<MyDisputesTab />} />
+              <Route
+                path="disputes/:disputeId"
+                element={<DisputeDetailsPage />}
+              />
               <Route path="favorites" element={<FavoriteShiftsTab />} />
             </Route>
 
@@ -283,6 +295,11 @@ export default function App() {
                 path="archive"
                 element={<BusinessShiftsTab scope="archive" />}
               />
+              <Route path="disputes" element={<MyDisputesTab />} />
+              <Route
+                path="disputes/:disputeId"
+                element={<DisputeDetailsPage />}
+              />
             </Route>
 
             <Route
@@ -292,6 +309,18 @@ export default function App() {
                   <Navigate to="/" replace />
                 ) : user?.role === "admin" ? (
                   <AdminDisputesPage />
+                ) : (
+                  <Navigate to={getDashboardPath(user?.role)} replace />
+                )
+              }
+            />
+            <Route
+              path="/admin/disputes/:disputeId"
+              element={
+                !isAuthenticated ? (
+                  <Navigate to="/" replace />
+                ) : user?.role === "admin" ? (
+                  <AdminDisputeDetailsPage />
                 ) : (
                   <Navigate to={getDashboardPath(user?.role)} replace />
                 )

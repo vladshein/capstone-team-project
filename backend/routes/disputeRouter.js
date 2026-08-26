@@ -3,7 +3,6 @@ import * as controller from "../controllers/disputeControllers.js";
 import authenticate from "../middlewares/authenticate.js";
 import checkRole from "../middlewares/checkRole.js";
 import requireVerifiedEmail from "../middlewares/requireVerifiedEmail.js";
-import upload from "../middlewares/upload.js";
 import validateBody from "../helpers/validateBody.js";
 import { validateParams } from "../helpers/validateFunctions.js";
 import {
@@ -37,12 +36,25 @@ disputeRouter.post(
   controller.addMessage,
 );
 disputeRouter.post(
-  "/:disputeId/evidence",
+  "/:disputeId/settle",
   checkRole("worker", "business_client"),
   requireVerifiedEmail,
   validateParams(disputeIdParamsSchema),
-  upload.array("files", 5),
-  controller.addEvidence,
+  controller.settleDispute,
 );
-
+disputeRouter.post(
+  "/:disputeId/escalate",
+  checkRole("worker", "business_client"),
+  requireVerifiedEmail,
+  validateParams(disputeIdParamsSchema),
+  controller.escalateDispute,
+);
+disputeRouter.post(
+  "/:disputeId/appeal",
+  checkRole("worker", "business_client"),
+  requireVerifiedEmail,
+  validateParams(disputeIdParamsSchema),
+  validateBody(createDisputeMessageSchema),
+  controller.appealDispute,
+);
 export default disputeRouter;

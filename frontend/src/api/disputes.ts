@@ -13,9 +13,10 @@ export type DisputeDecision =
   | "refund_company"
   | "no_action"
   | "cancel_shift_no_fault";
-type Participant = {
+export type DisputeParticipant = {
   id: number;
   email: string;
+  role: "worker" | "business_client" | "admin";
   WorkerProfile?: { firstName: string; lastName: string };
 };
 
@@ -29,17 +30,30 @@ export interface Dispute {
   decision: DisputeDecision | null;
   resolvedAmount: string | null;
   adminComment: string | null;
+  resolvedAt?: string | null;
   created_at: string;
-  Initiator: Participant;
-  Respondent: Participant;
+  Initiator: DisputeParticipant;
+  Respondent: DisputeParticipant;
   Shift: {
     id: number;
     startTime: string;
     JobPosition?: { title: string };
-    Location?: { Company?: { name: string } };
+    Location?: { Company?: { id: number; name: string } };
   };
-  Evidence?: Array<{ id: number; fileUrl: string; originalName: string }>;
-  Messages?: Array<{ id: number; message: string; created_at: string }>;
+  Messages?: Array<{
+    id: number;
+    message: string;
+    created_at: string;
+    Author?: DisputeParticipant;
+  }>;
+  AssignedAdmin?: DisputeParticipant;
+  Events?: Array<{
+    id: number;
+    type: string;
+    payload: Record<string, unknown> | null;
+    created_at: string;
+    Actor?: DisputeParticipant;
+  }>;
 }
 export interface DisputePage {
   data: Dispute[];
@@ -48,10 +62,42 @@ export interface DisputePage {
   currentPage: number;
 }
 
-export const getAdminDisputes = async (): Promise<DisputePage> =>
-  (await api.get<DisputePage>("/admin/disputes")).data;
+export const getAdminDisputes = async (params?: {
+  page?: number;
+  limit?: number;
+}): Promise<DisputePage> =>
+  (
+    await api.get<DisputePage>("/admin/disputes", {
+      params: { limit: 20, ...params },
+    })
+  ).data;
+export const getMyDisputes = async (params?: {
+  shiftId?: number;
+  page?: number;
+  limit?: number;
+}): Promise<DisputePage> =>
+  (
+    await api.get<DisputePage>("/disputes/my", {
+      params: { limit: 20, ...params },
+    })
+  ).data;
 export const getDispute = async (id: number) =>
   (await api.get<{ data: Dispute }>(`/disputes/${id}`)).data.data;
+export const addDisputeMessage = async (id: number, message: string) =>
+  (await api.post(`/disputes/${id}/messages`, { message })).data;
+export const settleDispute = async (id: number) =>
+  (await api.post<{ data: Dispute }>(`/disputes/${id}/settle`)).data.data;
+export const escalateDispute = async (id: number) =>
+  (await api.post<{ data: Dispute }>(`/disputes/${id}/escalate`)).data.data;
+export const appealDispute = async (id: number, message: string) =>
+  (await api.post<{ data: Dispute }>(`/disputes/${id}/appeal`, { message }))
+    .data.data;
+export const updateAdminDisputeStatus = async (
+  id: number,
+  status: "awaiting_response" | "under_review",
+) =>
+  (await api.patch<{ data: Dispute }>(`/admin/disputes/${id}/status`, { status }))
+    .data.data;
 export const resolveDispute = async (
   id: number,
   payload: {
@@ -69,9 +115,3 @@ export const createDispute = async (payload: {
   description: string;
   disputedAmount?: number;
 }) => (await api.post<{ data: Dispute }>("/disputes", payload)).data.data;
-
-export const uploadDisputeEvidence = async (id: number, files: File[]) => {
-  const form = new FormData();
-  files.forEach((file) => form.append("files", file));
-  await api.post(`/disputes/${id}/evidence`, form);
-};

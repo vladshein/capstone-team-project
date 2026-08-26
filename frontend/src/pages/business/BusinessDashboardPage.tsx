@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Archive, BriefcaseBusiness, ChevronDown, Plus, Users } from "lucide-react";
+import { Archive, BriefcaseBusiness, ChevronDown, Gavel, Plus, Users } from "lucide-react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { Loader } from "../../components/ui/Loader";
@@ -25,6 +25,7 @@ const tabs = [
   { to: "shifts", label: "Мої зміни", Icon: BriefcaseBusiness },
   { to: "applications", label: "Заявки", Icon: Users },
   { to: "archive", label: "Архів", Icon: Archive },
+  { to: "disputes", label: "Спори", Icon: Gavel },
 ];
 
 function BusinessDashboardPage() {
