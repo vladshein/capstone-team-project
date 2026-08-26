@@ -8,7 +8,13 @@ import type { SignUpPayload, UserRole } from "./components/auth/SignUpModal";
 import Loader from "./components/ui/Loader";
 import { HashScroll } from "./components/ui/HashScroll";
 import { MainLayout } from "./layouts/MainLayout";
-import { fetchMyProfile, login, logout, refreshUser, register } from "./redux/auth/actions";
+import {
+  fetchMyProfile,
+  login,
+  logout,
+  refreshUser,
+  register,
+} from "./redux/auth/actions";
 import {
   selectIsLoggedIn,
   selectIsRefreshing,
@@ -31,6 +37,10 @@ const NearbyWorkerShiftsTab = lazy(
   () => import("./pages/worker/NearbyWorkerShiftsTab"),
 );
 const BookingsTab = lazy(() => import("./pages/worker/BookingsTab"));
+const MyDisputesTab = lazy(() => import("./components/disputes/MyDisputesTab"));
+const DisputeDetailsPage = lazy(
+  () => import("./pages/disputes/DisputeDetailsPage"),
+);
 const FavoriteShiftsTab = lazy(
   () => import("./pages/worker/FavoriteShiftsTab"),
 );
@@ -40,11 +50,15 @@ const BusinessDashboardPage = lazy(
 const WorkerStatisticsPage = lazy(
   () => import("./pages/worker/WorkerStatisticsPage"),
 );
-const BusinessShiftsTab = lazy(
-  () => import("./pages/business/BusinessShiftsTab").then((module) => ({ default: module.BusinessShiftsTab })),
+const BusinessShiftsTab = lazy(() =>
+  import("./pages/business/BusinessShiftsTab").then((module) => ({
+    default: module.BusinessShiftsTab,
+  })),
 );
-const BusinessApplicationsTab = lazy(
-  () => import("./pages/business/BusinessApplicationsTab").then((module) => ({ default: module.BusinessApplicationsTab })),
+const BusinessApplicationsTab = lazy(() =>
+  import("./pages/business/BusinessApplicationsTab").then((module) => ({
+    default: module.BusinessApplicationsTab,
+  })),
 );
 const BusinessStatisticsPage = lazy(
   () => import("./pages/business/BusinessStatisticsPage"),
@@ -65,6 +79,10 @@ const EmailVerificationPage = lazy(
   () => import("./pages/EmailVerificationPage"),
 );
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
+const AdminDisputesPage = lazy(() => import("./pages/admin/AdminDisputesPage"));
+const AdminDisputeDetailsPage = lazy(
+  () => import("./pages/admin/AdminDisputeDetailsPage"),
+);
 
 const getApiError = (error: unknown): ApiError => {
   if (typeof error === "object" && error !== null && "message" in error) {
@@ -86,20 +104,20 @@ export default function App() {
   const hasStartedInitialRefresh = useRef(false);
 
   useEffect(() => {
-  if (hasStartedInitialRefresh.current) return;
-  hasStartedInitialRefresh.current = true;
+    if (hasStartedInitialRefresh.current) return;
+    hasStartedInitialRefresh.current = true;
 
-  if (!authToken) {
-    setIsAuthInitialized(true);
-    return;
-  }
+    if (!authToken) {
+      setIsAuthInitialized(true);
+      return;
+    }
 
-  dispatch(refreshUser())
-    .unwrap()
-    .then(() => dispatch(fetchMyProfile()))
-    .catch(() => {})
-    .finally(() => setIsAuthInitialized(true));
-}, [authToken, dispatch]);
+    dispatch(refreshUser())
+      .unwrap()
+      .then(() => dispatch(fetchMyProfile()))
+      .catch(() => {})
+      .finally(() => setIsAuthInitialized(true));
+  }, [authToken, dispatch]);
 
   const handleSignIn = async (payload: SignInPayload) => {
     try {
@@ -125,7 +143,9 @@ export default function App() {
       dispatch(clearCompaniesProfile());
       void dispatch(fetchMyProfile());
       setAuthModal(null);
-      toast.success("Реєстрація успішна! Перевірте пошту для підтвердження email.");
+      toast.success(
+        "Реєстрація успішна! Перевірте пошту для підтвердження email.",
+      );
     } catch (error) {
       const { status, message } = getApiError(error);
       toast.error(status === 409 ? message : `Помилка реєстрації: ${message}`);
@@ -201,7 +221,10 @@ export default function App() {
               }
             />
             <Route path="/about" element={<AboutPage />} />
-            <Route path="/email-verification" element={<EmailVerificationPage />} />
+            <Route
+              path="/email-verification"
+              element={<EmailVerificationPage />}
+            />
             <Route
               path="/reset-password"
               element={
@@ -212,8 +235,14 @@ export default function App() {
               }
             />
             <Route path="/shifts/:id" element={<ShiftsDetailPage />} />
-            <Route path="/workers/:workerId" element={<PublicWorkerProfilePage />} />
-            <Route path="/companies/:companyId" element={<PublicCompanyProfilePage />} />
+            <Route
+              path="/workers/:workerId"
+              element={<PublicWorkerProfilePage />}
+            />
+            <Route
+              path="/companies/:companyId"
+              element={<PublicCompanyProfilePage />}
+            />
 
             <Route
               path="/profile"
@@ -230,33 +259,77 @@ export default function App() {
               }
             />
 
-             <Route path="/cabinet" element={renderWorkerDashboard()}>
-               <Route index element={<BookingsTab />} />
-               <Route path="search" element={<NearbyWorkerShiftsTab />} />
-               <Route path="bookings" element={<BookingsTab />} />
-               <Route path="favorites" element={<FavoriteShiftsTab />} />
-             </Route>
+            <Route path="/cabinet" element={renderWorkerDashboard()}>
+              <Route index element={<BookingsTab />} />
+              <Route path="search" element={<NearbyWorkerShiftsTab />} />
+              <Route path="bookings" element={<BookingsTab />} />
+              <Route path="disputes" element={<MyDisputesTab />} />
+              <Route
+                path="disputes/:disputeId"
+                element={<DisputeDetailsPage />}
+              />
+              <Route path="favorites" element={<FavoriteShiftsTab />} />
+            </Route>
 
-             <Route
-               path="/statistics"
-               element={
-                 !isAuthenticated ? (
-                   <Navigate to="/" replace />
-                 ) : user?.role === "worker" ? (
-                   <WorkerStatisticsPage />
-                 ) : (
-                   <Navigate to={getDashboardPath(user?.role)} replace />
-                 )
-               }
-             />
+            <Route
+              path="/statistics"
+              element={
+                !isAuthenticated ? (
+                  <Navigate to="/" replace />
+                ) : user?.role === "worker" ? (
+                  <WorkerStatisticsPage />
+                ) : (
+                  <Navigate to={getDashboardPath(user?.role)} replace />
+                )
+              }
+            />
 
             <Route path="/dashboard" element={renderBusinessDashboard()}>
               <Route index element={<Navigate to="shifts" replace />} />
-              <Route path="shifts" element={<BusinessShiftsTab scope="active" />} />
-              <Route path="applications" element={<BusinessApplicationsTab />} />
-              <Route path="archive" element={<BusinessShiftsTab scope="archive" />} />
+              <Route
+                path="shifts"
+                element={<BusinessShiftsTab scope="active" />}
+              />
+              <Route
+                path="applications"
+                element={<BusinessApplicationsTab />}
+              />
+              <Route
+                path="archive"
+                element={<BusinessShiftsTab scope="archive" />}
+              />
+              <Route path="disputes" element={<MyDisputesTab />} />
+              <Route
+                path="disputes/:disputeId"
+                element={<DisputeDetailsPage />}
+              />
               <Route path="statistics" element={<BusinessStatisticsPage />} />
             </Route>
+
+            <Route
+              path="/admin/disputes"
+              element={
+                !isAuthenticated ? (
+                  <Navigate to="/" replace />
+                ) : user?.role === "admin" ? (
+                  <AdminDisputesPage />
+                ) : (
+                  <Navigate to={getDashboardPath(user?.role)} replace />
+                )
+              }
+            />
+            <Route
+              path="/admin/disputes/:disputeId"
+              element={
+                !isAuthenticated ? (
+                  <Navigate to="/" replace />
+                ) : user?.role === "admin" ? (
+                  <AdminDisputeDetailsPage />
+                ) : (
+                  <Navigate to={getDashboardPath(user?.role)} replace />
+                )
+              }
+            />
 
             <Route path="*" element={<NotFoundPage />} />
           </Routes>

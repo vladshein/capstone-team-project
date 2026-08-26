@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { getDisputeNotificationEventDetails } from "../constants/disputeNotificationConstants.js";
 import { getShiftNotificationEventDetails } from "../constants/shiftNotificationConstants.js";
 
 const parseBoolean = (value) => String(value).toLowerCase() === "true";
@@ -77,6 +78,22 @@ const buildPasswordResetUrl = (token) =>
   buildFrontendTokenUrl("/reset-password", token);
 const buildShiftDetailsUrl = (shiftId) =>
   buildFrontendUrl(`/shifts/${shiftId}`);
+const buildDisputeDetailsUrl = (role, disputeId) =>
+  buildFrontendUrl(
+    role === "admin"
+      ? `/admin/disputes/${disputeId}`
+      : role === "business_client"
+        ? `/dashboard/disputes/${disputeId}`
+        : `/cabinet/disputes/${disputeId}`,
+  );
+const disputeDecisionLabel = (decision) =>
+  ({
+    pay_worker_full: "Повна виплата виконавцю",
+    pay_worker_partial: "Часткова виплата виконавцю",
+    refund_company: "Повернення компанії",
+    no_action: "Без фінансових змін",
+    cancel_shift_no_fault: "Скасувати без санкцій для сторін",
+  })[decision] ?? decision;
 
 const escapeHtml = (value) =>
   String(value ?? "")
@@ -197,6 +214,55 @@ export const sendShiftNotificationEmail = async ({ email, event, shift }) => {
         <strong>Де:</strong> ${safeLocation}
       </p>
       <p><a href="${shiftDetailsUrl}">Переглянути деталі зміни</a></p>
+    `,
+  });
+};
+
+/** Єдиний шаблон email-сповіщень для спорів. */
+export const sendDisputeNotificationEmail = async ({
+  email,
+  role,
+  event,
+  dispute,
+}) => {
+  const eventDetails = getDisputeNotificationEventDetails(event);
+  const disputeDetailsUrl = buildDisputeDetailsUrl(role, dispute.id);
+  const from = process.env.SMTP_FROM || process.env.SMTP_USER;
+  const amount =
+    event === "dispute_resolved" && dispute.resolvedAmount
+      ? `${Number(dispute.resolvedAmount).toLocaleString("uk-UA")} ₴`
+      : null;
+  const decision =
+    event === "dispute_resolved" && dispute.decision
+      ? disputeDecisionLabel(dispute.decision)
+      : null;
+
+  return getEmailTransport().sendMail({
+    from: `Зміна <${from}>`,
+    to: email,
+    subject: eventDetails.subject,
+    text: [
+      eventDetails.heading,
+      "",
+      eventDetails.message,
+      "",
+      `Зміна: ${dispute.shiftTitle}`,
+      `Компанія: ${dispute.companyName}`,
+      ...(decision ? [`Рішення: ${decision}`] : []),
+      ...(amount ? [`Сума рішення: ${amount}`] : []),
+      "",
+      `Переглянути спір: ${disputeDetailsUrl}`,
+    ].join("\n"),
+    html: `
+      <p><strong>${escapeHtml(eventDetails.heading)}</strong></p>
+      <p>${escapeHtml(eventDetails.message)}</p>
+      <p>
+        <strong>Зміна:</strong> ${escapeHtml(dispute.shiftTitle)}<br>
+        <strong>Компанія:</strong> ${escapeHtml(dispute.companyName)}
+        ${decision ? `<br><strong>Рішення:</strong> ${escapeHtml(decision)}` : ""}
+        ${amount ? `<br><strong>Сума рішення:</strong> ${escapeHtml(amount)}` : ""}
+      </p>
+      <p><a href="${disputeDetailsUrl}">Переглянути спір</a></p>
     `,
   });
 };

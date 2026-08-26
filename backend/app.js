@@ -15,6 +15,8 @@ import companyRouter from "./routes/companyRouter.js";
 import workerProfileRouter from "./routes/workerProfileRouter.js";
 import reviewRouter from "./routes/reviewRouter.js";
 import locationRouter from "./routes/locationRouter.js";
+import disputeRouter from "./routes/disputeRouter.js";
+import adminDisputeRouter from "./routes/adminDisputeRouter.js";
 
 // import handlers & DB
 import notFoundHandler from "./middlewares/notFoundHandler.js";
@@ -95,6 +97,8 @@ app.use("/api/worker-profiles", workerProfileRouter);
 app.use("/api/location", locationRouter);
 app.use("/api-docs", swaggerDocs());
 app.use("/api/reviews", reviewRouter);
+app.use("/api/disputes", disputeRouter);
+app.use("/api/admin", adminDisputeRouter);
 // app.use('/api/recipes'cipesRouter);
 // app.use('/api/following', followRouter);
 

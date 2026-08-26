@@ -3,7 +3,10 @@ import { Link } from "react-router-dom";
 import { ChevronDown } from "lucide-react";
 import { LogoutButton } from "../../ui/LogoutButton";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
-import { selectIsLoggedIn, selectUserInfo } from "../../../redux/auth/selectors";
+import {
+  selectIsLoggedIn,
+  selectUserInfo,
+} from "../../../redux/auth/selectors";
 import { refreshUser } from "../../../redux/auth/actions";
 import { getDashboardPath } from "../../../redux/auth/helpers";
 import { USER_ROLES } from "../../../constants/navigation";
@@ -43,6 +46,7 @@ export function HeaderAuth({
 
   const isWorker = user?.role === USER_ROLES.WORKER;
   const isBusiness = user?.role === USER_ROLES.BUSINESS;
+  const isAdmin = user?.role === USER_ROLES.ADMIN;
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isCompanyMenuOpen, setIsCompanyMenuOpen] = useState(false);
@@ -55,7 +59,10 @@ export function HeaderAuth({
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setIsMenuOpen(false);
       }
-      if (companyMenuRef.current && !companyMenuRef.current.contains(e.target as Node)) {
+      if (
+        companyMenuRef.current &&
+        !companyMenuRef.current.contains(e.target as Node)
+      ) {
         setIsCompanyMenuOpen(false);
       }
     };
@@ -90,10 +97,18 @@ export function HeaderAuth({
   // ---- role-specific menu items -------------------------------------
   const workerLinks = isWorker && (
     <>
-      <Link to="/profile" role="menuitem" className="block rounded-[var(--radius-card)] px-3 py-2.5 text-sm hover:bg-bg-muted">
+      <Link
+        to="/profile"
+        role="menuitem"
+        className="block rounded-[var(--radius-card)] px-3 py-2.5 text-sm hover:bg-bg-muted"
+      >
         Профіль
       </Link>
-      <Link to={profileLink} role="menuitem" className="block rounded-[var(--radius-card)] px-3 py-2.5 text-sm hover:bg-bg-muted">
+      <Link
+        to={profileLink}
+        role="menuitem"
+        className="block rounded-[var(--radius-card)] px-3 py-2.5 text-sm hover:bg-bg-muted"
+      >
         Кабінет виконавця
       </Link>
     </>
@@ -101,12 +116,20 @@ export function HeaderAuth({
 
   const businessLinks = isBusiness && (
     <>
-      <Link to={profileLink} role="menuitem" className="block rounded-[var(--radius-card)] px-3 py-2.5 text-sm hover:bg-bg-muted">
+      <Link
+        to={profileLink}
+        role="menuitem"
+        className="block rounded-[var(--radius-card)] px-3 py-2.5 text-sm hover:bg-bg-muted"
+      >
         Кабінет замовника
       </Link>
 
       {companiesCount === 0 ? (
-        <Link to={profileLink} role="menuitem" className="block rounded-[var(--radius-card)] px-3 py-2.5 text-sm hover:bg-bg-muted">
+        <Link
+          to={profileLink}
+          role="menuitem"
+          className="block rounded-[var(--radius-card)] px-3 py-2.5 text-sm hover:bg-bg-muted"
+        >
           Додати компанію
         </Link>
       ) : (
@@ -151,6 +174,16 @@ export function HeaderAuth({
     </>
   );
 
+  const adminLinks = isAdmin && (
+    <Link
+      to="/admin/disputes"
+      role="menuitem"
+      className="block rounded-[var(--radius-card)] px-3 py-2.5 text-sm hover:bg-bg-muted"
+    >
+      Вирішення спорів
+    </Link>
+  );
+
   if (mobile) {
     return (
       <div className="mt-auto flex flex-col gap-3">
@@ -158,10 +191,16 @@ export function HeaderAuth({
           <>
             {isWorker && (
               <>
-                <Link to="/profile" className="flex min-h-[44px] items-center justify-center rounded-[var(--radius-pill)] border border-border px-5 text-sm font-medium">
+                <Link
+                  to="/profile"
+                  className="flex min-h-[44px] items-center justify-center rounded-[var(--radius-pill)] border border-border px-5 text-sm font-medium"
+                >
                   Профіль
                 </Link>
-                <Link to={profileLink} className="flex min-h-[44px] items-center justify-center rounded-[var(--radius-pill)] border border-border px-5 text-sm font-medium">
+                <Link
+                  to={profileLink}
+                  className="flex min-h-[44px] items-center justify-center rounded-[var(--radius-pill)] border border-border px-5 text-sm font-medium"
+                >
                   Кабінет виконавця
                 </Link>
               </>
@@ -169,7 +208,10 @@ export function HeaderAuth({
 
             {isBusiness && (
               <>
-                <Link to={profileLink} className="flex min-h-[44px] items-center justify-center rounded-[var(--radius-pill)] border border-border px-5 text-sm font-medium">
+                <Link
+                  to={profileLink}
+                  className="flex min-h-[44px] items-center justify-center rounded-[var(--radius-pill)] border border-border px-5 text-sm font-medium"
+                >
                   Кабінет замовника
                 </Link>
                 {companiesCount === 0 ? (
@@ -195,14 +237,31 @@ export function HeaderAuth({
               </>
             )}
 
+            {isAdmin && (
+              <Link
+                to="/admin/disputes"
+                className="flex min-h-[44px] items-center justify-center rounded-[var(--radius-pill)] border border-border px-5 text-sm font-medium"
+              >
+                Вирішення спорів
+              </Link>
+            )}
+
             <LogoutButton onLogout={handleLogout} variant="mobile" />
           </>
         ) : (
           <>
-            <button type="button" onClick={onOpenSignIn} className="min-h-[44px] rounded-[var(--radius-pill)] border border-border px-5 text-sm font-medium">
+            <button
+              type="button"
+              onClick={onOpenSignIn}
+              className="min-h-[44px] rounded-[var(--radius-pill)] border border-border px-5 text-sm font-medium"
+            >
               Увійти
             </button>
-            <button type="button" onClick={onOpenSignUp} className="min-h-[44px] rounded-[var(--radius-pill)] bg-bg-inverse px-5 text-sm font-medium text-white">
+            <button
+              type="button"
+              onClick={onOpenSignUp}
+              className="min-h-[44px] rounded-[var(--radius-pill)] bg-bg-inverse px-5 text-sm font-medium text-white"
+            >
               Реєстрація
             </button>
           </>
@@ -223,7 +282,11 @@ export function HeaderAuth({
             className="flex items-center gap-2 rounded-[var(--radius-pill)] border border-border py-1.5 pl-1.5 pr-3 text-sm font-medium hover:border-accent"
           >
             {user.avatar ? (
-              <img src={user.avatar} alt="" className="h-7 w-7 rounded-full object-cover" />
+              <img
+                src={user.avatar}
+                alt=""
+                className="h-7 w-7 rounded-full object-cover"
+              />
             ) : (
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-bg-inverse text-xs text-white">
                 {getAvatarInitials(user.displayName)}
@@ -233,19 +296,31 @@ export function HeaderAuth({
           </button>
 
           {isMenuOpen && (
-            <div role="menu" className="absolute right-0 top-[calc(100%+0.5rem)] w-56 rounded-[var(--radius-card)] border border-border bg-bg p-1.5 shadow-lg">
+            <div
+              role="menu"
+              className="absolute right-0 top-[calc(100%+0.5rem)] w-56 rounded-[var(--radius-card)] border border-border bg-bg p-1.5 shadow-lg"
+            >
               {workerLinks}
               {businessLinks}
+              {adminLinks}
               <LogoutButton onLogout={handleLogout} />
             </div>
           )}
         </div>
       ) : (
         <>
-          <button type="button" onClick={onOpenSignIn} className="text-sm font-medium text-ink hover:text-accent">
+          <button
+            type="button"
+            onClick={onOpenSignIn}
+            className="text-sm font-medium text-ink hover:text-accent"
+          >
             Увійти
           </button>
-          <button type="button" onClick={onOpenSignUp} className="rounded-[var(--radius-pill)] bg-bg-inverse px-5 py-2 text-sm font-medium text-white hover:bg-accent">
+          <button
+            type="button"
+            onClick={onOpenSignUp}
+            className="rounded-[var(--radius-pill)] bg-bg-inverse px-5 py-2 text-sm font-medium text-white hover:bg-accent"
+          >
             Реєстрація
           </button>
         </>

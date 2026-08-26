@@ -1,4 +1,5 @@
 import { Queue } from "bullmq";
+import { isDisputeNotificationEvent } from "../constants/disputeNotificationConstants.js";
 import { isShiftNotificationEvent } from "../constants/shiftNotificationConstants.js";
 import { createBullMqConnection } from "./bullMqConnection.js";
 
@@ -6,6 +7,7 @@ export const SHIFT_LIFECYCLE_QUEUE = "shift-lifecycle";
 export const EMAIL_VERIFICATION_JOB = "send-email-verification";
 export const PASSWORD_RESET_EMAIL_JOB = "send-password-reset";
 export const SHIFT_NOTIFICATION_EMAIL_JOB = "send-shift-notification";
+export const DISPUTE_NOTIFICATION_EMAIL_JOB = "send-dispute-notification";
 
 export { createBullMqConnection };
 
@@ -112,6 +114,39 @@ export const enqueueShiftNotification = async ({
       event,
       recipientUserId: Number(recipientUserId),
       shiftId: Number(shiftId),
+    },
+    {
+      attempts: 5,
+      backoff: { type: "exponential", delay: 10_000 },
+      removeOnComplete: 100,
+      removeOnFail: 100,
+    },
+  );
+};
+
+export const enqueueDisputeNotification = async ({
+  event,
+  recipientUserId,
+  disputeId,
+}) => {
+  if (!isDisputeNotificationEvent(event)) {
+    throw new Error(`Unsupported dispute notification event: ${event}`);
+  }
+  if (!isPositiveInteger(recipientUserId)) {
+    throw new Error(
+      "A valid recipient user id is required for dispute notification.",
+    );
+  }
+  if (!isPositiveInteger(disputeId)) {
+    throw new Error("A valid dispute id is required for dispute notification.");
+  }
+
+  return getShiftLifecycleQueue().add(
+    DISPUTE_NOTIFICATION_EMAIL_JOB,
+    {
+      event,
+      recipientUserId: Number(recipientUserId),
+      disputeId: Number(disputeId),
     },
     {
       attempts: 5,
