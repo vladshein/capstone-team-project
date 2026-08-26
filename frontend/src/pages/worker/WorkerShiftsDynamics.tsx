@@ -1,5 +1,5 @@
 import type { ShiftsStatistics, ShiftsStatisticsPeriod, GroupBy } from "../../redux/worker-statistics/types";
-import { PeriodBarChart, type PeriodMetric } from "../../components/charts/PeriodBarChart";
+import { PeriodChartKit, type PeriodMetric } from "../../lib/charts/PeriodChartKit";
 
 interface WorkerShiftsDynamicsProps {
   data: ShiftsStatistics | null;
@@ -48,7 +48,7 @@ export function WorkerShiftsDynamics({
   onRetry,
 }: WorkerShiftsDynamicsProps) {
   return (
-    <PeriodBarChart
+    <PeriodChartKit
       series={data?.series ?? null}
       isLoading={isLoading}
       error={error}

@@ -20,8 +20,7 @@ const currencyFormatter = new Intl.NumberFormat("uk-UA", {
 });
 
 export function WorkerStatistics({ summary }: WorkerStatisticsProps) {
-  const { applications, shifts, companiesWorkedFor, attendance, wallet } =
-    summary;
+  const { applications, shifts, companiesWorkedFor, attendance } = summary;
 
   return (
     <div className="space-y-8">
@@ -101,18 +100,6 @@ export function WorkerStatistics({ summary }: WorkerStatisticsProps) {
             value={`${attendance.rate.toFixed(0)}%`}
             hint={`${attendance.completed} відвідано · ${attendance.noShow} неявок`}
           />
-          {wallet && (
-            <StatCard
-              icon={Wallet}
-              label="Баланс гаманця"
-              value={`${currencyFormatter.format(wallet.balance)} ₴`}
-              hint={
-                wallet.frozenBalance > 0
-                  ? `${currencyFormatter.format(wallet.frozenBalance)} ₴ заморожено`
-                  : undefined
-              }
-            />
-          )}
         </div>
       </section>
     </div>

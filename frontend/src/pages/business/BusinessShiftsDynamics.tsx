@@ -3,7 +3,7 @@ import type {
   BusinessShiftsStatisticsPeriod,
   GroupBy,
 } from "../../redux/business-statistics/types";
-import { PeriodBarChart, type PeriodMetric } from "../../components/charts/PeriodBarChart";
+import { PeriodChartKit, type PeriodMetric } from "../../lib/charts/PeriodChartKit";
 
 interface BusinessShiftsDynamicsProps {
   data: BusinessShiftsStatistics | null;
@@ -52,7 +52,7 @@ export function BusinessShiftsDynamics({
   onRetry,
 }: BusinessShiftsDynamicsProps) {
   return (
-    <PeriodBarChart
+    <PeriodChartKit
       series={data?.series ?? null}
       isLoading={isLoading}
       error={error}

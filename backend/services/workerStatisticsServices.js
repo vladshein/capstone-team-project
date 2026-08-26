@@ -1,15 +1,15 @@
-import { Op, col, fn, literal } from "sequelize";
+import { col, fn, literal } from "sequelize";
 import {
   Location,
   Shift,
   ShiftApplication,
-  Wallet,
 } from "../db/models/index.js";
 import {
   numberOrZero,
   buildShiftRangeFilter,
   resolveDateRange,
-} from "./statisticsHelpers.js";
+  computeShiftsSeries,
+} from "../helpers/statisticsHelpers.js";
 
 export { resolveDateRange };
 
@@ -18,7 +18,7 @@ export { resolveDateRange };
  *
  * `WorkerProfile` is deliberately not required here: it does not contribute to
  * this response, so a worker without a completed profile can still see their
- * statistics. Wallet values are a current balance snapshot, not earnings.
+ * statistics.
  */
 export async function getWorkerStatisticsSummary(
   workerId,
@@ -47,7 +47,7 @@ export async function getWorkerStatisticsSummary(
   const estimatedEarnings = `(${scheduledHours} * "Shift"."hourlyRate" + COALESCE("Shift"."bonusRate", 0))`;
   const completed = '"ShiftApplication"."status" = \'completed\'';
 
-  const [applicationAggregate, workAggregate, wallet] = await Promise.all([
+  const [applicationAggregate, workAggregate] = await Promise.all([
     ShiftApplication.findOne({
       where: { workerId },
       attributes: [
@@ -124,11 +124,6 @@ export async function getWorkerStatisticsSummary(
       include: [shiftInclude],
       raw: true,
     }),
-    Wallet.findOne({
-      where: { userId: workerId },
-      attributes: ["balance", "frozenBalance"],
-      raw: true,
-    }),
   ]);
 
   const applicationValues = applicationAggregate ?? {};
@@ -165,12 +160,6 @@ export async function getWorkerStatisticsSummary(
           ? 0
           : (attendanceCompleted / attendanceTotal) * 100,
     },
-    wallet: wallet
-      ? {
-          balance: numberOrZero(wallet.balance),
-          frozenBalance: numberOrZero(wallet.frozenBalance),
-        }
-      : null,
   };
 }
 
@@ -229,60 +218,12 @@ export async function getWorkerShiftsStatistics(
     ],
   };
 
-  const scheduledHours =
-    'EXTRACT(EPOCH FROM ("Shift"."endTime" - "Shift"."startTime")) / 3600.0';
-  const estimatedEarnings = `(${scheduledHours} * "Shift"."hourlyRate" + COALESCE("Shift"."bonusRate", 0))`;
-
-  const periodExpression =
-    groupBy === "week"
-      ? `to_char("Shift"."endTime" AT TIME ZONE 'UTC', 'IYYY-"W"IW')`
-      : `to_char("Shift"."endTime" AT TIME ZONE 'UTC', 'YYYY-MM')`;
-
-  const rows = await ShiftApplication.findAll({
-    where: {
-      workerId,
-      status: { [Op.in]: ["completed", "no_show"] },
-    },
-    attributes: [
-      [literal(periodExpression), "period"],
-      [
-        literal(
-          `COALESCE(SUM(CASE WHEN "ShiftApplication"."status" = 'completed' THEN 1 ELSE 0 END), 0)`,
-        ),
-        "completedShifts",
-      ],
-      [
-        literal(
-          `COALESCE(SUM(CASE WHEN "ShiftApplication"."status" = 'no_show' THEN 1 ELSE 0 END), 0)`,
-        ),
-        "noShows",
-      ],
-      [
-        literal(
-          `COALESCE(SUM(CASE WHEN "ShiftApplication"."status" = 'completed' THEN ${scheduledHours} ELSE 0 END), 0)`,
-        ),
-        "scheduledHours",
-      ],
-      [
-        literal(
-          `COALESCE(SUM(CASE WHEN "ShiftApplication"."status" = 'completed' THEN ${estimatedEarnings} ELSE 0 END), 0)`,
-        ),
-        "estimatedEarnings",
-      ],
-    ],
+  const series = await computeShiftsSeries({
+    where: { workerId },
     include: [shiftInclude],
-    group: [literal(periodExpression)],
-    order: [["period", "ASC"]],
-    raw: true,
+    groupBy,
+    moneyField: "estimatedEarnings",
   });
-
-  const series = (rows ?? []).map((row) => ({
-    period: row.period,
-    completedShifts: numberOrZero(row.completedShifts),
-    noShows: numberOrZero(row.noShows),
-    scheduledHours: numberOrZero(row.scheduledHours),
-    estimatedEarnings: numberOrZero(row.estimatedEarnings),
-  }));
 
   const totals = series.reduce(
     (acc, p) => {

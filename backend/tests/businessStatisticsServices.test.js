@@ -2,7 +2,6 @@ import { jest } from "@jest/globals";
 import { Op } from "sequelize";
 
 const findAllCompanies = jest.fn();
-const findOneWallet = jest.fn();
 const findOneShift = jest.fn();
 const findOneApplication = jest.fn();
 const findAllApplications = jest.fn();
@@ -10,7 +9,6 @@ const findAllUsers = jest.fn();
 
 jest.unstable_mockModule("../db/models/index.js", () => ({
   Company: { findAll: findAllCompanies },
-  Wallet: { findOne: findOneWallet },
   Shift: { findOne: findOneShift },
   ShiftApplication: {
     findOne: findOneApplication,
@@ -25,7 +23,8 @@ const {
   getBusinessStatisticsSummary,
   getBusinessShiftsStatistics,
   getBusinessWorkersStatistics,
-} = await import("../services/businessStatistics.service.js");
+  getBusinessStatisticsBundle,
+} = await import("../services/businessStatisticsServices.js");
 
 describe("getBusinessStatisticsSummary", () => {
   beforeEach(() => {
@@ -34,7 +33,6 @@ describe("getBusinessStatisticsSummary", () => {
 
   test("aggregates shifts/applications/workers/money across all owned companies", async () => {
     findAllCompanies.mockResolvedValue([{ id: 1 }, { id: 2 }]);
-    findOneWallet.mockResolvedValue({ balance: "500.00", frozenBalance: "20.00" });
     findOneShift.mockResolvedValue({
       total: "10",
       open: "2",
@@ -60,7 +58,7 @@ describe("getBusinessStatisticsSummary", () => {
       shifts: { total: 10, open: 2, booked: 1, inProgress: 1, completed: 5, cancelled: 1 },
       applications: { total: 12, pending: 2, approved: 3, rejected: 1, completed: 5, noShow: 1 },
       workers: { applied: 6, worked: 4 },
-      money: { totalPaidOut: 3200.5, wallet: { balance: 500, frozenBalance: 20 } },
+      money: { totalPaidOut: 3200.5 },
     });
 
     const shiftOptions = findOneShift.mock.calls[0][0];
@@ -72,14 +70,12 @@ describe("getBusinessStatisticsSummary", () => {
 
   test("scopes to a single company when companyId is owned", async () => {
     findAllCompanies.mockResolvedValue([{ id: 1 }, { id: 2 }]);
-    findOneWallet.mockResolvedValue(null);
     findOneShift.mockResolvedValue({});
     findOneApplication.mockResolvedValue({});
 
     const result = await getBusinessStatisticsSummary(9, { companyId: 2 });
 
     expect(result.companies.total).toBe(2);
-    expect(result.money.wallet).toBeNull();
     const locationWhere = findOneShift.mock.calls[0][0].include[0].where.companyId;
     const [opKey] = Reflect.ownKeys(locationWhere);
     expect(locationWhere[opKey]).toEqual([2]);
@@ -87,7 +83,6 @@ describe("getBusinessStatisticsSummary", () => {
 
   test("rejects a companyId the owner does not own", async () => {
     findAllCompanies.mockResolvedValue([{ id: 1 }]);
-    findOneWallet.mockResolvedValue(null);
 
     await expect(
       getBusinessStatisticsSummary(9, { companyId: 999 }),
@@ -97,14 +92,13 @@ describe("getBusinessStatisticsSummary", () => {
 
   test("returns a zeroed summary when the owner has no companies yet", async () => {
     findAllCompanies.mockResolvedValue([]);
-    findOneWallet.mockResolvedValue({ balance: "100.00", frozenBalance: "0.00" });
 
     await expect(getBusinessStatisticsSummary(9)).resolves.toEqual({
       companies: { total: 0 },
       shifts: { total: 0, open: 0, booked: 0, inProgress: 0, completed: 0, cancelled: 0 },
       applications: { total: 0, pending: 0, approved: 0, rejected: 0, completed: 0, noShow: 0 },
       workers: { applied: 0, worked: 0 },
-      money: { totalPaidOut: 0, wallet: { balance: 100, frozenBalance: 0 } },
+      money: { totalPaidOut: 0 },
     });
     expect(findOneShift).not.toHaveBeenCalled();
     expect(findOneApplication).not.toHaveBeenCalled();
@@ -247,6 +241,155 @@ describe("getBusinessWorkersStatistics", () => {
     const result = await getBusinessWorkersStatistics(9, { page: 1 });
 
     expect(result).toEqual({ totalItems: 0, totalPages: 0, currentPage: 1, data: [] });
+    expect(findOneApplication).not.toHaveBeenCalled();
+    expect(findAllApplications).not.toHaveBeenCalled();
+  });
+});
+
+describe("getBusinessStatisticsBundle", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  // ShiftApplication.findOne backs two different queries here (the summary's
+  // applications aggregate and the workers count), and ShiftApplication.findAll
+  // backs two more (the shifts series and the workers rows) — both pairs share
+  // one mock fn, so distinguish by each query's own `attributes` shape.
+  const mockSharedApplicationQueries = () => {
+    findOneApplication.mockImplementation((options) => {
+      const isWorkersCountQuery = options.attributes.length === 1;
+      return Promise.resolve(
+        isWorkersCountQuery
+          ? { total: "1" }
+          : {
+              total: "12",
+              pending: "2",
+              approved: "3",
+              rejected: "1",
+              completed: "5",
+              noShow: "1",
+              totalPaidOut: "3200.5",
+              workersApplied: "6",
+              workersWorked: "4",
+            },
+      );
+    });
+
+    findAllApplications.mockImplementation((options) => {
+      const isWorkersRowsQuery = options.attributes[0] === "workerId";
+      return Promise.resolve(
+        isWorkersRowsQuery
+          ? [
+              {
+                workerId: 101,
+                totalApplications: "4",
+                completedShifts: "3",
+                noShow: "1",
+                lastActivityAt: "2026-08-20T10:00:00.000Z",
+              },
+            ]
+          : [
+              {
+                period: "2026-08",
+                completedShifts: "2",
+                noShows: "0",
+                scheduledHours: "16",
+                spend: "800",
+              },
+            ],
+      );
+    });
+  };
+
+  test("resolves the owner's company scope once and combines summary/shifts/workers", async () => {
+    findAllCompanies.mockResolvedValue([{ id: 1 }]);
+    findOneShift.mockResolvedValue({
+      total: "10",
+      open: "2",
+      booked: "1",
+      inProgress: "1",
+      completed: "5",
+      cancelled: "1",
+    });
+    findAllUsers.mockResolvedValue([
+      { id: 101, avatar: "a.png", WorkerProfile: { firstName: "Іван", lastName: "Коваль", rating: "4.50" } },
+    ]);
+    mockSharedApplicationQueries();
+
+    const result = await getBusinessStatisticsBundle(9, {
+      dateFrom: "2026-08-01T00:00:00.000Z",
+      dateTo: "2026-08-31T23:59:59.999Z",
+      groupBy: "month",
+      page: 1,
+      limit: 10,
+    });
+
+    expect(findAllCompanies).toHaveBeenCalledTimes(1);
+
+    expect(result.summary).toEqual({
+      companies: { total: 1 },
+      shifts: { total: 10, open: 2, booked: 1, inProgress: 1, completed: 5, cancelled: 1 },
+      applications: { total: 12, pending: 2, approved: 3, rejected: 1, completed: 5, noShow: 1 },
+      workers: { applied: 6, worked: 4 },
+      money: { totalPaidOut: 3200.5 },
+    });
+    expect(result.shifts).toEqual({
+      totals: { completedShifts: 2, noShows: 0, scheduledCompletedHours: 16, estimatedSpend: 800 },
+      series: [
+        { period: "2026-08", completedShifts: 2, noShows: 0, scheduledHours: 16, spend: 800 },
+      ],
+    });
+    expect(result.workers).toEqual({
+      totalItems: 1,
+      totalPages: 1,
+      currentPage: 1,
+      data: [
+        {
+          workerId: 101,
+          firstName: "Іван",
+          lastName: "Коваль",
+          avatarUrl: "a.png",
+          rating: 4.5,
+          totalApplications: 4,
+          completedShifts: 3,
+          noShow: 1,
+          lastActivityAt: "2026-08-20T10:00:00.000Z",
+        },
+      ],
+    });
+  });
+
+  test("rejects a companyId the owner does not own before running any section query", async () => {
+    findAllCompanies.mockResolvedValue([{ id: 1 }]);
+
+    await expect(
+      getBusinessStatisticsBundle(9, { companyId: 999 }),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(findOneShift).not.toHaveBeenCalled();
+    expect(findOneApplication).not.toHaveBeenCalled();
+    expect(findAllApplications).not.toHaveBeenCalled();
+  });
+
+  test("returns zeroed/empty sections when the owner has no companies yet", async () => {
+    findAllCompanies.mockResolvedValue([]);
+
+    const result = await getBusinessStatisticsBundle(9, { page: 1, limit: 10 });
+
+    expect(result).toEqual({
+      summary: {
+        companies: { total: 0 },
+        shifts: { total: 0, open: 0, booked: 0, inProgress: 0, completed: 0, cancelled: 0 },
+        applications: { total: 0, pending: 0, approved: 0, rejected: 0, completed: 0, noShow: 0 },
+        workers: { applied: 0, worked: 0 },
+        money: { totalPaidOut: 0 },
+      },
+      shifts: {
+        totals: { completedShifts: 0, noShows: 0, scheduledCompletedHours: 0, estimatedSpend: 0 },
+        series: [],
+      },
+      workers: { totalItems: 0, totalPages: 0, currentPage: 1, data: [] },
+    });
+    expect(findOneShift).not.toHaveBeenCalled();
     expect(findOneApplication).not.toHaveBeenCalled();
     expect(findAllApplications).not.toHaveBeenCalled();
   });

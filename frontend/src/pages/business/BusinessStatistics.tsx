@@ -61,18 +61,6 @@ export function BusinessStatistics({ summary }: BusinessStatisticsProps) {
             value={`${currencyFormatter.format(money.totalPaidOut)} ₴`}
             hint="Оцінка за ставкою і бонусом завершених змін"
           />
-          {money.wallet && (
-            <StatCard
-              icon={Wallet}
-              label="Баланс гаманця"
-              value={`${currencyFormatter.format(money.wallet.balance)} ₴`}
-              hint={
-                money.wallet.frozenBalance > 0
-                  ? `${currencyFormatter.format(money.wallet.frozenBalance)} ₴ заморожено`
-                  : undefined
-              }
-            />
-          )}
         </div>
       </section>
     </div>

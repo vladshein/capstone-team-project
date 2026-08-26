@@ -2,24 +2,19 @@ import type { GroupBy } from "../worker-statistics/types";
 
 export type { GroupBy };
 
-export interface BusinessStatisticsSummaryQuery {
+// Один запит для GET /companies/me/statistics: summary/shifts/workers
+// завжди довантажуються разом одним запитом (див. слайс) — companyId і
+// dateFrom/dateTo/groupBy стосуються shifts-секції, page/limit — workers.
+export interface BusinessStatisticsQuery {
   companyId?: number;
-}
-
-export interface BusinessShiftsStatisticsQuery {
   dateFrom?: string;
   dateTo?: string;
   groupBy?: GroupBy;
-  companyId?: number;
-}
-
-export interface BusinessWorkersStatisticsQuery {
-  companyId?: number;
   page?: number;
   limit?: number;
 }
 
-// Відповідь GET /companies/me/statistics/summary
+// Відповідь GET /companies/me/statistics
 export interface BusinessStatisticsSummary {
   companies: { total: number };
   shifts: {
@@ -41,11 +36,9 @@ export interface BusinessStatisticsSummary {
   workers: { applied: number; worked: number };
   money: {
     totalPaidOut: number;
-    wallet: { balance: number; frozenBalance: number } | null;
   };
 }
 
-// Відповідь GET /companies/me/statistics/shifts
 export interface BusinessShiftsStatisticsPeriod {
   period: string; // "2026-08" або "2026-W31"
   completedShifts: number;
@@ -64,7 +57,6 @@ export interface BusinessShiftsStatistics {
   series: BusinessShiftsStatisticsPeriod[];
 }
 
-// Відповідь GET /companies/me/statistics/workers
 export interface BusinessWorkerStatistic {
   workerId: number;
   firstName: string | null;
@@ -84,21 +76,24 @@ export interface BusinessWorkersStatistics {
   data: BusinessWorkerStatistic[];
 }
 
+export interface BusinessStatisticsBundle {
+  summary: BusinessStatisticsSummary;
+  shifts: BusinessShiftsStatistics;
+  workers: BusinessWorkersStatistics;
+}
+
 export interface BusinessStatisticsState {
   summary: BusinessStatisticsSummary | null;
-  isSummaryLoading: boolean;
-  summaryError: string | null;
-
   shiftsStatistics: BusinessShiftsStatistics | null;
-  isShiftsStatisticsLoading: boolean;
-  shiftsStatisticsError: string | null;
-
   workers: BusinessWorkersStatistics | null;
-  isWorkersLoading: boolean;
-  workersError: string | null;
 
-  // останні застосовані фільтри — потрібні, щоб компонент міг звірити,
-  // чи дані в сторі відповідають поточним фільтрам UI
-  lastShiftsQuery: BusinessShiftsStatisticsQuery | null;
-  lastWorkersQuery: BusinessWorkersStatisticsQuery | null;
+  isLoading: boolean;
+  error: string | null;
+
+  // Аргументи останнього запущеного запиту. Reducer звіряє їх з `meta.arg`
+  // відповіді у fulfilled/rejected: якщо вони розійшлися, отже за час
+  // запиту стартував новіший (наприклад, користувач встиг перемкнути
+  // компанію) і цю застарілу відповідь потрібно проігнорувати, а не
+  // застосовувати поверх свіжіших даних.
+  lastQuery: BusinessStatisticsQuery | null;
 }

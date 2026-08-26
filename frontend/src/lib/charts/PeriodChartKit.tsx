@@ -26,7 +26,7 @@ export interface PeriodMetric<TPoint extends PeriodPoint> {
   legend?: { primaryLabel: string; secondaryLabel: string };
 }
 
-interface PeriodBarChartProps<TPoint extends PeriodPoint> {
+interface PeriodChartKitProps<TPoint extends PeriodPoint> {
   series: TPoint[] | null;
   isLoading: boolean;
   error: string | null;
@@ -61,15 +61,20 @@ function formatPeriod(period: string, groupBy: GroupBy): string {
   return `${months[Number(match[2]) - 1]} ${match[1].slice(2)}`;
 }
 
+// Candidates for the rounded-up axis max, as a multiple of the value's order
+// of magnitude. The old {1, 2, 5, 10} set left up to 60% of the chart empty
+// whenever the real max landed just above a step (e.g. a max of ~2.1 got
+// rounded all the way up to 5, so the tallest bar sat at ~42% height) — this
+// finer set caps that worst case at 25% empty, without changing anything
+// for values that already snapped close to a round number.
+const NICE_MAX_MULTIPLIERS = [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10];
+
 function niceMax(value: number): number {
   if (value <= 0) return 1;
   const magnitude = Math.pow(10, Math.floor(Math.log10(value)));
   const normalized = value / magnitude;
-  let niceNormalized = 1;
-
-  if (normalized > 5) niceNormalized = 10;
-  else if (normalized > 2) niceNormalized = 5;
-  else if (normalized > 1) niceNormalized = 2;
+  const niceNormalized =
+    NICE_MAX_MULTIPLIERS.find((multiplier) => multiplier >= normalized) ?? 10;
 
   return niceNormalized * magnitude;
 }
@@ -95,6 +100,20 @@ function getISOWeekString(date: Date): string {
   const weekNo = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
 
   return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
+}
+
+/**
+ * `series` (Redux state) and `groupBy` (local toggle state) update at
+ * different times: clicking "Тижні"/"Місяці" re-renders with the new
+ * `groupBy` immediately, but the fetch for that groupBy resolves later —
+ * so for one or more renders we'd otherwise format last period's data
+ * ("2026-08") using the new groupBy's rules, e.g. rendering week labels as
+ * the raw "2026-08" string instead of "Тxx", and colliding placeholder keys
+ * once `getPreviousPeriod` stops advancing on the unmatched format. Guard
+ * against that stale combination and treat it like "not loaded yet".
+ */
+function periodMatchesGroupBy(period: string, groupBy: GroupBy): boolean {
+  return groupBy === "week" ? /^\d{4}-W\d{2}$/.test(period) : /^\d{4}-\d{2}$/.test(period);
 }
 
 function getPreviousPeriod(period: string, groupBy: GroupBy): string {
@@ -125,7 +144,7 @@ function getPreviousPeriod(period: string, groupBy: GroupBy): string {
  * slots. Domain wrappers (worker/business shifts dynamics) supply the metric
  * definitions and value getters for their own period shape.
  */
-export function PeriodBarChart<TPoint extends PeriodPoint>({
+export function PeriodChartKit<TPoint extends PeriodPoint>({
   series,
   isLoading,
   error,
@@ -133,13 +152,23 @@ export function PeriodBarChart<TPoint extends PeriodPoint>({
   onGroupByChange,
   onRetry,
   metrics,
-}: PeriodBarChartProps<TPoint>) {
-  const [hovered, setHovered] = useState<number | null>(null);
+}: PeriodChartKitProps<TPoint>) {
+  // Tooltip position is captured from the hovered bar's own bounding box and
+  // rendered with `position: fixed` (viewport-relative), not nested inside
+  // the horizontally-scrolling plot area. A CSS-only tooltip anchored inside
+  // that scrolling container — even one that only *visually* pokes out past
+  // its edge — still gets counted in the container's scrollable overflow,
+  // which silently grows `scrollWidth` and pops a horizontal scrollbar on
+  // hover. Tracking screen coordinates in state sidesteps that entirely.
+  const [tooltip, setTooltip] = useState<{ index: number; top: number; left: number } | null>(
+    null,
+  );
   const [metricKey, setMetricKey] = useState<string>(metrics[0].key);
   const activeMetric = metrics.find((m) => m.key === metricKey) ?? metrics[0];
 
   const chartData = useMemo(() => {
     if (!series || series.length === 0) return null;
+    if (!periodMatchesGroupBy(series[0].period, groupBy)) return null;
 
     const getValue = (point: TPoint) =>
       activeMetric.getPrimary(point) + (activeMetric.getSecondary?.(point) ?? 0);
@@ -174,8 +203,32 @@ export function PeriodBarChart<TPoint extends PeriodPoint>({
   const formatYTick = (value: number) =>
     activeMetric.formatYTick ? activeMetric.formatYTick(value) : String(value);
 
+  const showTooltip = (index: number, target: HTMLElement) => {
+    const rect = target.getBoundingClientRect();
+    const left = Math.min(Math.max(rect.left + rect.width / 2, 60), window.innerWidth - 60);
+    setTooltip({ index, top: rect.top - 8, left });
+  };
+  const hideTooltip = () => setTooltip(null);
+
+  const tooltipPoint = tooltip && chartData ? chartData.points[tooltip.index] : null;
+
   return (
     <section>
+      {tooltip && tooltipPoint && (
+        <div
+          className="pointer-events-none fixed z-50 hidden -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md border border-border bg-bg px-2 py-1 text-xs shadow-sm md:block"
+          style={{ top: tooltip.top, left: tooltip.left }}
+        >
+          {"isPlaceholder" in tooltipPoint ? (
+            <span className="text-text-muted">
+              {formatPeriod(tooltipPoint.period, groupBy)}: немає даних
+            </span>
+          ) : (
+            activeMetric.formatTooltip(tooltipPoint)
+          )}
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-1 rounded-md border border-border p-1">
           {(["week", "month"] as GroupBy[]).map((g) => (
@@ -207,7 +260,7 @@ export function PeriodBarChart<TPoint extends PeriodPoint>({
       </div>
 
       <div className="mt-4 rounded-[var(--radius-card)] border border-border bg-bg p-5 shadow-sm">
-        {isLoading && !series && (
+        {isLoading && !chartData && (
           <p className="text-sm text-text-muted">Завантаження…</p>
         )}
 
@@ -254,14 +307,9 @@ export function PeriodBarChart<TPoint extends PeriodPoint>({
                           <div
                             key={p.period}
                             className="relative flex flex-1 min-w-[28px] sm:min-w-[36px] flex-col items-center justify-end h-full"
-                            onMouseEnter={() => setHovered(i)}
-                            onMouseLeave={() => setHovered(null)}
+                            onMouseEnter={(e) => showTooltip(i, e.currentTarget)}
+                            onMouseLeave={hideTooltip}
                           >
-                            {hovered === i && (
-                              <div className="pointer-events-none absolute bottom-full z-10 mb-2 hidden whitespace-nowrap rounded-md border border-border bg-bg px-2 py-1 text-xs text-text-muted shadow-sm md:block">
-                                {formatPeriod(p.period, groupBy)}: немає даних
-                              </div>
-                            )}
                             <span className="mt-2 text-[9px] sm:text-[10px] text-text-subtle/60">
                               {formatPeriod(p.period, groupBy)}
                             </span>
@@ -279,14 +327,9 @@ export function PeriodBarChart<TPoint extends PeriodPoint>({
                         <div
                           key={p.period}
                           className="relative flex flex-1 min-w-[28px] sm:min-w-[36px] flex-col items-center justify-end h-full"
-                          onMouseEnter={() => setHovered(i)}
-                          onMouseLeave={() => setHovered(null)}
+                          onMouseEnter={(e) => showTooltip(i, e.currentTarget)}
+                          onMouseLeave={hideTooltip}
                         >
-                          {hovered === i && (
-                            <div className="pointer-events-none absolute bottom-full z-10 mb-2 hidden whitespace-nowrap rounded-md border border-border bg-bg px-2 py-1 text-xs shadow-sm md:block">
-                              {activeMetric.formatTooltip(p)}
-                            </div>
-                          )}
                           {activeMetric.getSecondary && (
                             <div
                               className={`w-full rounded-t-sm ${activeMetric.secondaryColorClass ?? "bg-danger"}`}
@@ -327,4 +370,4 @@ export function PeriodBarChart<TPoint extends PeriodPoint>({
   );
 }
 
-export default PeriodBarChart;
+export default PeriodChartKit;

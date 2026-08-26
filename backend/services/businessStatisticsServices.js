@@ -5,14 +5,14 @@ import {
   Shift,
   ShiftApplication,
   User,
-  Wallet,
   WorkerProfile,
 } from "../db/models/index.js";
 import {
   numberOrZero,
   buildShiftRangeFilter,
   resolveDateRange,
-} from "./statisticsHelpers.js";
+  computeShiftsSeries,
+} from "../helpers/statisticsHelpers.js";
 
 export { resolveDateRange };
 
@@ -44,56 +44,60 @@ const resolveCompanyScope = (companyId, ownedCompanyIds) => {
   return [companyId];
 };
 
-const zeroSummary = (companiesTotal, wallet) => ({
+/**
+ * Shift -> Location include scoped to the given companies, with an optional
+ * extra `shiftWhere` (e.g. a date range). Shared by every query in this file
+ * that needs "shifts belonging to one of these companies".
+ */
+const buildShiftInclude = (companyIds, shiftWhere = {}) => ({
+  model: Shift,
+  attributes: [],
+  required: true,
+  ...(Reflect.ownKeys(shiftWhere).length ? { where: shiftWhere } : {}),
+  include: [
+    {
+      model: Location,
+      attributes: [],
+      required: true,
+      where: { companyId: { [Op.in]: companyIds } },
+    },
+  ],
+});
+
+const zeroSummary = (companiesTotal) => ({
   companies: { total: companiesTotal },
   shifts: { total: 0, open: 0, booked: 0, inProgress: 0, completed: 0, cancelled: 0 },
   applications: { total: 0, pending: 0, approved: 0, rejected: 0, completed: 0, noShow: 0 },
   workers: { applied: 0, worked: 0 },
-  money: {
-    totalPaidOut: 0,
-    wallet: wallet
-      ? { balance: numberOrZero(wallet.balance), frozenBalance: numberOrZero(wallet.frozenBalance) }
-      : null,
+  money: { totalPaidOut: 0 },
+});
+
+const emptyShiftsStatistics = () => ({
+  totals: {
+    completedShifts: 0,
+    noShows: 0,
+    scheduledCompletedHours: 0,
+    estimatedSpend: 0,
   },
+  series: [],
+});
+
+const emptyWorkersStatistics = (page) => ({
+  totalItems: 0,
+  totalPages: 0,
+  currentPage: page,
+  data: [],
 });
 
 /**
- * Returns an owner's aggregate shifts/applications/workers/money summary,
- * scoped to one company (`companyId`) or to every company they own.
- *
- * `companies.total` always reflects the owner's full company count, even
- * when `companyId` narrows the rest of the response to one of them — it is
- * informational, mirroring how the worker summary always returns a wallet
- * snapshot regardless of its own filters.
+ * Core of `getBusinessStatisticsSummary`, given an already-resolved,
+ * non-empty `scopeCompanyIds`. Split out so `getBusinessStatisticsBundle`
+ * can reuse it after resolving the owner's scope once instead of once per
+ * section.
  */
-export async function getBusinessStatisticsSummary(ownerId, { companyId } = {}) {
-  const ownedCompanyIds = await getOwnedCompanyIds(ownerId);
-  const scopeCompanyIds = resolveCompanyScope(companyId, ownedCompanyIds);
-
-  const wallet = await Wallet.findOne({
-    where: { userId: ownerId },
-    attributes: ["balance", "frozenBalance"],
-    raw: true,
-  });
-
-  if (scopeCompanyIds.length === 0) {
-    return zeroSummary(ownedCompanyIds.length, wallet);
-  }
-
+async function computeSummary(scopeCompanyIds, companiesTotal) {
   const locationWhere = { companyId: { [Op.in]: scopeCompanyIds } };
-  const shiftInclude = {
-    model: Shift,
-    attributes: [],
-    required: true,
-    include: [
-      {
-        model: Location,
-        attributes: [],
-        required: true,
-        where: locationWhere,
-      },
-    ],
-  };
+  const shiftInclude = buildShiftInclude(scopeCompanyIds);
 
   const scheduledHours =
     'EXTRACT(EPOCH FROM ("Shift"."endTime" - "Shift"."startTime")) / 3600.0';
@@ -185,7 +189,7 @@ export async function getBusinessStatisticsSummary(ownerId, { companyId } = {}) 
   const applicationValues = applicationAggregate ?? {};
 
   return {
-    companies: { total: ownedCompanyIds.length },
+    companies: { total: companiesTotal },
     shifts: {
       total: numberOrZero(shiftValues.total),
       open: numberOrZero(shiftValues.open),
@@ -208,118 +212,28 @@ export async function getBusinessStatisticsSummary(ownerId, { companyId } = {}) 
     },
     money: {
       totalPaidOut: numberOrZero(applicationValues.totalPaidOut),
-      wallet: wallet
-        ? { balance: numberOrZero(wallet.balance), frozenBalance: numberOrZero(wallet.frozenBalance) }
-        : null,
     },
   };
 }
 
 /**
- * Returns an owner's time-series shifts statistics grouped by period.
- *
- * Mirrors `getWorkerShiftsStatistics`: the group period is derived from
+ * Core of `getBusinessShiftsStatistics`, given an already-resolved,
+ * non-empty `scopeCompanyIds` and a resolved (not raw query-string) date
+ * range. Mirrors `getWorkerShiftsStatistics` via the shared
+ * `computeShiftsSeries` helper: the group period is derived from
  * Shift.endTime in UTC, only applications whose attendance is resolved
  * ("completed" or "no_show") are considered, and hours/spend are summed only
  * for "completed" applications.
  */
-export async function getBusinessShiftsStatistics(
-  ownerId,
-  { dateFrom, dateTo, groupBy = "month", companyId } = {},
-) {
-  const ownedCompanyIds = await getOwnedCompanyIds(ownerId);
-  const scopeCompanyIds = resolveCompanyScope(companyId, ownedCompanyIds);
+async function computeShiftsStatistics(scopeCompanyIds, { dateFrom, dateTo, groupBy }) {
+  const shiftWhere = buildShiftRangeFilter({ dateFrom, dateTo });
+  const shiftInclude = buildShiftInclude(scopeCompanyIds, shiftWhere);
 
-  const { dateFrom: resolvedFrom, dateTo: resolvedTo } = resolveDateRange(
-    dateFrom,
-    dateTo,
-  );
-
-  if (scopeCompanyIds.length === 0) {
-    return {
-      totals: {
-        completedShifts: 0,
-        noShows: 0,
-        scheduledCompletedHours: 0,
-        estimatedSpend: 0,
-      },
-      series: [],
-    };
-  }
-
-  const shiftWhere = buildShiftRangeFilter({
-    dateFrom: resolvedFrom,
-    dateTo: resolvedTo,
-  });
-
-  const shiftInclude = {
-    model: Shift,
-    attributes: [],
-    required: true,
-    where: shiftWhere,
-    include: [
-      {
-        model: Location,
-        attributes: [],
-        required: true,
-        where: { companyId: { [Op.in]: scopeCompanyIds } },
-      },
-    ],
-  };
-
-  const scheduledHours =
-    'EXTRACT(EPOCH FROM ("Shift"."endTime" - "Shift"."startTime")) / 3600.0';
-  const estimatedEarnings = `(${scheduledHours} * "Shift"."hourlyRate" + COALESCE("Shift"."bonusRate", 0))`;
-
-  const periodExpression =
-    groupBy === "week"
-      ? `to_char("Shift"."endTime" AT TIME ZONE 'UTC', 'IYYY-"W"IW')`
-      : `to_char("Shift"."endTime" AT TIME ZONE 'UTC', 'YYYY-MM')`;
-
-  const rows = await ShiftApplication.findAll({
-    where: {
-      status: { [Op.in]: ["completed", "no_show"] },
-    },
-    attributes: [
-      [literal(periodExpression), "period"],
-      [
-        literal(
-          `COALESCE(SUM(CASE WHEN "ShiftApplication"."status" = 'completed' THEN 1 ELSE 0 END), 0)`,
-        ),
-        "completedShifts",
-      ],
-      [
-        literal(
-          `COALESCE(SUM(CASE WHEN "ShiftApplication"."status" = 'no_show' THEN 1 ELSE 0 END), 0)`,
-        ),
-        "noShows",
-      ],
-      [
-        literal(
-          `COALESCE(SUM(CASE WHEN "ShiftApplication"."status" = 'completed' THEN ${scheduledHours} ELSE 0 END), 0)`,
-        ),
-        "scheduledHours",
-      ],
-      [
-        literal(
-          `COALESCE(SUM(CASE WHEN "ShiftApplication"."status" = 'completed' THEN ${estimatedEarnings} ELSE 0 END), 0)`,
-        ),
-        "spend",
-      ],
-    ],
+  const series = await computeShiftsSeries({
     include: [shiftInclude],
-    group: [literal(periodExpression)],
-    order: [["period", "ASC"]],
-    raw: true,
+    groupBy,
+    moneyField: "spend",
   });
-
-  const series = (rows ?? []).map((row) => ({
-    period: row.period,
-    completedShifts: numberOrZero(row.completedShifts),
-    noShows: numberOrZero(row.noShows),
-    scheduledHours: numberOrZero(row.scheduledHours),
-    spend: numberOrZero(row.spend),
-  }));
 
   const totals = series.reduce(
     (acc, p) => {
@@ -341,8 +255,8 @@ export async function getBusinessShiftsStatistics(
 }
 
 /**
- * Returns a paginated list of distinct workers who applied to / worked for
- * the scoped company(ies), most recently active first.
+ * Core of `getBusinessWorkersStatistics`, given an already-resolved,
+ * non-empty `scopeCompanyIds`.
  *
  * Runs as three queries instead of one grouped+joined query: aggregating
  * ShiftApplication by workerId (Shift/Location included with `attributes: []`
@@ -352,30 +266,8 @@ export async function getBusinessShiftsStatistics(
  * This avoids the GROUP BY pitfalls of selecting joined-table columns in a
  * grouped raw query.
  */
-export async function getBusinessWorkersStatistics(
-  ownerId,
-  { companyId, page = 1, limit = 10 } = {},
-) {
-  const ownedCompanyIds = await getOwnedCompanyIds(ownerId);
-  const scopeCompanyIds = resolveCompanyScope(companyId, ownedCompanyIds);
-
-  if (scopeCompanyIds.length === 0) {
-    return { totalItems: 0, totalPages: 0, currentPage: page, data: [] };
-  }
-
-  const shiftInclude = {
-    model: Shift,
-    attributes: [],
-    required: true,
-    include: [
-      {
-        model: Location,
-        attributes: [],
-        required: true,
-        where: { companyId: { [Op.in]: scopeCompanyIds } },
-      },
-    ],
-  };
+async function computeWorkersStatistics(scopeCompanyIds, { page, limit }) {
+  const shiftInclude = buildShiftInclude(scopeCompanyIds);
 
   const [countRow, rows] = await Promise.all([
     ShiftApplication.findOne({
@@ -450,4 +342,100 @@ export async function getBusinessWorkersStatistics(
     currentPage: page,
     data,
   };
+}
+
+/**
+ * Returns an owner's aggregate shifts/applications/workers/money summary,
+ * scoped to one company (`companyId`) or to every company they own.
+ *
+ * `companies.total` always reflects the owner's full company count, even
+ * when `companyId` narrows the rest of the response to one of them — it is
+ * informational.
+ */
+export async function getBusinessStatisticsSummary(ownerId, { companyId } = {}) {
+  const ownedCompanyIds = await getOwnedCompanyIds(ownerId);
+  const scopeCompanyIds = resolveCompanyScope(companyId, ownedCompanyIds);
+
+  if (scopeCompanyIds.length === 0) return zeroSummary(ownedCompanyIds.length);
+
+  return computeSummary(scopeCompanyIds, ownedCompanyIds.length);
+}
+
+/**
+ * Returns an owner's time-series shifts statistics grouped by period.
+ */
+export async function getBusinessShiftsStatistics(
+  ownerId,
+  { dateFrom, dateTo, groupBy = "month", companyId } = {},
+) {
+  const ownedCompanyIds = await getOwnedCompanyIds(ownerId);
+  const scopeCompanyIds = resolveCompanyScope(companyId, ownedCompanyIds);
+
+  const { dateFrom: resolvedFrom, dateTo: resolvedTo } = resolveDateRange(
+    dateFrom,
+    dateTo,
+  );
+
+  if (scopeCompanyIds.length === 0) return emptyShiftsStatistics();
+
+  return computeShiftsStatistics(scopeCompanyIds, {
+    dateFrom: resolvedFrom,
+    dateTo: resolvedTo,
+    groupBy,
+  });
+}
+
+/**
+ * Returns a paginated list of distinct workers who applied to / worked for
+ * the scoped company(ies), most recently active first.
+ */
+export async function getBusinessWorkersStatistics(
+  ownerId,
+  { companyId, page = 1, limit = 10 } = {},
+) {
+  const ownedCompanyIds = await getOwnedCompanyIds(ownerId);
+  const scopeCompanyIds = resolveCompanyScope(companyId, ownedCompanyIds);
+
+  if (scopeCompanyIds.length === 0) return emptyWorkersStatistics(page);
+
+  return computeWorkersStatistics(scopeCompanyIds, { page, limit });
+}
+
+/**
+ * Combines summary + shifts + workers into a single response for the
+ * business statistics page, resolving the owner's company scope only once
+ * instead of once per section (each section used to be its own endpoint,
+ * tripling both the `SELECT id FROM companies WHERE ownerId=...` round trip
+ * and the HTTP request itself on every page load).
+ */
+export async function getBusinessStatisticsBundle(
+  ownerId,
+  { companyId, dateFrom, dateTo, groupBy = "month", page = 1, limit = 10 } = {},
+) {
+  const ownedCompanyIds = await getOwnedCompanyIds(ownerId);
+  const scopeCompanyIds = resolveCompanyScope(companyId, ownedCompanyIds);
+  const { dateFrom: resolvedFrom, dateTo: resolvedTo } = resolveDateRange(
+    dateFrom,
+    dateTo,
+  );
+
+  if (scopeCompanyIds.length === 0) {
+    return {
+      summary: zeroSummary(ownedCompanyIds.length),
+      shifts: emptyShiftsStatistics(),
+      workers: emptyWorkersStatistics(page),
+    };
+  }
+
+  const [summary, shifts, workers] = await Promise.all([
+    computeSummary(scopeCompanyIds, ownedCompanyIds.length),
+    computeShiftsStatistics(scopeCompanyIds, {
+      dateFrom: resolvedFrom,
+      dateTo: resolvedTo,
+      groupBy,
+    }),
+    computeWorkersStatistics(scopeCompanyIds, { page, limit }),
+  ]);
+
+  return { summary, shifts, workers };
 }

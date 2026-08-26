@@ -29,22 +29,13 @@ companyRouter.use(authenticate);
 // Отримати список своїх компаній (для кабінету)
 companyRouter.get("/my", companyController.getMyCompanies);
 
-// Статистика власника: одна компанія (companyId) або всі його компанії.
-// Має стояти перед /:id, інакше 'me' сприйметься як значення параметра id.
+// Статистика власника (summary + shifts + workers одним запитом): одна
+// компанія (companyId) або всі його компанії. Має стояти перед /:id,
+// інакше 'me' сприйметься як значення параметра id.
 companyRouter.get(
-  "/me/statistics/summary",
+  "/me/statistics",
   checkRole("business_client"),
-  businessStatisticsController.getStatisticsSummary,
-);
-companyRouter.get(
-  "/me/statistics/shifts",
-  checkRole("business_client"),
-  businessStatisticsController.getShiftsStatistics,
-);
-companyRouter.get(
-  "/me/statistics/workers",
-  checkRole("business_client"),
-  businessStatisticsController.getWorkersStatistics,
+  businessStatisticsController.getStatistics,
 );
 
 // Публічний — доступний гостям (для картки компанії на сторінці зміни)

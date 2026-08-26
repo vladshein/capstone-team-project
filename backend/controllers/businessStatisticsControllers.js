@@ -1,10 +1,6 @@
-import {
-  getBusinessStatisticsSummary,
-  getBusinessShiftsStatistics,
-  getBusinessWorkersStatistics,
-  resolveDateRange,
-} from "../services/businessStatistics.service.js";
+import { getBusinessStatisticsBundle, resolveDateRange } from "../services/businessStatisticsServices.js";
 import isValidIsoDate from "../helpers/isValidIsoDate.js";
+import exceedsMaxRangeMonths from "../helpers/exceedsMaxRangeMonths.js";
 
 const parseCompanyId = (companyIdQuery) => {
   if (companyIdQuery === undefined) return { ok: true, value: undefined };
@@ -15,26 +11,15 @@ const parseCompanyId = (companyIdQuery) => {
   return { ok: true, value: companyId };
 };
 
-export const getStatisticsSummary = async (req, res, next) => {
-  try {
-    const { companyId: companyIdQuery } = req.query;
-    const companyId = parseCompanyId(companyIdQuery);
-
-    if (!companyId.ok) {
-      return res.status(400).json({ message: "companyId must be an integer." });
-    }
-
-    const statistics = await getBusinessStatisticsSummary(req.user.id, {
-      companyId: companyId.value,
-    });
-
-    res.status(200).json({ data: statistics });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const getShiftsStatistics = async (req, res, next) => {
+/**
+ * Combined summary + shifts + workers endpoint behind the business
+ * statistics page. Replaces what used to be three separate endpoints so the
+ * page's initial load resolves the owner's company scope once instead of
+ * three times — the tradeoff is that summary/shifts/workers now always load
+ * and reload together (e.g. switching the workers table page also re-fetches
+ * summary and the shifts chart).
+ */
+export const getStatistics = async (req, res, next) => {
   try {
     const { dateFrom, dateTo, groupBy, companyId: companyIdQuery } = req.query;
 
@@ -62,44 +47,23 @@ export const getShiftsStatistics = async (req, res, next) => {
     if (resolvedFrom > resolvedTo) {
       return res.status(400).json({ message: "dateFrom must be earlier than dateTo." });
     }
-    const rangeMonths =
-      (resolvedTo.getFullYear() - resolvedFrom.getFullYear()) * 12 +
-      (resolvedTo.getMonth() - resolvedFrom.getMonth());
-    if (rangeMonths > 12) {
+    if (exceedsMaxRangeMonths(resolvedFrom, resolvedTo, 12)) {
       return res.status(400).json({ message: "Date range must not exceed 12 months." });
-    }
-
-    const statistics = await getBusinessShiftsStatistics(req.user.id, {
-      dateFrom,
-      dateTo,
-      groupBy,
-      companyId: companyId.value,
-    });
-
-    res.status(200).json({ data: statistics });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const getWorkersStatistics = async (req, res, next) => {
-  try {
-    const { companyId: companyIdQuery } = req.query;
-    const companyId = parseCompanyId(companyIdQuery);
-
-    if (!companyId.ok) {
-      return res.status(400).json({ message: "companyId must be an integer." });
     }
 
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 50);
 
-    const statistics = await getBusinessWorkersStatistics(req.user.id, {
+    const statistics = await getBusinessStatisticsBundle(req.user.id, {
+      dateFrom,
+      dateTo,
+      groupBy,
       companyId: companyId.value,
       page,
       limit,
     });
 
+    // Пагінація воркерів у відповіді — не варто кешувати проміжну сторінку.
     res.set("Cache-Control", "no-store");
     res.status(200).json({ data: statistics });
   } catch (error) {

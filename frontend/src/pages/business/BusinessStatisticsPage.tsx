@@ -2,21 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "../../redux/hooks";
 import { selectCompanies } from "../../redux/companies-profile/selectors";
-import {
-  fetchBusinessStatisticsSummary,
-  fetchBusinessShiftsStatistics,
-  fetchBusinessWorkersStatistics,
-} from "../../redux/business-statistics/actions";
+import { fetchBusinessStatistics } from "../../redux/business-statistics/actions";
 import {
   selectBusinessStatisticsSummary,
-  selectIsBusinessSummaryLoading,
-  selectBusinessSummaryError,
   selectBusinessShiftsStatistics,
-  selectIsBusinessShiftsStatisticsLoading,
-  selectBusinessShiftsStatisticsError,
   selectBusinessWorkersStatistics,
-  selectIsBusinessWorkersLoading,
-  selectBusinessWorkersError,
+  selectIsBusinessStatisticsLoading,
+  selectBusinessStatisticsError,
 } from "../../redux/business-statistics/selectors";
 import type { GroupBy } from "../../redux/business-statistics/types";
 import { Loader } from "../../components/ui/Loader";
@@ -31,16 +23,10 @@ export function BusinessStatisticsPage() {
   const companies = useAppSelector(selectCompanies);
 
   const summary = useAppSelector(selectBusinessStatisticsSummary);
-  const isSummaryLoading = useAppSelector(selectIsBusinessSummaryLoading);
-  const summaryError = useAppSelector(selectBusinessSummaryError);
-
   const shiftsStatistics = useAppSelector(selectBusinessShiftsStatistics);
-  const isShiftsLoading = useAppSelector(selectIsBusinessShiftsStatisticsLoading);
-  const shiftsError = useAppSelector(selectBusinessShiftsStatisticsError);
-
   const workers = useAppSelector(selectBusinessWorkersStatistics);
-  const isWorkersLoading = useAppSelector(selectIsBusinessWorkersLoading);
-  const workersError = useAppSelector(selectBusinessWorkersError);
+  const isLoading = useAppSelector(selectIsBusinessStatisticsLoading);
+  const error = useAppSelector(selectBusinessStatisticsError);
 
   // null = "Усі компанії" — власний скоуп цієї сторінки, незалежний від
   // activeCompany у шапці кабінету (та керує лише вкладками змін/заявок).
@@ -48,69 +34,49 @@ export function BusinessStatisticsPage() {
   const [groupBy, setGroupBy] = useState<GroupBy>("month");
   const [workersPage, setWorkersPage] = useState(1);
 
-  const loadSummary = useCallback(() => {
-    void dispatch(fetchBusinessStatisticsSummary({ companyId: companyId ?? undefined }));
-  }, [dispatch, companyId]);
-
-  const loadShiftsStatistics = useCallback(
-    (nextGroupBy: GroupBy) => {
-      void dispatch(
-        fetchBusinessShiftsStatistics({ groupBy: nextGroupBy, companyId: companyId ?? undefined }),
-      );
-    },
-    [dispatch, companyId],
-  );
-
-  const loadWorkers = useCallback(
-    (page: number) => {
-      void dispatch(
-        fetchBusinessWorkersStatistics({
-          companyId: companyId ?? undefined,
-          page,
-          limit: WORKERS_PER_PAGE,
-        }),
-      );
-    },
-    [dispatch, companyId],
-  );
+  // Summary/shifts/workers довантажуються одним запитом (GET
+  // /companies/me/statistics), тож зміна будь-якого з цих трьох фільтрів
+  // перезавантажує всі три секції разом — свідомий компроміс за один
+  // запит замість трьох на відкриття сторінки.
+  const load = useCallback(() => {
+    void dispatch(
+      fetchBusinessStatistics({
+        companyId: companyId ?? undefined,
+        groupBy,
+        page: workersPage,
+        limit: WORKERS_PER_PAGE,
+      }),
+    );
+  }, [dispatch, companyId, groupBy, workersPage]);
 
   useEffect(() => {
-    loadSummary();
-  }, [loadSummary]);
+    load();
+  }, [load]);
 
-  useEffect(() => {
-    loadShiftsStatistics(groupBy);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupBy, companyId]);
-
-  useEffect(() => {
+  const handleCompanyChange = (nextCompanyId: number | null) => {
+    setCompanyId(nextCompanyId);
+    // Батчиться разом із companyId в одному ре-рендері, тож `load` вище
+    // спрацює один раз уже з page=1 — без проміжного запиту старою сторінкою.
     setWorkersPage(1);
-    loadWorkers(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companyId]);
-
-  const handleWorkersPageChange = (page: number) => {
-    setWorkersPage(page);
-    loadWorkers(page);
   };
 
-  const isInitialLoading = isSummaryLoading && !summary;
+  const isInitialLoading = isLoading && !summary;
 
   if (isInitialLoading) {
     return <Loader label="Завантажуємо статистику…" size="lg" />;
   }
 
-  if (summaryError && !summary) {
+  if (error && !summary) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 p-8 text-center">
-        <p className="text-sm text-danger">{summaryError}</p>
+        <p className="text-sm text-danger">{error}</p>
         <button
           type="button"
-          onClick={loadSummary}
-          disabled={isSummaryLoading}
+          onClick={load}
+          disabled={isLoading}
           className="rounded-md border border-border px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-bg-muted disabled:opacity-50"
         >
-          {isSummaryLoading ? "Завантаження…" : "Спробувати ще раз"}
+          {isLoading ? "Завантаження…" : "Спробувати ще раз"}
         </button>
       </div>
     );
@@ -130,7 +96,9 @@ export function BusinessStatisticsPage() {
               <select
                 value={companyId ?? "all"}
                 onChange={(event) =>
-                  setCompanyId(event.target.value === "all" ? null : Number(event.target.value))
+                  handleCompanyChange(
+                    event.target.value === "all" ? null : Number(event.target.value),
+                  )
                 }
                 className="min-h-[36px] cursor-pointer appearance-none rounded-[var(--radius-pill)] border border-border bg-bg py-1 pl-3 pr-9 text-sm font-medium text-text outline-none transition-colors hover:border-accent focus:border-accent"
               >
@@ -154,11 +122,11 @@ export function BusinessStatisticsPage() {
       <div className="mt-10">
         <BusinessShiftsDynamics
           data={shiftsStatistics}
-          isLoading={isShiftsLoading}
-          error={shiftsError}
+          isLoading={isLoading}
+          error={error}
           groupBy={groupBy}
           onGroupByChange={setGroupBy}
-          onRetry={() => loadShiftsStatistics(groupBy)}
+          onRetry={load}
         />
       </div>
 
@@ -167,11 +135,11 @@ export function BusinessStatisticsPage() {
         <div className="mt-4">
           <BusinessWorkersTable
             data={workers}
-            isLoading={isWorkersLoading}
-            error={workersError}
+            isLoading={isLoading}
+            error={error}
             page={workersPage}
-            onPageChange={handleWorkersPageChange}
-            onRetry={() => loadWorkers(workersPage)}
+            onPageChange={setWorkersPage}
+            onRetry={load}
           />
         </div>
       </section>

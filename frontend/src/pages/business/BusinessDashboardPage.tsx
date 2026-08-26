@@ -155,7 +155,7 @@ function BusinessDashboardPage() {
       <div className="overflow-hidden rounded-[var(--radius-card)] border border-border bg-bg shadow-sm">
         <nav className="flex overflow-x-auto border-b border-border px-1" aria-label="Розділи кабінету компанії">
           {tabs.map(({ to, label, Icon }) => (
-            <NavLink key={to} to={to} className={({ isActive }) => `flex shrink-0 items-center gap-2 border-b-2 px-4 py-4 text-sm font-medium transition-colors sm:px-5 ${isActive ? "border-accent text-accent" : "border-transparent text-text-muted hover:text-text"}`}>
+            <NavLink key={to} to={to} className={({ isActive }) => `flex shrink-0 items-center gap-2 border-b-2 px-4 py-4 text-sm font-medium transition-colors sm:px-5 ${to === "statistics" ? "ml-auto" : ""} ${isActive ? "border-accent text-accent" : "border-transparent text-text-muted hover:text-text"}`}>
               <Icon className="h-4 w-4" />
               {label}
               {to === "applications" && pendingApplicationsCount > 0 && (
