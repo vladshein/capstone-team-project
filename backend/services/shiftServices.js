@@ -165,33 +165,11 @@ export const getAllShifts = async ({
   longitude,
   radiusKm,
 }) => {
-  console.log("[shiftsService] getAllShifts called with params:", {
-    page,
-    limit,
-    minPrice,
-    maxPrice,
-    categoryId,
-    categoryIds,
-    partners,
-    city,
-    dateFrom,
-    dateTo,
-    durationFilters,
-    search,
-    sort,
-  });
-
   // Приводимо page/limit до чисел і підстраховуємось дефолтами,
   // бо з query-стрінги вони завжди приходять як string або undefined
   const parsedPage = Number.parseInt(page, 10) || 1;
   const parsedLimit = Number.parseInt(limit, 10) || 20;
   const offset = (parsedPage - 1) * parsedLimit;
-
-  console.log("[shiftsService] parsed pagination:", {
-    parsedPage,
-    parsedLimit,
-    offset,
-  });
 
   const { whereCondition, locationInclude, order } = buildShiftSearchQuery({
     minPrice,
@@ -209,8 +187,6 @@ export const getAllShifts = async ({
     longitude,
     radiusKm,
   });
-
-  console.log("[shiftsService] whereCondition:", whereCondition);
 
   try {
     // Виконання запиту з підключенням зв'язаних таблиць (Eager Loading)
@@ -243,10 +219,6 @@ export const getAllShifts = async ({
     ]);
     const { count, rows } = listResult;
     const partnerOptions = formatPartnerOptions(partnerRows);
-
-    console.log(
-      `[shiftsService] found ${count} shift(s), returning page ${parsedPage} (${rows.length} row(s))`,
-    );
 
     // Форматування об'єкта результату
     return {

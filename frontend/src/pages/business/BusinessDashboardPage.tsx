@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { Archive, BriefcaseBusiness, ChevronDown, Gavel, Plus, Users } from "lucide-react";
+import {
+  Archive,
+  BriefcaseBusiness,
+  ChevronDown,
+  Gavel,
+  Plus,
+  TrendingUp,
+  Users,
+} from "lucide-react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { Loader } from "../../components/ui/Loader";
@@ -26,6 +34,7 @@ const tabs = [
   { to: "applications", label: "Заявки", Icon: Users },
   { to: "archive", label: "Архів", Icon: Archive },
   { to: "disputes", label: "Спори", Icon: Gavel },
+  { to: "statistics", label: "Статистика", Icon: TrendingUp },
 ];
 
 function BusinessDashboardPage() {
@@ -136,7 +145,13 @@ function BusinessDashboardPage() {
                 </span>
               </label>
             )}
-            <Link to="/profile" state={{ companyId: activeCompany.id }} className="mb-1 text-accent-text hover:underline">Профіль компанії</Link>
+            <Link
+              to="/profile"
+              state={{ companyId: activeCompany.id }}
+              className={`text-accent-text hover:underline ${companies.length > 1 ? "mb-1" : ""}`}
+            >
+              Профіль компанії
+            </Link>
           </div>
         </div>
 
@@ -149,7 +164,7 @@ function BusinessDashboardPage() {
       <div className="overflow-hidden rounded-[var(--radius-card)] border border-border bg-bg shadow-sm">
         <nav className="flex overflow-x-auto border-b border-border px-1" aria-label="Розділи кабінету компанії">
           {tabs.map(({ to, label, Icon }) => (
-            <NavLink key={to} to={to} className={({ isActive }) => `flex shrink-0 items-center gap-2 border-b-2 px-4 py-4 text-sm font-medium transition-colors sm:px-5 ${isActive ? "border-accent text-accent" : "border-transparent text-text-muted hover:text-text"}`}>
+            <NavLink key={to} to={to} className={({ isActive }) => `flex shrink-0 items-center gap-2 border-b-2 px-4 py-4 text-sm font-medium transition-colors sm:px-5 ${to === "statistics" ? "ml-auto" : ""} ${isActive ? "border-accent text-accent" : "border-transparent text-text-muted hover:text-text"}`}>
               <Icon className="h-4 w-4" />
               {label}
               {to === "applications" && pendingApplicationsCount > 0 && (

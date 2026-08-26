@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import bcrypt from "bcrypt";
 
 // Assuming your models are correctly exported from index.js
 import {
@@ -22,6 +23,28 @@ import {
   buildExpandedShiftFixtures,
   buildRegionalShiftFixtures,
 } from "./shiftFixtures.js";
+import { buildBusinessStatisticsFixtures } from "./businessStatisticsFixtures.js";
+
+// Деякі записи в json/users.json історично мали хеш-заглушку
+// ("$2b$10$dummyHashStringForTesting123", 35 символів замість валідних 60)
+// замість справжнього bcrypt-хешу — bcrypt.compare() на ній завжди повертає
+// false, тобто такими акаунтами неможливо залогінитись жодним паролем.
+// Підміняємо будь-який невалідний за довжиною хеш на реальний, що
+// відповідає SEED_TEST_PASSWORD (за замовчуванням "12345678").
+const VALID_BCRYPT_HASH_LENGTH = 60;
+
+async function withFixedPasswordHashes(usersJson) {
+  const testPasswordHash = await bcrypt.hash(
+    process.env.SEED_TEST_PASSWORD || "12345678",
+    10,
+  );
+
+  return usersJson.map((user) =>
+    user.passwordHash?.length === VALID_BCRYPT_HASH_LENGTH
+      ? user
+      : { ...user, passwordHash: testPasswordHash },
+  );
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -78,6 +101,8 @@ export default async function seedAll() {
     const transactionsJson = loadJson("json/transactions.json");
     const expandedFixtures = buildExpandedShiftFixtures();
     const regionalFixtures = buildRegionalShiftFixtures();
+    const businessStatsFixtures = await buildBusinessStatisticsFixtures();
+    const fixedUsersJson = await withFixedPasswordHashes(usersJson);
 
     // =========================================================================
     // 2. INSERTION ORDER IS CRITICAL (Parent tables first, then child tables)
@@ -101,19 +126,22 @@ export default async function seedAll() {
       ...expandedFixtures.jobPositions,
       ...regionalFixtures.jobPositions,
     ]);
-    await safeBulkCreate(User, usersJson);
+    await safeBulkCreate(User, [...fixedUsersJson, ...businessStatsFixtures.users]);
 
     // LEVEL 2: Tables dependent on Users
     console.log(
       "Seeding user-dependent tables (Profiles, Companies, Wallets)...",
     );
-    await safeBulkCreate(WorkerProfile, workerProfilesJson);
+    await safeBulkCreate(WorkerProfile, [
+      ...workerProfilesJson,
+      ...businessStatsFixtures.workerProfiles,
+    ]);
     await safeBulkCreate(Company, [
       ...companiesJson,
       ...expandedFixtures.companies,
       ...regionalFixtures.companies,
     ]);
-    await safeBulkCreate(Wallet, walletsJson);
+    await safeBulkCreate(Wallet, [...walletsJson, ...businessStatsFixtures.wallets]);
 
     // LEVEL 3: Tables dependent on Companies
     console.log("Seeding Locations...");
@@ -129,11 +157,15 @@ export default async function seedAll() {
       ...shiftsJson,
       ...expandedFixtures.shifts,
       ...regionalFixtures.shifts,
+      ...businessStatsFixtures.shifts,
     ]);
 
     // LEVEL 5: Tables dependent on Shifts and Users
     console.log("Seeding Shift Applications, Reviews, and Transactions...");
-    await safeBulkCreate(ShiftApplication, shiftApplicationsJson);
+    await safeBulkCreate(ShiftApplication, [
+      ...shiftApplicationsJson,
+      ...businessStatsFixtures.shiftApplications,
+    ]);
     await safeBulkCreate(Review, reviewsJson);
     await safeBulkCreate(Transaction, transactionsJson);
 

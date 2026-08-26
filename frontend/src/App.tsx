@@ -60,6 +60,9 @@ const BusinessApplicationsTab = lazy(() =>
     default: module.BusinessApplicationsTab,
   })),
 );
+const BusinessStatisticsPage = lazy(
+  () => import("./pages/business/BusinessStatisticsPage"),
+);
 const WorkerProfilePage = lazy(
   () => import("./pages/worker/WorkerProfilePage"),
 );
@@ -300,6 +303,7 @@ export default function App() {
                 path="disputes/:disputeId"
                 element={<DisputeDetailsPage />}
               />
+              <Route path="statistics" element={<BusinessStatisticsPage />} />
             </Route>
 
             <Route
