@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import type { FilterSection } from "./filterSections";
 
@@ -21,6 +21,25 @@ export function FilterAccordion({
 }: FilterAccordionProps) {
   const [open, setOpen] = useState(false);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const filterRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      if (!filterRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
 
   const toggleOption = (label: string, value = label) => {
     const isNextChecked = !checked[label];
@@ -45,12 +64,12 @@ export function FilterAccordion({
   };
 
   return (
-    <div className="border-b border-border py-3 last:border-b-0">
+    <div ref={filterRef} className="relative min-w-0">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className="flex w-full items-center justify-between text-sm font-medium"
+        className="flex h-10 w-full items-center justify-between gap-2 rounded-[var(--radius-pill)] border border-border px-4 text-sm font-medium text-text transition-colors hover:border-accent hover:text-accent-text"
       >
         <span>
           {section.label}
@@ -62,7 +81,7 @@ export function FilterAccordion({
       </button>
 
       {open && (
-        <div className="mt-3 flex flex-col gap-2">
+        <div className="absolute left-0 top-full z-10 mt-2 flex w-[min(20rem,calc(100vw-2rem))] origin-top flex-col gap-2 rounded-[var(--radius-card)] border border-border/65 bg-bg/70 p-3 shadow-lg backdrop-blur-md motion-safe:animate-[filter-dropdown-in_160ms_ease-out]">
           {section.options.map((opt) => (
             <label
               key={opt.id ?? opt.label}

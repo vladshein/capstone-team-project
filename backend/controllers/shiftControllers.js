@@ -18,6 +18,7 @@ const parseShiftFilters = (query) => {
     dateFrom,
     dateTo,
     durationFilters,
+    search,
     sort,
     latitude,
     longitude,
@@ -34,6 +35,7 @@ const parseShiftFilters = (query) => {
     dateFrom: typeof dateFrom === "string" && !Number.isNaN(Date.parse(dateFrom)) ? dateFrom : undefined,
     dateTo: typeof dateTo === "string" && !Number.isNaN(Date.parse(dateTo)) ? dateTo : undefined,
     durationFilters: parseList(durationFilters),
+    search: typeof search === "string" ? search.trim().slice(0, 100) || undefined : undefined,
     sort: ["relevance", "price_desc", "date_asc", "date_desc", "nearest"].includes(sort)
       ? sort
       : "relevance",

@@ -49,6 +49,8 @@ export function TasksBoard() {
   const [isMapView, setIsMapView] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [calendarPeriod, setCalendarPeriod] = useState<CalendarPeriod>("week");
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
   const [selectedCityLocation, setSelectedCityLocation] =
     useState<CityLocation | null>(null);
   const [manualCity, setManualCity] = useState(() => {
@@ -79,6 +81,11 @@ export function TasksBoard() {
   const selectedPartners = useAppSelector(selectSelectedPartners);
   const partnerSelectionMode = useAppSelector(selectPartnerSelectionMode);
   const selectedDurationFilters = useAppSelector(selectSelectedDurationFilters);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => setSearch(searchInput.trim()), 300);
+    return () => window.clearTimeout(timeoutId);
+  }, [searchInput]);
   // Не робимо проміжний запит без categoryIds: спочатку дочікуємося списку
   // категорій і одноразово ініціалізуємо вибір «усі категорії».
   const isBoardReady =
@@ -132,6 +139,7 @@ export function TasksBoard() {
           : undefined,
       durationFilters:
         [...selectedDurationFilters].sort().join(",") || undefined,
+      search: search || undefined,
       city: selectedCity,
       dateFrom: periodStart.toISOString(),
       dateTo: periodEnd.toISOString(),
@@ -151,6 +159,7 @@ export function TasksBoard() {
     selectedCity,
     selectedDurationFilters,
     selectedPartners,
+    search,
     selectedDate,
     sort,
   ]);
@@ -232,6 +241,7 @@ export function TasksBoard() {
     selectedDate,
     selectedDurationFilters,
     selectedPartners,
+    search,
     sort,
   ]);
 
@@ -283,32 +293,20 @@ export function TasksBoard() {
       <h2 className="font-heading text-3xl font-bold uppercase leading-[1.1] tracking-tight sm:text-4xl md:text-5xl">
         Більше 10 000 завдань щодня
       </h2>
-      <button
-        type="button"
-        onClick={() => setIsMapView((isMapVisible) => !isMapVisible)}
-        className="mt-4 min-h-[40px] rounded-[var(--radius-pill)] border border-border px-4 text-sm font-medium text-text transition-colors hover:border-accent hover:text-accent-text"
-      >
-        {isMapView ? "Показати списком" : "Показати на мапі"}
-      </button>
-   
-      
-      <div className="mt-8 grid gap-6 sm:mt-10 lg:grid-cols-[280px_1fr] lg:gap-8">
-        
-        <div className="flex flex-col gap-6">
-        
-          {/* Ручний пошук міста однаково задає фільтр і для карти, і для списку. */}
-          <MapSearchForm onSearch={handleCitySearch} />
-
+      <div className="mt-4 grid gap-3 lg:grid-cols-[280px_1fr] lg:gap-8">
+        <div>
+          <button
+            type="button"
+            onClick={() => setIsMapView((isMapVisible) => !isMapVisible)}
+            className="h-10 rounded-[var(--radius-pill)] border border-border px-4 text-sm font-medium text-text transition-colors hover:border-accent hover:text-accent-text"
+          >
+            {isMapView ? "Показати списком" : "Показати на мапі"}
+          </button>
+        </div>
+        <div className="relative z-[1000] w-full rounded-[var(--radius-card)] border border-border/45 bg-bg/25 p-2 backdrop-blur-sm">
           <FilterSidebar
-            coordinates={coordinates}
-            isLocating={isLocating}
-            locationError={locationError}
+            content="filters"
             onRequestLocation={requestLocation}
-            approximateLocation={approximateLocation}
-            preciseCity={preciseCity}
-            manualCity={manualCity}
-            onSaveManualCity={saveManualCity}
-            isLoadingApproximateLocation={isLoadingApproximateLocation}
             selectedDate={selectedDate}
             onSelectDate={setSelectedDate}
             calendarPeriod={calendarPeriod}
@@ -323,7 +321,44 @@ export function TasksBoard() {
             categories={categories}
           />
         </div>
+      </div>
+
+      <div className="mt-6 grid gap-6 sm:mt-8 lg:grid-cols-[280px_1fr] lg:gap-8">
         
+        <div className="flex flex-col gap-6 lg:h-[600px] lg:justify-between lg:gap-0">
+        
+          {/* Ручний пошук міста однаково задає фільтр і для карти, і для списку. */}
+          <MapSearchForm
+            onSearch={handleCitySearch}
+            searchValue={searchInput}
+            onSearchValueChange={setSearchInput}
+            cityLabel={manualCity || preciseCity || approximateLocation?.city}
+            isLoadingCity={isLoadingApproximateLocation}
+            hasPreciseLocation={Boolean(coordinates)}
+            isLocating={isLocating}
+            locationError={locationError}
+            onRequestLocation={requestLocation}
+          />
+
+          <FilterSidebar
+            content="date"
+            onRequestLocation={requestLocation}
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+            calendarPeriod={calendarPeriod}
+            onCalendarPeriodChange={setCalendarPeriod}
+            partnerOptions={
+              isMapView
+                ? mapPartnerOptions
+                : partnerOptions.length > 0
+                  ? partnerOptions
+                  : fallbackPartnerOptions
+            }
+            categories={categories}
+          />
+        </div>
+
+        <div className="min-w-0">
         <div className={isMapView ? "min-w-0" : "hidden"}>
           {!hasMapSearchArea ? (
             <p className="rounded-[var(--radius-card)] border border-border bg-bg-muted px-4 py-3 text-sm text-text-muted">
@@ -426,6 +461,7 @@ export function TasksBoard() {
               </button>
             </nav>
           )}
+        </div>
         </div>
        
       </div>

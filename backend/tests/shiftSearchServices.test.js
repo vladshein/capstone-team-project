@@ -125,6 +125,24 @@ describe("shift search filters", () => {
     expect(listOptions.where.categoryId).toBe("7");
   });
 
+  test("searches case-insensitively by position title or shift description", async () => {
+    findAndCountAll.mockResolvedValue({ count: 0, rows: [] });
+    findAll.mockResolvedValue([]);
+
+    await getAllShifts({ page: 1, limit: 8, search: "бариста" });
+
+    const listOptions = findAndCountAll.mock.calls[0][0];
+    expect(listOptions.where[Op.and]).toContainEqual({
+      [Op.or]: [
+        { description: { [Op.iLike]: "%бариста%" } },
+        { "$JobPosition.title$": { [Op.iLike]: "%бариста%" } },
+      ],
+    });
+    expect(findAll.mock.calls[0][0].include[0]).toEqual(
+      expect.objectContaining({ model: expect.anything(), attributes: [] }),
+    );
+  });
+
   test("uses the radius expression for nearest map searches and limits map markers", async () => {
     const mapRows = Array.from({ length: 1001 }, (_, id) => ({ id }));
     findAll
