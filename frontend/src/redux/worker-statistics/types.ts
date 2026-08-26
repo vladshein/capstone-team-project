@@ -38,7 +38,6 @@ export interface StatisticsSummary {
     noShow: number;
     rate: number;
   };
-  wallet: { balance: number; frozenBalance: number } | null;
 }
 
 // Відповідь GET /me/statistics/shifts

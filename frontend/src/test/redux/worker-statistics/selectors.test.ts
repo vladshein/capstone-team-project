@@ -14,7 +14,6 @@ const summaryFixture: StatisticsSummary = {
   shifts: { completed: 1, upcoming: 0, scheduledCompletedHours: 8, estimatedCompletedEarnings: 1600 },
   companiesWorkedFor: 1,
   attendance: { completed: 1, noShow: 0, rate: 100 },
-  wallet: null,
 };
 
 const shiftsStatisticsFixture: ShiftsStatistics = {

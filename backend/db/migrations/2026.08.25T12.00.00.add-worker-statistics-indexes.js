@@ -1,5 +1,5 @@
 /**
- * workerStatistics.service.js фільтрує/джойнить shift_applications по
+ * workerStatisticsServices.js фільтрує/джойнить shift_applications по
  * (workerId, status), shifts по (startTime, endTime) та locations по
  * companyId/city без жодного індексу — кожен виклик статистики робив
  * seq scan по цих таблицях. Додаємо індекси під ці запити.

@@ -46,6 +46,9 @@ const BusinessShiftsTab = lazy(
 const BusinessApplicationsTab = lazy(
   () => import("./pages/business/BusinessApplicationsTab").then((module) => ({ default: module.BusinessApplicationsTab })),
 );
+const BusinessStatisticsPage = lazy(
+  () => import("./pages/business/BusinessStatisticsPage"),
+);
 const WorkerProfilePage = lazy(
   () => import("./pages/worker/WorkerProfilePage"),
 );
@@ -252,6 +255,7 @@ export default function App() {
               <Route path="shifts" element={<BusinessShiftsTab scope="active" />} />
               <Route path="applications" element={<BusinessApplicationsTab />} />
               <Route path="archive" element={<BusinessShiftsTab scope="archive" />} />
+              <Route path="statistics" element={<BusinessStatisticsPage />} />
             </Route>
 
             <Route path="*" element={<NotFoundPage />} />
