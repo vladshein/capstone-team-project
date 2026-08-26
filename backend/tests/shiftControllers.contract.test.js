@@ -12,6 +12,7 @@ const completeBusinessShiftApplication = jest.fn();
 const markBusinessShiftApplicationNoShow = jest.fn();
 const verifyLocationOwnership = jest.fn();
 const createShift = jest.fn();
+const createShifts = jest.fn();
 const findShiftApplication = jest.fn();
 const createShiftApplication = jest.fn();
 const cancelWorkerShiftApplication = jest.fn();
@@ -32,6 +33,7 @@ jest.unstable_mockModule("../services/shiftServices.js", () => ({
   markBusinessShiftApplicationNoShow,
   verifyLocationOwnership,
   createShift,
+  createShifts,
   findShiftApplication,
   createShiftApplication,
   cancelWorkerShiftApplication,
@@ -191,6 +193,37 @@ describe("shift controllers: HTTP contracts", () => {
       status: "open",
     });
     expect(response.status).toHaveBeenCalledWith(201);
+  });
+
+  test("creates one shift for each day in a requested series", async () => {
+    verifyLocationOwnership.mockResolvedValue(12);
+    createShifts.mockResolvedValue([{ id: 15 }, { id: 16 }, { id: 17 }]);
+    const response = createResponse();
+
+    await shiftController.createShift(
+      {
+        user: { id: 7 },
+        body: {
+          locationId: 44,
+          positionId: 8,
+          categoryId: 3,
+          startTime: "2035-01-01T10:00:00.000Z",
+          endTime: "2035-01-01T18:00:00.000Z",
+          hourlyRate: 250,
+          repeatDays: 3,
+        },
+      },
+      response,
+      jest.fn(),
+    );
+
+    expect(createShifts).toHaveBeenCalledWith([
+      expect.objectContaining({ startTime: new Date("2035-01-01T10:00:00.000Z"), endTime: new Date("2035-01-01T18:00:00.000Z") }),
+      expect.objectContaining({ startTime: new Date("2035-01-02T10:00:00.000Z"), endTime: new Date("2035-01-02T18:00:00.000Z") }),
+      expect.objectContaining({ startTime: new Date("2035-01-03T10:00:00.000Z"), endTime: new Date("2035-01-03T18:00:00.000Z") }),
+    ]);
+    expect(createShift).not.toHaveBeenCalled();
+    expect(response.json).toHaveBeenCalledWith(expect.objectContaining({ createdCount: 3 }));
   });
 
   test("rejects a shift creation attempt for an unowned location", async () => {

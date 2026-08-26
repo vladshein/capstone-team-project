@@ -107,6 +107,8 @@ export interface CreateShiftPayload {
   hourlyRate: number;
   bonusRate?: number;
   description?: string;
+  /** Кількість однакових щоденних змін, включно з першою. */
+  repeatDays?: number;
 }
 
 export interface ShiftApplication {

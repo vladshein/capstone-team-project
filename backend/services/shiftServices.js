@@ -353,6 +353,11 @@ export const createShift = async (shiftData) => {
   return await Shift.create(shiftData);
 };
 
+/** Створює серію однакових щоденних змін одним запитом. */
+export const createShifts = async (shiftsData) => {
+  return await Shift.bulkCreate(shiftsData);
+};
+
 /** Повертає зміни однієї компанії лише її власнику. */
 export const getBusinessShifts = async ({ companyId, ownerId, scope, page = 1, limit = 8 }) => {
   const company = await Company.findOne({ where: { id: companyId, ownerId } });

@@ -37,6 +37,24 @@ const earliestShiftDate = () => {
   return `${year}-${month}-${day}`;
 };
 
+const getDaysInclusive = (startDate: string, endDate: string) => {
+  const [startYear, startMonth, startDay] = startDate.split("-").map(Number);
+  const [endYear, endMonth, endDay] = endDate.split("-").map(Number);
+  return Math.floor(
+    (Date.UTC(endYear, endMonth - 1, endDay) - Date.UTC(startYear, startMonth - 1, startDay)) /
+      86_400_000,
+  ) + 1;
+};
+
+const formatShiftCount = (count: number) => {
+  const lastTwoDigits = count % 100;
+  const lastDigit = count % 10;
+  if (lastTwoDigits >= 11 && lastTwoDigits <= 14) return "змін";
+  if (lastDigit === 1) return "зміна";
+  if (lastDigit >= 2 && lastDigit <= 4) return "зміни";
+  return "змін";
+};
+
 // У поточній БД тестові посади дублюються для різних міст у форматі
 // «Посада (Київ)». Для форми показуємо одну читабельну назву без міста.
 const getPositionTitle = (title: string) => title.replace(/\s*\([^)]*\)\s*$/, "").trim();
@@ -74,6 +92,7 @@ export function CreateShiftModal({
   const [categoryId, setCategoryId] = useState("");
   const [positionId, setPositionId] = useState("");
   const [date, setDate] = useState(earliestShiftDate());
+  const [endDate, setEndDate] = useState("");
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("17:00");
   const [hourlyRate, setHourlyRate] = useState("");
@@ -104,12 +123,14 @@ export function CreateShiftModal({
       setCategoryId(initialCategoryId ? String(initialCategoryId) : "");
       setPositionId(String(initialShift.JobPosition?.id ?? initialShift.positionId ?? ""));
       setDate(isDuplicate ? earliestShiftDate() : start.toISOString().slice(0, 10));
+      setEndDate("");
       setStartTime(start.toISOString().slice(11, 16));
       setEndTime(end.toISOString().slice(11, 16));
       setHourlyRate(String(initialShift.hourlyRate));
       setBonusRate(String(initialShift.bonusRate));
       setDescription(initialShift.description ?? "");
     } else {
+      setEndDate("");
       setIsNewLocation(locations.length === 0);
       if (locations.length > 0) {
         setLocationId((currentLocationId) => currentLocationId || String(locations[0].id));
@@ -185,6 +206,16 @@ export function CreateShiftModal({
       return;
     }
 
+    const repeatDays = endDate ? getDaysInclusive(date, endDate) : 1;
+    if (!Number.isInteger(repeatDays) || repeatDays < 1) {
+      setFormError("Кінцева дата не може бути раніше дати початку.");
+      return;
+    }
+    if (repeatDays > 31) {
+      setFormError("За раз можна створити зміни максимум на 31 день.");
+      return;
+    }
+
     const rate = Number(hourlyRate);
     const bonus = Number(bonusRate || 0);
     if (!Number.isFinite(rate) || rate <= 0) {
@@ -228,6 +259,7 @@ export function CreateShiftModal({
         hourlyRate: rate,
         bonusRate: bonus,
         description: description.trim(),
+        repeatDays,
       });
     } catch (error) {
       setFormError(error instanceof Error ? error.message : "Не вдалося створити зміну.");
@@ -276,7 +308,7 @@ export function CreateShiftModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={isDuplicate ? "Повторити зміну" : initialShift ? "Редагувати зміну" : "Створити зміну"}>
+    <Modal isOpen={isOpen} onClose={onClose} title={isDuplicate ? "Повторити зміну" : initialShift ? "Редагувати зміну" : "Створити зміну"} size="wide">
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="text-sm font-medium">
@@ -354,11 +386,34 @@ export function CreateShiftModal({
           )}
         </fieldset>
 
-        <div className="grid gap-4 sm:grid-cols-3">
-          <label className="text-sm font-medium">Дата<input type="date" min={earliestShiftDate()} value={date} onChange={(event) => setDate(event.target.value)} className={inputClass} /></label>
-          <label className="text-sm font-medium">Початок<TimePicker value={startTime} onChange={setStartTime} ariaLabel="Час початку" /></label>
-          <label className="text-sm font-medium">Кінець<TimePicker value={endTime} onChange={setEndTime} ariaLabel="Час завершення" /></label>
-        </div>
+        <fieldset className="rounded-[var(--radius-card)] border border-border p-4">
+          <legend className="px-1 text-sm font-medium">Розклад</legend>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="text-sm font-medium">
+              Дата початку
+              <input type="date" min={earliestShiftDate()} value={date} onChange={(event) => setDate(event.target.value)} className={inputClass} />
+            </label>
+            {(!initialShift || isDuplicate) && (
+              <label className="text-sm font-medium">
+                Кінцева дата <span className="font-normal text-text-subtle">(необов’язково)</span>
+                <input type="date" min={date} value={endDate} onChange={(event) => setEndDate(event.target.value)} className={inputClass} />
+              </label>
+            )}
+            {(!initialShift || isDuplicate) && endDate && (
+              <p className="sm:col-span-2 -mt-1 rounded-[var(--radius-card)] bg-accent/10 px-3 py-2 text-xs leading-5 text-accent-text">
+                Буде створено {getDaysInclusive(date, endDate)} {formatShiftCount(getDaysInclusive(date, endDate))} — по одній на кожен день.
+              </p>
+            )}
+            <label className="text-sm font-medium">
+              Час початку
+              <TimePicker value={startTime} onChange={setStartTime} ariaLabel="Час початку" />
+            </label>
+            <label className="text-sm font-medium">
+              Час завершення
+              <TimePicker value={endTime} onChange={setEndTime} ariaLabel="Час завершення" />
+            </label>
+          </div>
+        </fieldset>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="text-sm font-medium">Ставка, ₴/год<input type="number" min="1" step="0.01" value={hourlyRate} onChange={(event) => setHourlyRate(event.target.value)} className={inputClass} placeholder="200" /></label>
@@ -373,7 +428,7 @@ export function CreateShiftModal({
         {(formError || serverError) && <p className="text-sm text-danger">{formError || serverError}</p>}
         <button type="submit" disabled={!canSubmit} className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--radius-pill)] bg-accent px-5 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60">
           <MapPin className="h-4 w-4" />
-          {isSubmitting || isCreatingLocation ? "Зберігаємо…" : isDuplicate ? "Опублікувати повторно" : initialShift ? "Зберегти зміни" : "Опублікувати зміну"}
+          {isSubmitting || isCreatingLocation ? "Зберігаємо…" : isDuplicate ? "Опублікувати повторно" : initialShift ? "Зберегти зміни" : endDate ? "Опублікувати зміни" : "Опублікувати зміну"}
         </button>
       </form>
     </Modal>
