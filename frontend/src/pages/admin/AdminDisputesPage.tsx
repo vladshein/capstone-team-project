@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   CheckCircle2,
@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import {
   getAdminDisputes,
+  getAdminDisputeStatusCounts,
   type Dispute,
   type DisputeStatus,
 } from "../../api/disputes";
@@ -61,44 +62,61 @@ export default function AdminDisputesPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
+  const [statusCounts, setStatusCounts] = useState<
+    Record<DisputeStatus, number>
+  >({
+    open: 0,
+    awaiting_response: 0,
+    under_review: 0,
+    resolved: 0,
+    closed: 0,
+    appealed: 0,
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
-  const load = async () => {
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    let isCurrent = true;
     setIsLoading(true);
     setError("");
-    try {
-      const response = await getAdminDisputes({ page });
-      setDisputes(response.data);
-      setTotalPages(response.totalPages);
-      setTotalItems(response.totalItems);
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "Не вдалося завантажити спори.",
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    void getAdminDisputes({
+      page,
+      status: filter === "all" ? undefined : filter,
+      search: query.trim() || undefined,
+    })
+      .then((response) => {
+        if (!isCurrent) return;
+        setDisputes(response.data);
+        setTotalPages(response.totalPages);
+        setTotalItems(response.totalItems);
+      })
+      .catch((requestError) => {
+        if (!isCurrent) return;
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : "Не вдалося завантажити спори.",
+        );
+      })
+      .finally(() => {
+        if (isCurrent) setIsLoading(false);
+      });
+    return () => {
+      isCurrent = false;
+    };
+  }, [filter, page, query, reloadKey]);
+
   useEffect(() => {
-    void load();
-  }, [page]);
-  const visible = useMemo(
-    () =>
-      disputes.filter(
-        (dispute) =>
-          (filter === "all" || dispute.status === filter) &&
-          `${dispute.id} ${dispute.Shift.Location?.Company?.name ?? ""} ${partyName(dispute.Initiator)} ${partyName(dispute.Respondent)} ${dispute.reason}`
-            .toLowerCase()
-            .includes(query.toLowerCase()),
-      ),
-    [disputes, filter, query],
-  );
+    void getAdminDisputeStatusCounts()
+      .then(setStatusCounts)
+      .catch(() => {});
+  }, [reloadKey]);
+
   const count = (status?: DisputeStatus) =>
     status
-      ? disputes.filter((dispute) => dispute.status === status).length
-      : totalItems;
+      ? statusCounts[status]
+      : Object.values(statusCounts).reduce((total, value) => total + value, 0);
   const selectFilter = (nextFilter: "all" | DisputeStatus) => {
     setFilter(nextFilter);
     setPage(1);
@@ -121,8 +139,8 @@ export default function AdminDisputesPage() {
           </p>
         </div>
         <div className="rounded-[var(--radius-card)] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          <span className="font-semibold">{count("open")} нових</span> спорів на
-          цій сторінці
+          <span className="font-semibold">{count("open")} нових</span> спорів
+          очікують первинного розгляду
         </div>
       </header>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -153,14 +171,17 @@ export default function AdminDisputesPage() {
           <div>
             <h2 className="font-heading text-lg font-bold">Звернення</h2>
             <p className="text-sm text-text-muted">
-              {totalItems} загалом · сторінка {page} з {totalPages}
+              {totalItems} за поточним пошуком · сторінка {page} з {totalPages}
             </p>
           </div>
           <label className="relative block sm:w-80">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-subtle" />
             <input
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setPage(1);
+              }}
               placeholder="Пошук за номером або учасником"
               className="min-h-[42px] w-full rounded-[var(--radius-pill)] border border-border bg-bg py-2 pl-10 pr-4 text-sm outline-none focus:border-accent"
             />
@@ -177,14 +198,14 @@ export default function AdminDisputesPage() {
               <p className="text-sm text-danger">{error}</p>
               <button
                 type="button"
-                onClick={() => void load()}
+                onClick={() => setReloadKey((current) => current + 1)}
                 className="mt-4 rounded-[var(--radius-pill)] border border-border px-4 py-2 text-sm font-medium"
               >
                 Спробувати ще раз
               </button>
             </div>
           )}
-          {visible.map((dispute) => {
+          {disputes.map((dispute) => {
             const meta = statusMeta[dispute.status];
             const companyName = dispute.Shift.Location?.Company?.name;
             return (
@@ -233,7 +254,7 @@ export default function AdminDisputesPage() {
               </button>
             );
           })}
-          {!isLoading && !error && visible.length === 0 && (
+          {!isLoading && !error && disputes.length === 0 && (
             <p className="p-12 text-center text-sm text-text-muted">
               За цими параметрами спорів не знайдено.
             </p>

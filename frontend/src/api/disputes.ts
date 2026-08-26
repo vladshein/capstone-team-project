@@ -65,11 +65,21 @@ export interface DisputePage {
 export const getAdminDisputes = async (params?: {
   page?: number;
   limit?: number;
+  status?: DisputeStatus;
+  search?: string;
 }): Promise<DisputePage> =>
   (
     await api.get<DisputePage>("/admin/disputes", {
       params: { limit: 20, ...params },
     })
+  ).data;
+export const getAdminDisputeStatusCounts = async (): Promise<
+  Record<DisputeStatus, number>
+> =>
+  (
+    await api.get<Record<DisputeStatus, number>>(
+      "/admin/disputes/status-counts",
+    )
   ).data;
 export const getMyDisputes = async (params?: {
   shiftId?: number;

@@ -171,7 +171,7 @@ export const getDisputeById = async (disputeId, user, transaction) => {
 
 export const getMyDisputes = async (
   user,
-  { page = 1, limit = 20, status, shiftId, active = false } = {},
+  { page = 1, limit = 20, status, shiftId, active = false, search } = {},
 ) => {
   const where =
     user.role === "admin"
@@ -180,6 +180,24 @@ export const getMyDisputes = async (
   if (status) where.status = status;
   if (active) where.status = { [Op.in]: activeStatuses };
   if (shiftId) where.shiftId = shiftId;
+  const normalizedSearch = typeof search === "string" ? search.trim() : "";
+  if (normalizedSearch) {
+    const pattern = `%${normalizedSearch}%`;
+    const searchConditions = [
+      { "$Shift.Location.Company.name$": { [Op.iLike]: pattern } },
+      { "$Shift.JobPosition.title$": { [Op.iLike]: pattern } },
+      { "$Initiator.email$": { [Op.iLike]: pattern } },
+      { "$Respondent.email$": { [Op.iLike]: pattern } },
+      { "$Initiator.WorkerProfile.firstName$": { [Op.iLike]: pattern } },
+      { "$Initiator.WorkerProfile.lastName$": { [Op.iLike]: pattern } },
+      { "$Respondent.WorkerProfile.firstName$": { [Op.iLike]: pattern } },
+      { "$Respondent.WorkerProfile.lastName$": { [Op.iLike]: pattern } },
+    ];
+    if (/^\d+$/.test(normalizedSearch)) {
+      searchConditions.unshift({ id: Number(normalizedSearch) });
+    }
+    where[Op.and] = [{ [Op.or]: searchConditions }];
+  }
   const { count, rows } = await Dispute.findAndCountAll({
     where,
     include: disputeInclude,
@@ -187,6 +205,7 @@ export const getMyDisputes = async (
     limit,
     offset: (page - 1) * limit,
     distinct: true,
+    subQuery: false,
   });
   return {
     data: rows,
@@ -194,6 +213,23 @@ export const getMyDisputes = async (
     totalPages: Math.ceil(count / limit),
     currentPage: page,
   };
+};
+
+export const getDisputeStatusCounts = async () => {
+  const statuses = [
+    "open",
+    "awaiting_response",
+    "under_review",
+    "resolved",
+    "closed",
+    "appealed",
+  ];
+  const counts = await Promise.all(
+    statuses.map((status) => Dispute.count({ where: { status } })),
+  );
+  return Object.fromEntries(
+    statuses.map((status, index) => [status, counts[index]]),
+  );
 };
 
 export const addMessage = async ({ disputeId, user, message }) =>

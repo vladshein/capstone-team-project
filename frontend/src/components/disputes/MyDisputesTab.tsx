@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronRight, Gavel } from "lucide-react";
+import { ChevronLeft, ChevronRight, Gavel } from "lucide-react";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import {
@@ -48,14 +48,20 @@ const money = (amount: string | null) =>
 
 export function MyDisputesTab() {
   const [disputes, setDisputes] = useState<Dispute[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     let isCurrent = true;
-    void getMyDisputes()
+    void getMyDisputes({ page })
       .then((response) => {
-        if (isCurrent) setDisputes(response.data);
+        if (!isCurrent) return;
+        setDisputes(response.data);
+        setTotalPages(response.totalPages);
+        setTotalItems(response.totalItems);
       })
       .catch((error: unknown) => {
         if (isCurrent) {
@@ -72,7 +78,7 @@ export function MyDisputesTab() {
     return () => {
       isCurrent = false;
     };
-  }, []);
+  }, [page]);
 
   if (isLoading) return <Loader label="Завантажуємо спори…" />;
 
@@ -95,7 +101,7 @@ export function MyDisputesTab() {
       <header className="border-b border-border px-5 py-5">
         <h1 className="font-heading text-xl font-bold text-ink">Спори</h1>
         <p className="mt-1 text-sm text-text-muted">
-          Усі звернення та рішення платформи в одному списку.
+          {totalItems} звернень і рішень платформи.
         </p>
       </header>
       <div className="divide-y divide-border">
@@ -146,6 +152,36 @@ export function MyDisputesTab() {
           );
         })}
       </div>
+      {totalPages > 1 && (
+        <nav
+          className="flex items-center justify-between gap-3 border-t border-border px-5 py-4"
+          aria-label="Сторінки спорів"
+        >
+          <button
+            type="button"
+            onClick={() => setPage((current) => Math.max(1, current - 1))}
+            disabled={page === 1}
+            className="inline-flex min-h-[40px] items-center gap-1 rounded-[var(--radius-pill)] border border-border px-3 text-sm font-medium text-text transition-colors hover:border-accent disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Назад
+          </button>
+          <span className="text-sm text-text-muted">
+            {page} / {totalPages}
+          </span>
+          <button
+            type="button"
+            onClick={() =>
+              setPage((current) => Math.min(totalPages, current + 1))
+            }
+            disabled={page === totalPages}
+            className="inline-flex min-h-[40px] items-center gap-1 rounded-[var(--radius-pill)] border border-border px-3 text-sm font-medium text-text transition-colors hover:border-accent disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            Далі
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </nav>
+      )}
     </section>
   );
 }

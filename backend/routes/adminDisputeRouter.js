@@ -14,6 +14,10 @@ const adminDisputeRouter = express.Router();
 
 adminDisputeRouter.use(authenticate, checkRole("admin"));
 adminDisputeRouter.get("/disputes", controller.getAdminDisputes);
+adminDisputeRouter.get(
+  "/disputes/status-counts",
+  controller.getAdminDisputeStatusCounts,
+);
 adminDisputeRouter.patch(
   "/disputes/:disputeId/status",
   validateParams(disputeIdParamsSchema),

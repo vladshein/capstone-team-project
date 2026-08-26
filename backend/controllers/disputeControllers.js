@@ -55,6 +55,7 @@ const pageOptions = (query) => ({
   status: query.status,
   shiftId: query.shiftId ? Number(query.shiftId) : undefined,
   active: query.active === "true",
+  search: typeof query.search === "string" ? query.search : undefined,
 });
 
 export const createDispute = async (req, res, next) => {
@@ -182,6 +183,13 @@ export const appealDispute = async (req, res, next) => {
 export const getAdminDisputes = async (req, res, next) => {
   try {
     res.json(await disputes.getMyDisputes(req.user, pageOptions(req.query)));
+  } catch (error) {
+    next(error);
+  }
+};
+export const getAdminDisputeStatusCounts = async (_req, res, next) => {
+  try {
+    res.json(await disputes.getDisputeStatusCounts());
   } catch (error) {
     next(error);
   }
