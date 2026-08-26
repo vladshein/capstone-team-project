@@ -34,6 +34,9 @@ const BookingsTab = lazy(() => import("./pages/worker/BookingsTab"));
 const FavoriteShiftsTab = lazy(
   () => import("./pages/worker/FavoriteShiftsTab"),
 );
+const FavoriteCompaniesTab = lazy(
+  () => import("./pages/worker/FavoriteCompaniesTab"),
+);
 const BusinessDashboardPage = lazy(
   () => import("./pages/business/BusinessDashboardPage"),
 );
@@ -232,6 +235,7 @@ export default function App() {
                <Route path="search" element={<NearbyWorkerShiftsTab />} />
                <Route path="bookings" element={<BookingsTab />} />
                <Route path="favorites" element={<FavoriteShiftsTab />} />
+               <Route path="favorite-companies" element={<FavoriteCompaniesTab />} />
              </Route>
 
              <Route

@@ -36,6 +36,27 @@ export const getPublicCompanyOpenShifts = async (req, res, next) => {
   }
 };
 
+export const getPublicCompaniesByIds = async (req, res, next) => {
+  try {
+    const companyIds = String(req.query.ids ?? "")
+      .split(",")
+      .map(Number)
+      .filter((id) => Number.isInteger(id) && id > 0)
+      .slice(0, 12);
+
+    if (companyIds.length === 0) {
+      const error = new Error("Передайте хоча б один коректний ідентифікатор компанії.");
+      error.status = 400;
+      throw error;
+    }
+
+    const companies = await companyService.getPublicCompaniesByIds(companyIds);
+    res.status(200).json({ data: companies });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getMyCompanies = async (req, res, next) => {
   try {
     const ownerId = req.user.id;

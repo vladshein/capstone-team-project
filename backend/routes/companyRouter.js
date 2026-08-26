@@ -18,6 +18,8 @@ companyRouter.get(
   companyController.getPublicCompanyOpenShifts,
 );
 
+companyRouter.get("/public", optionalAuthenticate, companyController.getPublicCompaniesByIds);
+
 // Окремий шлях не конфліктує з /my та не вимагає сесії.
 companyRouter.get("/public/:id", optionalAuthenticate, companyController.getCompanyById);
 

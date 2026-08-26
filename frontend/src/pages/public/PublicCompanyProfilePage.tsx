@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, ArrowUpRight, Building2, CalendarDays, Clock3, MapPin, Phone } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Building2, CalendarDays, Clock3, Heart, MapPin, Phone, Star } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import {
@@ -10,7 +10,8 @@ import {
 } from "../../api/publicProfiles";
 import { ProfileReviewsSection } from "../../components/reviews/ProfileReviewsSection";
 import { Loader } from "../../components/ui/Loader";
-import { selectIsLoggedIn } from "../../redux/auth/selectors";
+import { useFavoriteCompanies } from "../../hooks/useFavoriteCompanies";
+import { selectIsLoggedIn, selectUserInfo } from "../../redux/auth/selectors";
 import { useAppSelector } from "../../redux/hooks";
 import {
   formatPriceLabel,
@@ -23,6 +24,8 @@ export default function PublicCompanyProfilePage() {
   const { companyId } = useParams();
   const navigate = useNavigate();
   const isAuthenticated = useAppSelector(selectIsLoggedIn);
+  const user = useAppSelector(selectUserInfo);
+  const { isFavorite, toggleFavorite } = useFavoriteCompanies();
   const parsedCompanyId = Number(companyId);
   const [company, setCompany] = useState<PublicCompanyProfile | null>(null);
   const [openShifts, setOpenShifts] = useState<PublicCompanyOpenShiftsResponse | null>(null);
@@ -70,6 +73,8 @@ export default function PublicCompanyProfilePage() {
   if (isLoading) return <Loader fullScreen label="Завантажуємо профіль компанії…" />;
   if (error || !company) return <NotFoundPage title="Профіль не знайдено" description={error ?? undefined} />;
 
+  const favorite = isFavorite(company.id);
+
   const goBack = () => {
     if ((window.history.state?.idx ?? 0) > 0) navigate(-1);
     else navigate("/#zavdannia", { replace: true });
@@ -90,10 +95,29 @@ export default function PublicCompanyProfilePage() {
               {company.name.charAt(0).toUpperCase()}
             </span>
           )}
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="flex items-center gap-2 text-sm text-text-muted"><Building2 className="h-4 w-4 text-accent" /> Компанія</p>
             <h1 className="mt-1 font-heading text-2xl font-bold tracking-tight sm:text-3xl">{company.name}</h1>
+            <p className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-warning">
+              <Star className="h-4 w-4 fill-current" />
+              {company.rating > 0 ? `${company.rating.toFixed(2)} / 5` : "Ще немає оцінок"}
+            </p>
           </div>
+          {isAuthenticated && user?.role === "worker" && (
+            <button
+              type="button"
+              onClick={() => toggleFavorite(company.id)}
+              aria-pressed={favorite}
+              className={`inline-flex min-h-[44px] shrink-0 items-center justify-center gap-2 rounded-[var(--radius-pill)] border px-4 text-sm font-medium transition-colors ${
+                favorite
+                  ? "border-accent bg-accent/10 text-accent-text"
+                  : "border-border text-text hover:border-accent hover:text-accent-text"
+              }`}
+            >
+              <Heart className={`h-5 w-5 ${favorite ? "fill-current" : "fill-none"}`} />
+              {favorite ? "В улюблених" : "Додати в улюблені"}
+            </button>
+          )}
         </div>
 
         <div className="mt-7 border-t border-border pt-5">
