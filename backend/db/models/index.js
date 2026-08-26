@@ -11,6 +11,10 @@ import Review from "./Review.js";
 import Wallet from "./Wallet.js";
 import Company from "./Company.js";
 import Transaction from "./Transaction.js";
+import Dispute from "./Dispute.js";
+import DisputeMessage from "./DisputeMessage.js";
+import DisputeEvidence from "./DisputeEvidence.js";
+import DisputeEvent from "./DisputeEvent.js";
 
 // --- 1. User <-> WorkerProfile (1:1) ---
 User.hasOne(WorkerProfile, {
@@ -63,7 +67,7 @@ Shift.belongsToMany(User, {
   otherKey: "workerId",
 });
 
-// 1:M 
+// 1:M
 User.hasMany(ShiftApplication, { foreignKey: "workerId" });
 ShiftApplication.belongsTo(User, { foreignKey: "workerId" });
 
@@ -124,6 +128,46 @@ Transaction.belongsTo(User, { foreignKey: "receiverId", as: "Receiver" });
 Shift.hasMany(Transaction, { foreignKey: "shiftId", onDelete: "SET NULL" });
 Transaction.belongsTo(Shift, { foreignKey: "shiftId" });
 
+// --- 10. Disputes ---
+Shift.hasMany(Dispute, { foreignKey: "shiftId", onDelete: "RESTRICT" });
+Dispute.belongsTo(Shift, { foreignKey: "shiftId" });
+User.hasMany(Dispute, { foreignKey: "initiatorId", as: "InitiatedDisputes" });
+Dispute.belongsTo(User, { foreignKey: "initiatorId", as: "Initiator" });
+User.hasMany(Dispute, { foreignKey: "respondentId", as: "RespondedDisputes" });
+Dispute.belongsTo(User, { foreignKey: "respondentId", as: "Respondent" });
+User.hasMany(Dispute, {
+  foreignKey: "assignedAdminId",
+  as: "AssignedDisputes",
+});
+Dispute.belongsTo(User, { foreignKey: "assignedAdminId", as: "AssignedAdmin" });
+Dispute.hasMany(DisputeMessage, {
+  foreignKey: "disputeId",
+  as: "Messages",
+  onDelete: "CASCADE",
+});
+DisputeMessage.belongsTo(Dispute, { foreignKey: "disputeId" });
+User.hasMany(DisputeMessage, { foreignKey: "authorId", as: "DisputeMessages" });
+DisputeMessage.belongsTo(User, { foreignKey: "authorId", as: "Author" });
+Dispute.hasMany(DisputeEvidence, {
+  foreignKey: "disputeId",
+  as: "Evidence",
+  onDelete: "CASCADE",
+});
+DisputeEvidence.belongsTo(Dispute, { foreignKey: "disputeId" });
+User.hasMany(DisputeEvidence, {
+  foreignKey: "uploadedBy",
+  as: "DisputeEvidence",
+});
+DisputeEvidence.belongsTo(User, { foreignKey: "uploadedBy", as: "Uploader" });
+Dispute.hasMany(DisputeEvent, {
+  foreignKey: "disputeId",
+  as: "Events",
+  onDelete: "CASCADE",
+});
+DisputeEvent.belongsTo(Dispute, { foreignKey: "disputeId" });
+User.hasMany(DisputeEvent, { foreignKey: "actorId", as: "DisputeEvents" });
+DisputeEvent.belongsTo(User, { foreignKey: "actorId", as: "Actor" });
+
 export {
   sequelize,
   User,
@@ -138,4 +182,8 @@ export {
   Review,
   Transaction,
   Wallet,
+  Dispute,
+  DisputeMessage,
+  DisputeEvidence,
+  DisputeEvent,
 };
