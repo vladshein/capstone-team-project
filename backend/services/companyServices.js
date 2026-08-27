@@ -1,4 +1,4 @@
-import { Company, Location, User, Shift, JobPosition, Category } from "../db/models/index.js";
+import { Company, Location, User, Shift, JobPosition, Category, Review } from "../db/models/index.js";
 import { Op } from "sequelize";
 
 /**
@@ -24,7 +24,35 @@ export const getCompanyById = async (companyId, { includePhone = false } = {}) =
     throw error;
   }
 
+  const ratingResult = await Review.findOne({
+    where: { revieweeId: company.ownerId },
+    attributes: [[Review.sequelize.fn("AVG", Review.sequelize.col("rating")), "averageRating"]],
+    include: [{
+      model: Shift,
+      attributes: [],
+      required: true,
+      include: [{
+        model: Location,
+        attributes: [],
+        required: true,
+        include: [{ model: Company, attributes: [], where: { id: company.id }, required: true }],
+      }],
+    }],
+    raw: true,
+  });
+  const averageRating = Number(ratingResult?.averageRating);
+  company.setDataValue(
+    "rating",
+    Number.isFinite(averageRating) ? Math.round(averageRating * 100) / 100 : 0,
+  );
+
   return company;
+};
+
+/** Повертає актуальні публічні дані кількох компаній одним HTTP-запитом. */
+export const getPublicCompaniesByIds = async (companyIds) => {
+  const uniqueIds = [...new Set(companyIds)];
+  return Promise.all(uniqueIds.map((companyId) => getCompanyById(companyId)));
 };
 
 /**

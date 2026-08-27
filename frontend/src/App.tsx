@@ -44,6 +44,9 @@ const DisputeDetailsPage = lazy(
 const FavoriteShiftsTab = lazy(
   () => import("./pages/worker/FavoriteShiftsTab"),
 );
+const FavoriteCompaniesTab = lazy(
+  () => import("./pages/worker/FavoriteCompaniesTab"),
+);
 const BusinessDashboardPage = lazy(
   () => import("./pages/business/BusinessDashboardPage"),
 );
@@ -259,17 +262,18 @@ export default function App() {
               }
             />
 
-            <Route path="/cabinet" element={renderWorkerDashboard()}>
-              <Route index element={<BookingsTab />} />
-              <Route path="search" element={<NearbyWorkerShiftsTab />} />
-              <Route path="bookings" element={<BookingsTab />} />
-              <Route path="disputes" element={<MyDisputesTab />} />
-              <Route
-                path="disputes/:disputeId"
-                element={<DisputeDetailsPage />}
-              />
-              <Route path="favorites" element={<FavoriteShiftsTab />} />
-            </Route>
+             <Route path="/cabinet" element={renderWorkerDashboard()}>
+               <Route index element={<BookingsTab />} />
+               <Route path="search" element={<NearbyWorkerShiftsTab />} />
+               <Route path="bookings" element={<BookingsTab />} />
+               <Route path="favorites" element={<FavoriteShiftsTab />} />
+               <Route path="favorite-companies" element={<FavoriteCompaniesTab />} />
+               <Route path="disputes" element={<MyDisputesTab />} />
+               <Route
+                  path="disputes/:disputeId"
+                  element={<DisputeDetailsPage />}
+               />
+             </Route>
 
             <Route
               path="/statistics"

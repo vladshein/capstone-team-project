@@ -65,6 +65,7 @@ const TABS = [
   { key: "bookings", label: "Мої зміни", to: "bookings" },
   { key: "disputes", label: "Спори", to: "disputes" },
   { key: "favorites", label: "Збережені зміни", to: "favorites" },
+  { key: "favorite-companies", label: "Улюблені компанії", to: "favorite-companies" },
 ];
 
 /* ---------------------------------------------------------------------- */
@@ -280,7 +281,7 @@ export function WorkerDashboard({
           <section>
             <div className="flex items-end justify-between border-b border-border">
               {/* Ліва частина: Вкладки */}
-              <div className="flex gap-1">
+              <div className="flex gap-1 overflow-x-auto">
                 {TABS.map((tab) => (
                   <NavLink
                     key={tab.key}

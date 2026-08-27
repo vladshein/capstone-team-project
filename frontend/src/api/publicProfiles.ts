@@ -18,6 +18,7 @@ export type PublicCompanyProfile = {
   name: string;
   description: string | null;
   avatar: string | null;
+  rating: number;
   Owner?: { phone: string | null };
   Locations: Array<{ id: number; title: string; city: string; address: string }>;
 };
@@ -38,6 +39,13 @@ export async function getPublicWorkerProfile(userId: number) {
 
 export async function getPublicCompanyProfile(companyId: number) {
   const { data } = await api.get<ApiResponse<PublicCompanyProfile>>(`/companies/public/${companyId}`);
+  return data.data;
+}
+
+export async function getPublicCompanyProfiles(companyIds: number[]) {
+  const { data } = await api.get<ApiResponse<PublicCompanyProfile[]>>("/companies/public", {
+    params: { ids: companyIds.join(",") },
+  });
   return data.data;
 }
 
