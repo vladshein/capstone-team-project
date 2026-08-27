@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { CalendarDays, Clock3, MapPin } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import {
@@ -8,35 +8,59 @@ import {
   getMyShiftApplications,
   type WorkerShiftApplication,
 } from "../../api/shifts";
-import { formatShiftDate, formatTimeRange } from "../../sectionsHero/TasksBoard/formatters";
+import {
+  formatShiftDate,
+  formatTimeRange,
+} from "../../sectionsHero/TasksBoard/formatters";
 import { Modal } from "../../components/ui/Modal";
 import { Loader } from "../../components/ui/Loader";
 import { ReviewModal } from "../../components/reviews/ReviewModal";
+import { CreateDisputeModal } from "../../components/disputes/CreateDisputeModal";
 import { createReview, updateReview } from "../../api/reviews";
+import { getMyDisputes } from "../../api/disputes";
 
 const APPLICATIONS_PER_PAGE = 8;
 type BookingScope = "active" | "completed" | "archive";
 
 const statusMeta = {
-  pending: { label: "Заявка на розгляді", className: "bg-warning/10 text-warning" },
-  approved: { label: "Підтверджено компанією", className: "bg-accent/10 text-accent-text" },
+  pending: {
+    label: "Заявка на розгляді",
+    className: "bg-warning/10 text-warning",
+  },
+  approved: {
+    label: "Підтверджено компанією",
+    className: "bg-accent/10 text-accent-text",
+  },
   rejected: { label: "Відхилено", className: "bg-danger/10 text-danger" },
   completed: { label: "Завершено", className: "bg-accent/10 text-accent-text" },
   no_show: { label: "Неявка", className: "bg-danger/10 text-danger" },
 } as const;
 
 export function BookingsTab() {
-  const [applications, setApplications] = useState<WorkerShiftApplication[]>([]);
+  const navigate = useNavigate();
+  const [applications, setApplications] = useState<WorkerShiftApplication[]>(
+    [],
+  );
   const [scope, setScope] = useState<BookingScope>("active");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [cancellingId, setCancellingId] = useState<number | null>(null);
-  const [applicationToCancel, setApplicationToCancel] = useState<WorkerShiftApplication | null>(null);
+  const [applicationToCancel, setApplicationToCancel] =
+    useState<WorkerShiftApplication | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
-  const [applicationToReview, setApplicationToReview] = useState<WorkerShiftApplication | null>(null);
+  const [applicationToReview, setApplicationToReview] =
+    useState<WorkerShiftApplication | null>(null);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
+  const [applicationToDispute, setApplicationToDispute] =
+    useState<WorkerShiftApplication | null>(null);
+  const [checkingDisputeId, setCheckingDisputeId] = useState<number | null>(
+    null,
+  );
+  const [disputesByShift, setDisputesByShift] = useState<
+    Record<number, number>
+  >({});
 
   useEffect(() => {
     let isCurrent = true;
@@ -49,7 +73,12 @@ export function BookingsTab() {
         setTotalPages(response.totalPages);
       })
       .catch((error: unknown) => {
-        if (isCurrent) toast.error(error instanceof Error ? error.message : "Не вдалося завантажити бронювання.");
+        if (isCurrent)
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "Не вдалося завантажити бронювання.",
+          );
       })
       .finally(() => {
         if (isCurrent) setIsLoading(false);
@@ -59,6 +88,24 @@ export function BookingsTab() {
       isCurrent = false;
     };
   }, [page, reloadKey, scope]);
+
+  useEffect(() => {
+    let isCurrent = true;
+    void getMyDisputes({ limit: 100 })
+      .then(({ data }) => {
+        if (!isCurrent) return;
+        setDisputesByShift(
+          data.reduce<Record<number, number>>((result, dispute) => {
+            result[dispute.Shift.id] ??= dispute.id;
+            return result;
+          }, {}),
+        );
+      })
+      .catch(() => {});
+    return () => {
+      isCurrent = false;
+    };
+  }, [reloadKey]);
 
   const handleScopeChange = (nextScope: BookingScope) => {
     if (nextScope === scope) return;
@@ -75,13 +122,23 @@ export function BookingsTab() {
       setApplicationToCancel(null);
       setReloadKey((value) => value + 1);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Не вдалося відкликати заявку.");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Не вдалося відкликати заявку.",
+      );
     } finally {
       setCancellingId(null);
     }
   };
 
-  const handleReviewSubmit = async ({ rating, comment }: { rating: number; comment?: string }) => {
+  const handleReviewSubmit = async ({
+    rating,
+    comment,
+  }: {
+    rating: number;
+    comment?: string;
+  }) => {
     if (!applicationToReview) return;
     setIsSubmittingReview(true);
     setReviewError(null);
@@ -97,9 +154,36 @@ export function BookingsTab() {
       setApplicationToReview(null);
       setReloadKey((value) => value + 1);
     } catch (error) {
-      setReviewError(error instanceof Error ? error.message : "Не вдалося зберегти відгук.");
+      setReviewError(
+        error instanceof Error ? error.message : "Не вдалося зберегти відгук.",
+      );
     } finally {
       setIsSubmittingReview(false);
+    }
+  };
+
+  const handleOpenDispute = async (application: WorkerShiftApplication) => {
+    const existingDisputeId = disputesByShift[application.shiftId];
+    if (existingDisputeId) {
+      navigate(`/cabinet/disputes/${existingDisputeId}`);
+      return;
+    }
+    setCheckingDisputeId(application.id);
+    try {
+      const { data } = await getMyDisputes({ shiftId: application.shiftId });
+      if (data[0]) {
+        navigate(`/cabinet/disputes/${data[0].id}`);
+      } else {
+        setApplicationToDispute(application);
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Не вдалося перевірити наявність спору.",
+      );
+    } finally {
+      setCheckingDisputeId(null);
     }
   };
 
@@ -108,9 +192,20 @@ export function BookingsTab() {
     <Loader label="Завантажуємо ваші заявки…" />
   ) : applications.length === 0 ? (
     <div className="flex flex-col items-center gap-2 p-8 text-center text-sm text-text-subtle">
-      <p>{scope === "active" ? "У вас поки немає активних заявок на зміни." : scope === "completed" ? "Виконаних заявок поки немає." : "Архів заявок поки порожній."}</p>
+      <p>
+        {scope === "active"
+          ? "У вас поки немає активних заявок на зміни."
+          : scope === "completed"
+            ? "Виконаних заявок поки немає."
+            : "Архів заявок поки порожній."}
+      </p>
       {scope === "active" && (
-        <a href="/#zavdannia" className="font-medium text-accent-text hover:underline">Знайти зміну →</a>
+        <a
+          href="/#zavdannia"
+          className="font-medium text-accent-text hover:underline"
+        >
+          Знайти зміну →
+        </a>
       )}
     </div>
   ) : (
@@ -119,33 +214,61 @@ export function BookingsTab() {
       {applications.map((application) => {
         const shift = application.Shift;
         const status = statusMeta[application.status];
-        const canCancel = application.status === "pending"
-          && new Date(shift.startTime) > new Date();
-        const canReview = scope === "completed" && application.status === "completed";
+        const canCancel =
+          application.status === "pending" &&
+          new Date(shift.startTime) > new Date();
+        const canReview =
+          scope === "completed" && application.status === "completed";
+        const canOpenDispute =
+          scope === "completed" &&
+          application.status === "completed" &&
+          Date.now() <=
+            new Date(shift.endTime).getTime() + 7 * 24 * 60 * 60 * 1000;
+        const existingDisputeId = disputesByShift[application.shiftId];
         const review = shift.Reviews?.[0] ?? null;
 
         return (
-          <article key={application.id} className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <article
+            key={application.id}
+            className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between"
+          >
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <Link to={`/shifts/${shift.id}`} className="font-heading font-semibold text-ink transition-colors hover:text-accent-text hover:underline">
+                <Link
+                  to={`/shifts/${shift.id}`}
+                  className="font-heading font-semibold text-ink transition-colors hover:text-accent-text hover:underline"
+                >
                   {shift.JobPosition?.title ?? shift.description ?? "Зміна"}
                 </Link>
-                <span className={`rounded-[var(--radius-pill)] px-2.5 py-1 text-xs font-semibold ${status.className}`}>
+                <span
+                  className={`rounded-[var(--radius-pill)] px-2.5 py-1 text-xs font-semibold ${status.className}`}
+                >
                   {status.label}
                 </span>
               </div>
               {shift.Location?.Company?.id ? (
-                <Link to={`/companies/${shift.Location.Company.id}`} className="mt-1 block text-sm text-text-muted transition-colors hover:text-accent-text hover:underline">
+                <Link
+                  to={`/companies/${shift.Location.Company.id}`}
+                  className="mt-1 block text-sm text-text-muted transition-colors hover:text-accent-text hover:underline"
+                >
                   {shift.Location.Company.name}
                 </Link>
               ) : (
                 <p className="mt-1 text-sm text-text-muted">Компанія</p>
               )}
               <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm text-text-muted">
-                <span className="flex items-center gap-1.5"><CalendarDays className="h-4 w-4 text-text-subtle" />{formatShiftDate(shift.startTime)}</span>
-                <span className="flex items-center gap-1.5"><Clock3 className="h-4 w-4 text-text-subtle" />{formatTimeRange(shift.startTime, shift.endTime)}</span>
-                <span className="flex items-center gap-1.5"><MapPin className="h-4 w-4 text-text-subtle" />{shift.Location?.address}, {shift.Location?.city}</span>
+                <span className="flex items-center gap-1.5">
+                  <CalendarDays className="h-4 w-4 text-text-subtle" />
+                  {formatShiftDate(shift.startTime)}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Clock3 className="h-4 w-4 text-text-subtle" />
+                  {formatTimeRange(shift.startTime, shift.endTime)}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <MapPin className="h-4 w-4 text-text-subtle" />
+                  {shift.Location?.address}, {shift.Location?.city}
+                </span>
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
@@ -156,16 +279,39 @@ export function BookingsTab() {
                   disabled={cancellingId === application.id}
                   className="inline-flex min-h-[42px] items-center justify-center rounded-[var(--radius-pill)] px-4 text-sm font-medium text-danger transition-colors hover:bg-danger/10 disabled:cursor-wait disabled:opacity-60"
                 >
-                  {cancellingId === application.id ? "Скасовуємо…" : "Відкликати"}
+                  {cancellingId === application.id
+                    ? "Скасовуємо…"
+                    : "Відкликати"}
                 </button>
               )}
               {canReview && (
                 <button
                   type="button"
-                  onClick={() => { setReviewError(null); setApplicationToReview(application); }}
+                  onClick={() => {
+                    setReviewError(null);
+                    setApplicationToReview(application);
+                  }}
                   className="inline-flex min-h-[42px] items-center justify-center gap-1.5 rounded-[var(--radius-pill)] bg-accent px-4 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
                 >
                   {review ? "Редагувати відгук" : "Залишити відгук"}
+                </button>
+              )}
+              {(canOpenDispute || existingDisputeId) && (
+                <button
+                  type="button"
+                  onClick={() => void handleOpenDispute(application)}
+                  disabled={checkingDisputeId === application.id}
+                  className={`inline-flex min-h-[42px] items-center justify-center gap-1.5 rounded-[var(--radius-pill)] border px-4 text-sm font-medium transition-colors disabled:cursor-wait disabled:opacity-60 ${
+                    existingDisputeId
+                      ? "border-accent/30 text-accent-text hover:bg-accent/10"
+                      : "border-danger/30 text-danger hover:bg-danger/10"
+                  }`}
+                >
+                  {checkingDisputeId === application.id
+                    ? "Перевіряємо…"
+                    : existingDisputeId
+                      ? "Переглянути спір"
+                      : "Відкрити спір"}
                 </button>
               )}
             </div>
@@ -173,12 +319,39 @@ export function BookingsTab() {
         );
       })}
       {totalPages > 1 && (
-        <nav className="mt-6 flex items-center justify-center gap-1.5 px-5 pb-5" aria-label="Пагінація заявок">
-          <button type="button" onClick={() => setPage((value) => value - 1)} disabled={page === 1} className="min-h-[40px] rounded-[var(--radius-pill)] border border-border px-3 text-sm text-text-muted disabled:cursor-not-allowed disabled:opacity-40">Назад</button>
-          {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
-            <button key={pageNumber} type="button" onClick={() => setPage(pageNumber)} aria-current={pageNumber === page ? "page" : undefined} className={`flex h-10 w-10 items-center justify-center rounded-[var(--radius-pill)] text-sm font-medium transition-colors ${pageNumber === page ? "bg-accent text-white" : "border border-border text-text hover:border-accent"}`}>{pageNumber}</button>
-          ))}
-          <button type="button" onClick={() => setPage((value) => value + 1)} disabled={page === totalPages} className="min-h-[40px] rounded-[var(--radius-pill)] border border-border px-3 text-sm text-text-muted disabled:cursor-not-allowed disabled:opacity-40">Далі</button>
+        <nav
+          className="mt-6 flex items-center justify-center gap-1.5 px-5 pb-5"
+          aria-label="Пагінація заявок"
+        >
+          <button
+            type="button"
+            onClick={() => setPage((value) => value - 1)}
+            disabled={page === 1}
+            className="min-h-[40px] rounded-[var(--radius-pill)] border border-border px-3 text-sm text-text-muted disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Назад
+          </button>
+          {Array.from({ length: totalPages }, (_, index) => index + 1).map(
+            (pageNumber) => (
+              <button
+                key={pageNumber}
+                type="button"
+                onClick={() => setPage(pageNumber)}
+                aria-current={pageNumber === page ? "page" : undefined}
+                className={`flex h-10 w-10 items-center justify-center rounded-[var(--radius-pill)] text-sm font-medium transition-colors ${pageNumber === page ? "bg-accent text-white" : "border border-border text-text hover:border-accent"}`}
+              >
+                {pageNumber}
+              </button>
+            ),
+          )}
+          <button
+            type="button"
+            onClick={() => setPage((value) => value + 1)}
+            disabled={page === totalPages}
+            className="min-h-[40px] rounded-[var(--radius-pill)] border border-border px-3 text-sm text-text-muted disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Далі
+          </button>
         </nav>
       )}
     </div>
@@ -187,56 +360,79 @@ export function BookingsTab() {
   return (
     <>
       <div className="flex gap-5 border-b border-border px-5">
-        <button type="button" onClick={() => handleScopeChange("active")} className={`min-h-[48px] border-b-2 px-1 text-sm font-medium transition-colors ${scope === "active" ? "border-accent text-accent-text" : "border-transparent text-text-muted hover:text-text"}`}>
+        <button
+          type="button"
+          onClick={() => handleScopeChange("active")}
+          className={`min-h-[48px] border-b-2 px-1 text-sm font-medium transition-colors ${scope === "active" ? "border-accent text-accent-text" : "border-transparent text-text-muted hover:text-text"}`}
+        >
           Активні
         </button>
-        <button type="button" onClick={() => handleScopeChange("completed")} className={`min-h-[48px] border-b-2 px-1 text-sm font-medium transition-colors ${scope === "completed" ? "border-accent text-accent-text" : "border-transparent text-text-muted hover:text-text"}`}>
+        <button
+          type="button"
+          onClick={() => handleScopeChange("completed")}
+          className={`min-h-[48px] border-b-2 px-1 text-sm font-medium transition-colors ${scope === "completed" ? "border-accent text-accent-text" : "border-transparent text-text-muted hover:text-text"}`}
+        >
           Виконані
         </button>
-        <button type="button" onClick={() => handleScopeChange("archive")} className={`min-h-[48px] border-b-2 px-1 text-sm font-medium transition-colors ${scope === "archive" ? "border-accent text-accent-text" : "border-transparent text-text-muted hover:text-text"}`}>
+        <button
+          type="button"
+          onClick={() => handleScopeChange("archive")}
+          className={`min-h-[48px] border-b-2 px-1 text-sm font-medium transition-colors ${scope === "archive" ? "border-accent text-accent-text" : "border-transparent text-text-muted hover:text-text"}`}
+        >
           Архів
         </button>
       </div>
       {content}
-    <Modal
-      isOpen={applicationToCancel !== null}
-      onClose={() => {
-        if (!cancellingId) setApplicationToCancel(null);
-      }}
-      title="Відкликати заявку?"
-    >
-      <p className="text-sm leading-6 text-text-muted">
-        Компанія більше не розглядатиме вашу заявку на цю зміну. Ви зможете відгукнутися повторно, якщо вакансія залишиться відкритою.
-      </p>
-      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-        <button
-          type="button"
-          onClick={() => setApplicationToCancel(null)}
-          disabled={cancellingId !== null}
-          className="min-h-[44px] rounded-[var(--radius-pill)] border border-border px-5 text-sm font-semibold text-text transition-colors hover:border-accent disabled:opacity-60"
-        >
-          Залишити заявку
-        </button>
-        <button
-          type="button"
-          onClick={() => applicationToCancel && handleCancel(applicationToCancel)}
-          disabled={cancellingId !== null}
-          className="min-h-[44px] rounded-[var(--radius-pill)] bg-danger px-5 text-sm font-semibold text-white transition-colors hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
-        >
-          {cancellingId !== null ? "Відкликаємо…" : "Відкликати"}
-        </button>
-      </div>
-    </Modal>
-    <ReviewModal
-      isOpen={applicationToReview !== null}
-      onClose={() => { if (!isSubmittingReview) setApplicationToReview(null); }}
-      title="Оцініть компанію"
-      description={`Як пройшла співпраця з ${applicationToReview?.Shift.Location?.Company?.name ?? "компанією"}?`}
-      isSubmitting={isSubmittingReview}
-      error={reviewError}
-      initialReview={applicationToReview?.Shift.Reviews?.[0] ?? null}
-      onSubmit={handleReviewSubmit}
-    />
+      <Modal
+        isOpen={applicationToCancel !== null}
+        onClose={() => {
+          if (!cancellingId) setApplicationToCancel(null);
+        }}
+        title="Відкликати заявку?"
+      >
+        <p className="text-sm leading-6 text-text-muted">
+          Компанія більше не розглядатиме вашу заявку на цю зміну. Ви зможете
+          відгукнутися повторно, якщо вакансія залишиться відкритою.
+        </p>
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={() => setApplicationToCancel(null)}
+            disabled={cancellingId !== null}
+            className="min-h-[44px] rounded-[var(--radius-pill)] border border-border px-5 text-sm font-semibold text-text transition-colors hover:border-accent disabled:opacity-60"
+          >
+            Залишити заявку
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              applicationToCancel && handleCancel(applicationToCancel)
+            }
+            disabled={cancellingId !== null}
+            className="min-h-[44px] rounded-[var(--radius-pill)] bg-danger px-5 text-sm font-semibold text-white transition-colors hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
+          >
+            {cancellingId !== null ? "Відкликаємо…" : "Відкликати"}
+          </button>
+        </div>
+      </Modal>
+      <ReviewModal
+        isOpen={applicationToReview !== null}
+        onClose={() => {
+          if (!isSubmittingReview) setApplicationToReview(null);
+        }}
+        title="Оцініть компанію"
+        description={`Як пройшла співпраця з ${applicationToReview?.Shift.Location?.Company?.name ?? "компанією"}?`}
+        isSubmitting={isSubmittingReview}
+        error={reviewError}
+        initialReview={applicationToReview?.Shift.Reviews?.[0] ?? null}
+        onSubmit={handleReviewSubmit}
+      />
+      <CreateDisputeModal
+        isOpen={applicationToDispute !== null}
+        shiftId={applicationToDispute?.shiftId ?? 0}
+        onClose={() => setApplicationToDispute(null)}
+        onCreated={() => setReloadKey((value) => value + 1)}
+      />
     </>
   );
 }

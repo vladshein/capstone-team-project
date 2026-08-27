@@ -2,6 +2,7 @@ export const USER_ROLES = {
   GUEST: "guest",
   WORKER: "worker",
   BUSINESS: "business_client",
+  ADMIN: "admin",
 };
 
 export const NAV_LINKS = [
@@ -10,14 +11,24 @@ export const NAV_LINKS = [
     href: "/",
     label: "Головна",
     authRequired: false,
-    roles: [USER_ROLES.GUEST, USER_ROLES.WORKER, USER_ROLES.BUSINESS],
+    roles: [
+      USER_ROLES.GUEST,
+      USER_ROLES.WORKER,
+      USER_ROLES.BUSINESS,
+      USER_ROLES.ADMIN,
+    ],
   },
   {
     id: "nav-shifts",
     href: "/#zavdannia",
     label: "Біржа змін",
     authRequired: false,
-    roles: [USER_ROLES.GUEST, USER_ROLES.WORKER, USER_ROLES.BUSINESS],
+    roles: [
+      USER_ROLES.GUEST,
+      USER_ROLES.WORKER,
+      USER_ROLES.BUSINESS,
+      USER_ROLES.ADMIN,
+    ],
   },
   {
     id: "nav-worker-cabinet",
@@ -25,6 +36,13 @@ export const NAV_LINKS = [
     label: "Кабінет виконавця",
     authRequired: true,
     roles: [USER_ROLES.WORKER],
+  },
+  {
+    id: "nav-admin-disputes",
+    href: "/admin/disputes",
+    label: "Вирішення спорів",
+    authRequired: true,
+    roles: [USER_ROLES.ADMIN],
   },
   {
     id: "nav-business-cabinet",

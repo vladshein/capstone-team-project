@@ -12,7 +12,6 @@ const baseSummary: StatisticsSummary = {
   },
   companiesWorkedFor: 8,
   attendance: { completed: 3, noShow: 1, rate: 75 },
-  wallet: { balance: 1200, frozenBalance: 200 },
 };
 
 describe("WorkerStatistics", () => {
@@ -40,29 +39,5 @@ describe("WorkerStatistics", () => {
 
     expect(screen.getByText("75%")).toBeInTheDocument();
     expect(screen.getByText("3 відвідано · 1 неявок")).toBeInTheDocument();
-  });
-
-  it("renders the wallet balance with frozen balance hint when present", () => {
-    render(<WorkerStatistics summary={baseSummary} />);
-
-    expect(screen.getByText("Баланс гаманця")).toBeInTheDocument();
-    expect(screen.getByText(/200\s?₴ заморожено/)).toBeInTheDocument();
-  });
-
-  it("omits the wallet card entirely when wallet is null", () => {
-    render(<WorkerStatistics summary={{ ...baseSummary, wallet: null }} />);
-
-    expect(screen.queryByText("Баланс гаманця")).not.toBeInTheDocument();
-  });
-
-  it("omits the frozen balance hint when there is nothing frozen", () => {
-    render(
-      <WorkerStatistics
-        summary={{ ...baseSummary, wallet: { balance: 1200, frozenBalance: 0 } }}
-      />,
-    );
-
-    expect(screen.getByText("Баланс гаманця")).toBeInTheDocument();
-    expect(screen.queryByText(/заморожено/)).not.toBeInTheDocument();
   });
 });

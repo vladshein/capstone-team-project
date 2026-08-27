@@ -1,5 +1,6 @@
 import { Worker } from "bullmq";
 import sequelize from "../db/sequelize.js";
+import { getDisputeNotificationRecipient } from "../services/disputeNotificationServices.js";
 import {
   getEmailVerificationRecipient,
   getPasswordResetRecipient,
@@ -10,6 +11,7 @@ import {
 } from "../services/shiftNotificationServices.js";
 import {
   sendPasswordResetEmail,
+  sendDisputeNotificationEmail,
   sendShiftNotificationEmail,
   sendVerificationEmail,
 } from "../services/emailService.js";
@@ -17,6 +19,7 @@ import { reconcileShiftLifecycle } from "../services/shiftLifecycleServices.js";
 import {
   createBullMqConnection,
   closeShiftLifecycleQueue,
+  DISPUTE_NOTIFICATION_EMAIL_JOB,
   EMAIL_VERIFICATION_JOB,
   enqueueShiftNotification,
   getShiftLifecycleQueue,
@@ -32,7 +35,9 @@ const INTERVAL_MS = 5 * 60 * 1000;
 // Lifecycle уже завершив транзакцію до цього моменту. Якщо Valkey тимчасово
 // недоступний, не повторюємо reconciliation і не ризикуємо дублювати зміни
 // статусів — лише фіксуємо збій постановки листа в чергу.
-const queueAutoCompletionNotifications = async (autoCompletedApplications = []) => {
+const queueAutoCompletionNotifications = async (
+  autoCompletedApplications = [],
+) => {
   const jobs = autoCompletedApplications.map(async ({ shiftId, workerId }) => {
     const audience = await getShiftNotificationAudience(shiftId, {
       applicationStatuses: ["completed"],
@@ -137,6 +142,29 @@ const worker = new Worker(
         event: job.data.event,
         recipientUserId: job.data.recipientUserId,
         shiftId: job.data.shiftId,
+      };
+    }
+
+    if (job.name === DISPUTE_NOTIFICATION_EMAIL_JOB) {
+      const recipient = await getDisputeNotificationRecipient(job.data);
+      if (!recipient) {
+        return {
+          status: "skipped",
+          event: job.data.event,
+          recipientUserId: job.data.recipientUserId,
+          disputeId: job.data.disputeId,
+        };
+      }
+
+      await sendDisputeNotificationEmail({
+        event: job.data.event,
+        ...recipient,
+      });
+      return {
+        status: "sent",
+        event: job.data.event,
+        recipientUserId: job.data.recipientUserId,
+        disputeId: job.data.disputeId,
       };
     }
 
