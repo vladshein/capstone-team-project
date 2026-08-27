@@ -1,0 +1,4 @@
+repoURL: "https://github.com/PavloRohozhyn/terraform.git"
+appPath: "final-project/charts/django-app"
+targetRevision: "final-project"
+namespace: "dev"

@@ -1,0 +1,12 @@
+output "repository_url" {
+  description = "URL repo"
+  value = aws_ecr_repository.main.repository_url
+}
+output "repository_arn" {
+  description = "ARN repo"
+  value = aws_ecr_repository.main.arn
+}
+output "repository_name" {
+  description = "Name of ECR"
+  value = aws_ecr_repository.main.name
+}

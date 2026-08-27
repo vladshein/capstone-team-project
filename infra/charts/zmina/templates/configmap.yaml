@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: django-config
+data:
+  {{- range $key, $value := .Values.djangoConfig }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}
