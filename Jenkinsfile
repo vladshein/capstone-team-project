@@ -20,8 +20,8 @@ spec:
     }
 
    environment {
-        ECR_REPO = "211125349493.dkr.ecr.us-east-1.amazonaws.com/dev-final-project"
-        GITOPS_REPO = "github.com/PavloRohozhyn/terraform.git"
+        ECR_REPO = ""
+        GITOPS_REPO = "github.com/vladshein/capstone-team-project.git"
         IMAGE_TAG = "${env.BUILD_NUMBER}"
     }
 
@@ -30,8 +30,8 @@ spec:
             steps {
                 container('kaniko') {
                     sh """
-                    /kaniko/executor --context ${workspace}/final-project/django \
-                        --dockerfile ${workspace}/final-project/django/Dockerfile \
+                    /kaniko/executor --context ${workspace}/main/frontend \
+                        --dockerfile ${workspace}/main/frontend/Dockerfile \
                         --destination ${ECR_REPO}:${IMAGE_TAG} \
                         --destination ${ECR_REPO}:latest
                     """
@@ -46,15 +46,15 @@ spec:
                             sh """
                                 git config --global user.email "jenkins@example.com"
                                 git config --global user.name "Jenkins CI"
-                                git clone -b final-project https://\$GH_TOKEN@github.com/PavloRohozhyn/terraform.git temp_infra
-                                cd temp_infra
-                                FILE_PATH="final-project/charts/django-app/values.yaml"
+                                git clone -b main https://\$GH_TOKEN@github.com/vladshein/capstone-team-project.git tmp_infra
+                                cd tmp_infra
+                                FILE_PATH="main/charts/zmina/values.yaml"
                                 if [ -f "\$FILE_PATH" ]; then
                                     echo "Update tag to : ${IMAGE_TAG}"
                                     sed -i "s/tag: .*/tag: \\"${IMAGE_TAG}\\"/" "\$FILE_PATH"
                                     git add "\$FILE_PATH"
-                                    git commit -m "Update Django image to ${IMAGE_TAG} (Build #${BUILD_NUMBER}) [skip ci]"
-                                    git push origin final-project
+                                    git commit -m "Update Zmina Fontend image to ${IMAGE_TAG} (Build #${BUILD_NUMBER}) [skip ci]"
+                                    git push origin main
                                 else
                                     echo "error: file \$FILE_PATH not found"
                                     ls -R

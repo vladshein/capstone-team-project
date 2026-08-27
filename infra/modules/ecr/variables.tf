@@ -1,7 +1,7 @@
 variable "repository_name" {
   description = "name of repo for ECR"
   type = string
-  default = "dev-final-project"
+  default = "capstone-team-project"
 }
 variable "environment" {
   description = "enviroment"

@@ -7,7 +7,7 @@ variable "environment" {
 variable "cluster_name" {
   description = "kubernetes name"
   type = string
-  default = "dev-final-project-kuber"
+  default = "capstone-team-project-kuber"
 }
 
 variable "cluster_version" {
