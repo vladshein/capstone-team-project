@@ -27,3 +27,30 @@ export const loginRateLimit = rateLimit({
   legacyHeaders: false,
   message: rateLimitMessage,
 });
+
+/** Обмежує повторну відправку, щоб не перетворити SMTP на спам-канал. */
+export const resendVerificationRateLimit = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  limit: 1,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: rateLimitMessage,
+});
+
+/** Не дає перетворити відновлення пароля на канал масових листів. */
+export const forgotPasswordRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: rateLimitMessage,
+});
+
+/** Обмежує перебір і навантаження bcrypt на endpoint встановлення пароля. */
+export const resetPasswordRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: rateLimitMessage,
+});

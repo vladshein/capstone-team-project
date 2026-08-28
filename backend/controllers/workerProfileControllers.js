@@ -3,25 +3,9 @@ import {
   getWorkerStatisticsSummary,
   getWorkerShiftsStatistics,
   resolveDateRange,
-} from "../services/workerStatistics.service.js";
-
-const isValidIsoDate = (value) => {
-  if (typeof value !== "string") return false;
-
-  const match = value.match(
-    /^(\d{4})-(\d{2})-(\d{2})(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})?)?$/,
-  );
-  if (!match || Number.isNaN(Date.parse(value))) return false;
-
-  const [, year, month, day] = match.map(Number);
-  const calendarDate = new Date(Date.UTC(year, month - 1, day));
-
-  return (
-    calendarDate.getUTCFullYear() === year &&
-    calendarDate.getUTCMonth() === month - 1 &&
-    calendarDate.getUTCDate() === day
-  );
-};
+} from "../services/workerStatisticsServices.js";
+import isValidIsoDate from "../helpers/isValidIsoDate.js";
+import exceedsMaxRangeMonths from "../helpers/exceedsMaxRangeMonths.js";
 
 export const getMyProfile = async (req, res, next) => {
   try {
@@ -79,6 +63,26 @@ export const getStatisticsSummary = async (req, res, next) => {
       if (!Number.isInteger(companyId)) {
         return res.status(400).json({
           message: "companyId must be an integer.",
+        });
+      }
+    }
+
+    // Без дат підсумок рахується за весь час — обмеження діапазону тут
+    // застосовується лише коли викликач сам звузив вибірку хоча б однією
+    // датою, інакше цей дефолтний "весь час" запит зламався б.
+    if (dateFrom !== undefined || dateTo !== undefined) {
+      const { dateFrom: resolvedFrom, dateTo: resolvedTo } = resolveDateRange(
+        dateFrom,
+        dateTo,
+      );
+      if (resolvedFrom > resolvedTo) {
+        return res.status(400).json({
+          message: "dateFrom must be earlier than dateTo.",
+        });
+      }
+      if (exceedsMaxRangeMonths(resolvedFrom, resolvedTo, 12)) {
+        return res.status(400).json({
+          message: "Date range must not exceed 12 months.",
         });
       }
     }
@@ -154,10 +158,7 @@ export const getShiftsStatistics = async (req, res, next) => {
         message: "dateFrom must be earlier than dateTo.",
       });
     }
-    const rangeMonths =
-      (resolvedTo.getFullYear() - resolvedFrom.getFullYear()) * 12 +
-      (resolvedTo.getMonth() - resolvedFrom.getMonth());
-    if (rangeMonths > 12) {
+    if (exceedsMaxRangeMonths(resolvedFrom, resolvedTo, 12)) {
       return res.status(400).json({
         message: "Date range must not exceed 12 months.",
       });

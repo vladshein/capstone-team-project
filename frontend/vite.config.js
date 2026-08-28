@@ -15,6 +15,8 @@ export default defineConfig({
     },
     watch: {
       usePolling: true,
+      interval: 1000,
+      ignored: ["**/node_modules/**", "**/.git/**", "**/.pnpm-store/**"],
     },
   },
 });

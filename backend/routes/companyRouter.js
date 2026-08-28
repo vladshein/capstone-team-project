@@ -8,8 +8,19 @@ import {
   updateCompanySchema,
 } from "../schemas/companySchemas.js";
 
+import checkRole from "../middlewares/checkRole.js";
 import * as companyController from "../controllers/companyControllers.js";
+import * as businessStatisticsController from "../controllers/businessStatisticsControllers.js";
 const companyRouter = express.Router();
+
+// Має бути перед /public/:id, щоб "shifts" не стало значенням :id.
+companyRouter.get(
+  "/public/:id/shifts",
+  optionalAuthenticate,
+  companyController.getPublicCompanyOpenShifts,
+);
+
+companyRouter.get("/public", optionalAuthenticate, companyController.getPublicCompaniesByIds);
 
 // Окремий шлях не конфліктує з /my та не вимагає сесії.
 companyRouter.get("/public/:id", optionalAuthenticate, companyController.getCompanyById);
@@ -19,6 +30,15 @@ companyRouter.use(authenticate);
 
 // Отримати список своїх компаній (для кабінету)
 companyRouter.get("/my", companyController.getMyCompanies);
+
+// Статистика власника (summary + shifts + workers одним запитом): одна
+// компанія (companyId) або всі його компанії. Має стояти перед /:id,
+// інакше 'me' сприйметься як значення параметра id.
+companyRouter.get(
+  "/me/statistics",
+  checkRole("business_client"),
+  businessStatisticsController.getStatistics,
+);
 
 // Публічний — доступний гостям (для картки компанії на сторінці зміни)
 companyRouter.get("/:id", companyController.getCompanyById);

@@ -16,16 +16,6 @@ export interface ShiftsStatisticsQuery {
   categoryId?: number;
 }
 
-export interface ShiftsStatisticsQuery {
-  dateFrom?: string;
-  dateTo?: string;
-  groupBy?: "week" | "month";
-  companyId?: number;
-  city?: string;
-  positionId?: number;
-  categoryId?: number;
-}
-
 // Відповідь GET /me/statistics/summary
 export interface StatisticsSummary {
   applications: {
@@ -48,7 +38,6 @@ export interface StatisticsSummary {
     noShow: number;
     rate: number;
   };
-  wallet: { balance: number; frozenBalance: number } | null;
 }
 
 // Відповідь GET /me/statistics/shifts

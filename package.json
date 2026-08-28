@@ -14,7 +14,8 @@
     },
     "onlyBuiltDependencies": [
       "bcrypt",
-      "@scarf/scarf"
+      "@scarf/scarf",
+      "unrs-resolver"
     ]
   }
 }

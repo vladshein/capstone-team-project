@@ -17,6 +17,7 @@ export const createShiftSchema = Joi.object({
   hourlyRate: Joi.number().positive().precision(2).required(),
   bonusRate: Joi.number().min(0).precision(2).default(0.0),
   description: Joi.string().allow("").optional(),
+  repeatDays: Joi.number().integer().min(1).max(31).default(1),
 });
 
 // Схема для редагування зміни (всі поля опціональні)

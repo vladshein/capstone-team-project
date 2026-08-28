@@ -36,6 +36,9 @@ const authSlice = createSlice({
     },
     incrementCompaniesCount: (state) => { state.companiesCount += 1; },
     decrementCompaniesCount: (state) => { state.companiesCount = Math.max(0, state.companiesCount - 1); },
+    markEmailAsVerified: (state) => {
+      if (state.user) state.user.isVerified = true;
+    },
   },
   extraReducers: (builder) =>
     builder
@@ -109,6 +112,12 @@ const authSlice = createSlice({
       }),
 });
 
-export const { clearAuth, setAccessToken, incrementCompaniesCount, decrementCompaniesCount } =
+export const {
+  clearAuth,
+  setAccessToken,
+  incrementCompaniesCount,
+  decrementCompaniesCount,
+  markEmailAsVerified,
+} =
   authSlice.actions;
 export const authReducer = authSlice.reducer;

@@ -2,7 +2,6 @@ import { jest } from "@jest/globals";
 import { Op } from "sequelize";
 
 const findOneApplication = jest.fn();
-const findOneWallet = jest.fn();
 const findAllShifts = jest.fn();
 
 jest.unstable_mockModule("../db/models/index.js", () => ({
@@ -10,13 +9,12 @@ jest.unstable_mockModule("../db/models/index.js", () => ({
     findOne: findOneApplication,
     findAll: findAllShifts,
   },
-  Wallet: { findOne: findOneWallet },
   Shift: {},
   Location: {},
 }));
 
 const { getWorkerStatisticsSummary, getWorkerShiftsStatistics } =
-  await import("../services/workerStatistics.service.js");
+  await import("../services/workerStatisticsServices.js");
 
 const applicationAggregateRow = {
   total: "8",
@@ -41,14 +39,10 @@ describe("getWorkerStatisticsSummary", () => {
     jest.clearAllMocks();
   });
 
-  test("returns aggregate statistics and a wallet snapshot for a worker with data", async () => {
+  test("returns aggregate statistics for a worker with data", async () => {
     findOneApplication
       .mockResolvedValueOnce(applicationAggregateRow)
       .mockResolvedValueOnce(workAggregateRow);
-    findOneWallet.mockResolvedValue({
-      balance: "1250.50",
-      frozenBalance: "50.00",
-    });
 
     await expect(
       getWorkerStatisticsSummary(42, {
@@ -73,7 +67,6 @@ describe("getWorkerStatisticsSummary", () => {
       },
       companiesWorkedFor: 2,
       attendance: { completed: 3, noShow: 1, rate: 75 },
-      wallet: { balance: 1250.5, frozenBalance: 50 },
     });
 
     expect(findOneApplication).toHaveBeenNthCalledWith(
@@ -89,16 +82,10 @@ describe("getWorkerStatisticsSummary", () => {
         raw: true,
       }),
     );
-    expect(findOneWallet).toHaveBeenCalledWith({
-      where: { userId: 42 },
-      attributes: ["balance", "frozenBalance"],
-      raw: true,
-    });
   });
 
   test("returns zeroes when there are no matching applications", async () => {
     findOneApplication.mockResolvedValue({});
-    findOneWallet.mockResolvedValue({ balance: "0", frozenBalance: "0" });
 
     await expect(getWorkerStatisticsSummary(43)).resolves.toEqual({
       applications: {
@@ -117,19 +104,7 @@ describe("getWorkerStatisticsSummary", () => {
       },
       companiesWorkedFor: 0,
       attendance: { completed: 0, noShow: 0, rate: 0 },
-      wallet: { balance: 0, frozenBalance: 0 },
     });
-  });
-
-  test("does not require a WorkerProfile and returns null when no Wallet exists", async () => {
-    findOneApplication.mockResolvedValue({});
-    findOneWallet.mockResolvedValue(null);
-
-    const result = await getWorkerStatisticsSummary(44);
-
-    expect(result.wallet).toBeNull();
-    expect(result.applications.total).toBe(0);
-    expect(result.shifts.scheduledCompletedHours).toBe(0);
   });
 
   test("keeps application counters unfiltered while date filters change work metrics", async () => {
@@ -143,7 +118,6 @@ describe("getWorkerStatisticsSummary", () => {
         attendanceCompleted: "1",
         attendanceNoShow: "0",
       });
-    findOneWallet.mockResolvedValue(null);
 
     const result = await getWorkerStatisticsSummary(42, {
       dateFrom: "2026-08-01T00:00:00.000Z",
@@ -153,6 +127,7 @@ describe("getWorkerStatisticsSummary", () => {
     expect(result.applications.total).toBe(8);
     expect(result.applications.completed).toBe(3);
     expect(result.shifts.estimatedCompletedEarnings).toBe(1500);
+    expect(result.shifts.completed).toBe(1);
     expect(result.attendance).toEqual({ completed: 1, noShow: 0, rate: 100 });
     expect(findOneApplication.mock.calls[0][0].include).toBeUndefined();
     const shiftDateFilter =
@@ -170,7 +145,6 @@ describe("getWorkerStatisticsSummary", () => {
     findOneApplication
       .mockResolvedValueOnce(applicationAggregateRow)
       .mockResolvedValueOnce(workAggregateRow);
-    findOneWallet.mockResolvedValue(null);
 
     await getWorkerStatisticsSummary(42, {
       dateFrom: "2026-08-01T00:00:00.000Z",

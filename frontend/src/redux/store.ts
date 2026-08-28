@@ -16,6 +16,7 @@ import workerProfileSliceReducer from "./worker-profile/slice";
 import companiesProfileReducer from "./companies-profile/slice";
 import { shiftReducer } from "./shift/slice";
 import { workerStatisticsReducer } from "./worker-statistics/slice";
+import { businessStatisticsReducer } from "./business-statistics/slice";
 import type { AuthState } from "./auth/types";
 import walletReducer from './walletSlice';
 
@@ -32,6 +33,7 @@ const rootReducer = combineReducers({
   shift: shiftReducer,
   workerStatistics: workerStatisticsReducer,
   wallet: walletReducer,
+  businessStatistics: businessStatisticsReducer,
 });
 
 export const store = configureStore({

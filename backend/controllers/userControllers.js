@@ -24,10 +24,14 @@ export const getCurrentUser = async (req, res, next) => {
  * @param {*} req
  * @param {*} res
  */
-export const getUserById = async (req, res) => {
-  const { userId } = req.params;
-  const result = await service.getUserById(userId);
-  res.json(result);
+export const getUserById = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const result = await service.getUserById(userId);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
 };
 
 export const getFollowingController = async (req, res) => {

@@ -1,4 +1,7 @@
-import { verifyAccessToken } from "../helpers/jwt.js";
+import {
+  hasCurrentAuthTokenFingerprint,
+  verifyAccessToken,
+} from "../helpers/jwt.js";
 import { findUser } from "../services/authServices.js";
 
 /**
@@ -14,7 +17,9 @@ const optionalAuthenticate = async (req, _res, next) => {
     if (error) return next();
 
     const user = await findUser({ id: data.id });
-    if (user) req.user = user;
+    if (user && hasCurrentAuthTokenFingerprint(data, user.passwordHash)) {
+      req.user = user;
+    }
     next();
   } catch (error) {
     next(error);

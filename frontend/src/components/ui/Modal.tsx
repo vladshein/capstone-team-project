@@ -8,9 +8,10 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  size?: "default" | "wide";
 }
 
-export function Modal({ isOpen, onClose, title, children }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, size = "default" }: ModalProps) {
   useModalBehavior(isOpen, onClose);
 
   if (!isOpen) return null;
@@ -24,7 +25,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
     >
       <div className="absolute inset-0 bg-bg-inverse/50" onClick={onClose} />
 
-      <div className="relative max-h-[92vh] w-full overflow-y-auto rounded-t-[var(--radius-card)] bg-bg p-5 shadow-2xl sm:max-w-md sm:rounded-[var(--radius-card)] sm:p-7">
+      <div className={`relative max-h-[92vh] w-full overflow-y-auto rounded-t-[var(--radius-card)] bg-bg p-5 shadow-2xl sm:rounded-[var(--radius-card)] sm:p-7 ${size === "wide" ? "sm:max-w-2xl" : "sm:max-w-md"}`}>
         <div className="flex items-center justify-between">
           <h2
             id="auth-modal-title"

@@ -16,6 +16,8 @@ import workerProfileRouter from "./routes/workerProfileRouter.js";
 import reviewRouter from "./routes/reviewRouter.js";
 import locationRouter from "./routes/locationRouter.js";
 import paymentRouter from "./routes/paymentRouter.js";
+import disputeRouter from "./routes/disputeRouter.js";
+import adminDisputeRouter from "./routes/adminDisputeRouter.js";
 
 // import handlers & DB
 import notFoundHandler from "./middlewares/notFoundHandler.js";
@@ -27,7 +29,13 @@ import { swaggerDocs } from "./middlewares/swaggerDocs.js";
 const app = express();
 
 // Fail fast: перевіряємо обов'язкові env-змінні до старту сервера
-const requiredEnvVars = ["FRONTEND_URL", "JWT_SECRET", "JWT_REFRESH_SECRET"];
+const requiredEnvVars = [
+  "FRONTEND_URL",
+  "JWT_SECRET",
+  "JWT_REFRESH_SECRET",
+  "JWT_EMAIL_VERIFICATION_SECRET",
+  "JWT_PASSWORD_RESET_SECRET",
+];
 for (const key of requiredEnvVars) {
   if (!process.env[key]) {
     throw new Error(`${key} is not set in .env`);
@@ -97,10 +105,14 @@ app.use("/api/worker-profiles", workerProfileRouter);
 app.use("/api/location", locationRouter);
 app.use("/api/reviews", reviewRouter);
 app.use("/api/payments", paymentRouter);
-
 app.use("/api-docs", swaggerDocs());
+app.use("/api/reviews", reviewRouter);
+app.use("/api/disputes", disputeRouter);
+app.use("/api/admin", adminDisputeRouter);
+// app.use('/api/recipes'cipesRouter);
+// app.use('/api/following', followRouter);
 
-// --- 5. Error handling ---
+// Error handling
 app.use(notFoundHandler);
 app.use(errorHandler);
 
@@ -118,4 +130,10 @@ const startServer = async () => {
   }
 };
 
-startServer();
+// Під час тестів застосунок імпортується як Express-інстанс. Сервер при цьому
+// не має відкривати порт або підключатися до реальної БД — це робить можливими
+// ізольовані integration-тести через supertest.
+if (process.env.NODE_ENV !== "test") {
+  startServer();}
+
+export default app;

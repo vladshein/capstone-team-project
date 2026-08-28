@@ -12,6 +12,7 @@ interface SignInModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSwitchToSignUp: () => void;
+  onForgotPassword: () => void;
   onSignIn: (payload: SignInPayload) => Promise<void>;
 }
 
@@ -25,6 +26,7 @@ export function SignInModal({
   isOpen,
   onClose,
   onSwitchToSignUp,
+  onForgotPassword,
   onSignIn,
 }: SignInModalProps) {
   const [email, setEmail] = useState("");
@@ -118,7 +120,8 @@ export function SignInModal({
 
         <button
           type="button"
-          className="-mt-2 self-end text-xs font-medium text-accent-text"
+          onClick={onForgotPassword}
+          className="-mt-2 self-end cursor-pointer text-xs font-medium text-accent-text transition-colors hover:text-accent-hover"
         >
           Забули пароль?
         </button>

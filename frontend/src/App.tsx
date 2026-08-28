@@ -2,12 +2,19 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import toast, { Toaster } from "react-hot-toast";
 import { AuthModals, type AuthModalMode } from "./components/auth/AuthModals";
+import { EmailVerificationNotice } from "./components/auth/EmailVerificationNotice";
 import type { SignInPayload } from "./components/auth/SignInModal";
 import type { SignUpPayload, UserRole } from "./components/auth/SignUpModal";
 import Loader from "./components/ui/Loader";
 import { HashScroll } from "./components/ui/HashScroll";
 import { MainLayout } from "./layouts/MainLayout";
-import { fetchMyProfile, login, logout, refreshUser, register } from "./redux/auth/actions";
+import {
+  fetchMyProfile,
+  login,
+  logout,
+  refreshUser,
+  register,
+} from "./redux/auth/actions";
 import {
   selectIsLoggedIn,
   selectIsRefreshing,
@@ -17,6 +24,7 @@ import { useAppDispatch, useAppSelector } from "./redux/hooks";
 import type { ApiError } from "./redux/types";
 import { getDashboardPath } from "./redux/auth/helpers";
 import { clearCompaniesProfile } from "./redux/companies-profile/slice";
+import { authService } from "./services/authService";
 
 const HomePage = lazy(() => import("./pages/HomePage"));
 const AboutPage = lazy(() => import("./pages/AboutPage"));
@@ -29,8 +37,15 @@ const NearbyWorkerShiftsTab = lazy(
   () => import("./pages/worker/NearbyWorkerShiftsTab"),
 );
 const BookingsTab = lazy(() => import("./pages/worker/BookingsTab"));
+const MyDisputesTab = lazy(() => import("./components/disputes/MyDisputesTab"));
+const DisputeDetailsPage = lazy(
+  () => import("./pages/disputes/DisputeDetailsPage"),
+);
 const FavoriteShiftsTab = lazy(
   () => import("./pages/worker/FavoriteShiftsTab"),
+);
+const FavoriteCompaniesTab = lazy(
+  () => import("./pages/worker/FavoriteCompaniesTab"),
 );
 const BusinessDashboardPage = lazy(
   () => import("./pages/business/BusinessDashboardPage"),
@@ -38,11 +53,18 @@ const BusinessDashboardPage = lazy(
 const WorkerStatisticsPage = lazy(
   () => import("./pages/worker/WorkerStatisticsPage"),
 );
-const BusinessShiftsTab = lazy(
-  () => import("./pages/business/BusinessShiftsTab").then((module) => ({ default: module.BusinessShiftsTab })),
+const BusinessShiftsTab = lazy(() =>
+  import("./pages/business/BusinessShiftsTab").then((module) => ({
+    default: module.BusinessShiftsTab,
+  })),
 );
-const BusinessApplicationsTab = lazy(
-  () => import("./pages/business/BusinessApplicationsTab").then((module) => ({ default: module.BusinessApplicationsTab })),
+const BusinessApplicationsTab = lazy(() =>
+  import("./pages/business/BusinessApplicationsTab").then((module) => ({
+    default: module.BusinessApplicationsTab,
+  })),
+);
+const BusinessStatisticsPage = lazy(
+  () => import("./pages/business/BusinessStatisticsPage"),
 );
 const WorkerProfilePage = lazy(
   () => import("./pages/worker/WorkerProfilePage"),
@@ -55,6 +77,14 @@ const PublicWorkerProfilePage = lazy(
 );
 const PublicCompanyProfilePage = lazy(
   () => import("./pages/public/PublicCompanyProfilePage"),
+);
+const EmailVerificationPage = lazy(
+  () => import("./pages/EmailVerificationPage"),
+);
+const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
+const AdminDisputesPage = lazy(() => import("./pages/admin/AdminDisputesPage"));
+const AdminDisputeDetailsPage = lazy(
+  () => import("./pages/admin/AdminDisputeDetailsPage"),
 );
 
 const getApiError = (error: unknown): ApiError => {
@@ -77,20 +107,20 @@ export default function App() {
   const hasStartedInitialRefresh = useRef(false);
 
   useEffect(() => {
-  if (hasStartedInitialRefresh.current) return;
-  hasStartedInitialRefresh.current = true;
+    if (hasStartedInitialRefresh.current) return;
+    hasStartedInitialRefresh.current = true;
 
-  if (!authToken) {
-    setIsAuthInitialized(true);
-    return;
-  }
+    if (!authToken) {
+      setIsAuthInitialized(true);
+      return;
+    }
 
-  dispatch(refreshUser())
-    .unwrap()
-    .then(() => dispatch(fetchMyProfile()))
-    .catch(() => {})
-    .finally(() => setIsAuthInitialized(true));
-}, [authToken, dispatch]);
+    dispatch(refreshUser())
+      .unwrap()
+      .then(() => dispatch(fetchMyProfile()))
+      .catch(() => {})
+      .finally(() => setIsAuthInitialized(true));
+  }, [authToken, dispatch]);
 
   const handleSignIn = async (payload: SignInPayload) => {
     try {
@@ -116,10 +146,22 @@ export default function App() {
       dispatch(clearCompaniesProfile());
       void dispatch(fetchMyProfile());
       setAuthModal(null);
-      toast.success("Реєстрація успішна!");
+      toast.success(
+        "Реєстрація успішна! Перевірте пошту для підтвердження email.",
+      );
     } catch (error) {
       const { status, message } = getApiError(error);
       toast.error(status === 409 ? message : `Помилка реєстрації: ${message}`);
+      throw new Error(message);
+    }
+  };
+
+  const handlePasswordResetRequest = async (email: string) => {
+    try {
+      await authService.requestPasswordReset(email);
+    } catch (error) {
+      const { message } = getApiError(error);
+      toast.error(`Не вдалося надіслати інструкції: ${message}`);
       throw new Error(message);
     }
   };
@@ -168,6 +210,7 @@ export default function App() {
         onOpenBusinessSignUp={() => openSignUp("business_client")}
         onLogout={handleLogout}
       >
+        <EmailVerificationNotice />
         <Suspense fallback={<Loader fullScreen />}>
           <HashScroll />
           <Routes>
@@ -181,9 +224,28 @@ export default function App() {
               }
             />
             <Route path="/about" element={<AboutPage />} />
+            <Route
+              path="/email-verification"
+              element={<EmailVerificationPage />}
+            />
+            <Route
+              path="/reset-password"
+              element={
+                <ResetPasswordPage
+                  onOpenSignIn={() => setAuthModal("signin")}
+                  onOpenForgotPassword={() => setAuthModal("forgot-password")}
+                />
+              }
+            />
             <Route path="/shifts/:id" element={<ShiftsDetailPage />} />
-            <Route path="/workers/:workerId" element={<PublicWorkerProfilePage />} />
-            <Route path="/companies/:companyId" element={<PublicCompanyProfilePage />} />
+            <Route
+              path="/workers/:workerId"
+              element={<PublicWorkerProfilePage />}
+            />
+            <Route
+              path="/companies/:companyId"
+              element={<PublicCompanyProfilePage />}
+            />
 
             <Route
               path="/profile"
@@ -205,27 +267,73 @@ export default function App() {
                <Route path="search" element={<NearbyWorkerShiftsTab />} />
                <Route path="bookings" element={<BookingsTab />} />
                <Route path="favorites" element={<FavoriteShiftsTab />} />
+               <Route path="favorite-companies" element={<FavoriteCompaniesTab />} />
+               <Route path="disputes" element={<MyDisputesTab />} />
+               <Route
+                  path="disputes/:disputeId"
+                  element={<DisputeDetailsPage />}
+               />
              </Route>
 
-             <Route
-               path="/statistics"
-               element={
-                 !isAuthenticated ? (
-                   <Navigate to="/" replace />
-                 ) : user?.role === "worker" ? (
-                   <WorkerStatisticsPage />
-                 ) : (
-                   <Navigate to={getDashboardPath(user?.role)} replace />
-                 )
-               }
-             />
+            <Route
+              path="/statistics"
+              element={
+                !isAuthenticated ? (
+                  <Navigate to="/" replace />
+                ) : user?.role === "worker" ? (
+                  <WorkerStatisticsPage />
+                ) : (
+                  <Navigate to={getDashboardPath(user?.role)} replace />
+                )
+              }
+            />
 
             <Route path="/dashboard" element={renderBusinessDashboard()}>
               <Route index element={<Navigate to="shifts" replace />} />
-              <Route path="shifts" element={<BusinessShiftsTab scope="active" />} />
-              <Route path="applications" element={<BusinessApplicationsTab />} />
-              <Route path="archive" element={<BusinessShiftsTab scope="archive" />} />
+              <Route
+                path="shifts"
+                element={<BusinessShiftsTab scope="active" />}
+              />
+              <Route
+                path="applications"
+                element={<BusinessApplicationsTab />}
+              />
+              <Route
+                path="archive"
+                element={<BusinessShiftsTab scope="archive" />}
+              />
+              <Route path="disputes" element={<MyDisputesTab />} />
+              <Route
+                path="disputes/:disputeId"
+                element={<DisputeDetailsPage />}
+              />
+              <Route path="statistics" element={<BusinessStatisticsPage />} />
             </Route>
+
+            <Route
+              path="/admin/disputes"
+              element={
+                !isAuthenticated ? (
+                  <Navigate to="/" replace />
+                ) : user?.role === "admin" ? (
+                  <AdminDisputesPage />
+                ) : (
+                  <Navigate to={getDashboardPath(user?.role)} replace />
+                )
+              }
+            />
+            <Route
+              path="/admin/disputes/:disputeId"
+              element={
+                !isAuthenticated ? (
+                  <Navigate to="/" replace />
+                ) : user?.role === "admin" ? (
+                  <AdminDisputeDetailsPage />
+                ) : (
+                  <Navigate to={getDashboardPath(user?.role)} replace />
+                )
+              }
+            />
 
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
@@ -239,6 +347,7 @@ export default function App() {
         onSwitchMode={setAuthModal}
         onSignIn={handleSignIn}
         onSignUp={handleSignUp}
+        onRequestPasswordReset={handlePasswordResetRequest}
       />
       <Toaster position="top-right" reverseOrder={false} />
     </>

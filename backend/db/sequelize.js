@@ -26,7 +26,7 @@ const connectionParams = isProduction
 
 const sequelize = new Sequelize({
   ...connectionParams,
-  logging: (msg) => console.log(`[Sequelize] ${msg}`),
+  logging: isProduction ? false : (msg) => console.log(`[Sequelize] ${msg}`),
 });
 
 export default sequelize;

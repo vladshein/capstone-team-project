@@ -1,8 +1,8 @@
 import { SignInModal, SignInPayload } from "./SignInModal";
 import { SignUpModal, SignUpPayload, type UserRole } from "./SignUpModal";
-import { emailRegExp,  } from "../../constants/authConstants";
+import { ForgotPasswordModal } from "./ForgotPasswordModal";
 
-export type AuthModalMode = "signin" | "signup" | null;
+export type AuthModalMode = "signin" | "signup" | "forgot-password" | null;
 
 interface AuthModalsProps {
   mode: AuthModalMode;
@@ -11,6 +11,7 @@ interface AuthModalsProps {
   onSwitchMode: (mode: AuthModalMode) => void;
   onSignIn: (payload: SignInPayload) => Promise<void>;
   onSignUp: (payload: SignUpPayload) => Promise<void>;
+  onRequestPasswordReset: (email: string) => Promise<void>;
 }
 
 export function AuthModals({
@@ -20,6 +21,7 @@ export function AuthModals({
   onSwitchMode,
   onSignIn,
   onSignUp,
+  onRequestPasswordReset,
 }: AuthModalsProps) {
   return (
     <>
@@ -27,6 +29,7 @@ export function AuthModals({
         isOpen={mode === "signin"}
         onClose={onClose}
         onSwitchToSignUp={() => onSwitchMode("signup")}
+        onForgotPassword={() => onSwitchMode("forgot-password")}
         onSignIn={onSignIn}
       />
       <SignUpModal
@@ -35,6 +38,12 @@ export function AuthModals({
         onClose={onClose}
         onSwitchToSignIn={() => onSwitchMode("signin")}
         onSignUp={onSignUp}
+      />
+      <ForgotPasswordModal
+        isOpen={mode === "forgot-password"}
+        onClose={onClose}
+        onSwitchToSignIn={() => onSwitchMode("signin")}
+        onRequestPasswordReset={onRequestPasswordReset}
       />
     </>
   );
