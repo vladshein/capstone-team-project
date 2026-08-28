@@ -1,0 +1,12 @@
+replicaCount: 1
+
+image:
+  repository: <your-aws-account-id>.dkr.ecr.us-east-1.amazonaws.com/capstone-team-project-lifecycle-worker
+  tag: "latest"
+  pullPolicy: Always
+
+env:
+  POSTGRES_HOST: "postgres"
+  POSTGRES_PORT: "5432"
+  VALKEY_HOST: "valkey"
+  VALKEY_PORT: "6379"

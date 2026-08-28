@@ -63,6 +63,52 @@ module "eks" {
   private_subnet_ids = module.vpc.private_subnet_ids
 }
 
+# postgres
+resource "helm_release" "postgres" {
+  name             = "postgres"
+  chart            = "./charts/postgres"
+  namespace        = "default"
+  dependency_update = true
+
+  depends_on = [module.eks]
+}
+
+# valkey
+resource "helm_release" "valkey" {
+  name      = "valkey"
+  chart     = "./charts/valkey"
+  namespace = "default"
+
+  depends_on = [module.eks]
+}
+
+# backend
+resource "helm_release" "backend" {
+  name      = "backend"
+  chart     = "./charts/backend"
+  namespace = "default"
+
+  depends_on = [helm_release.postgres, helm_release.valkey]
+}
+
+# frontend
+resource "helm_release" "frontend" {
+  name      = "frontend"
+  chart     = "./charts/frontend"
+  namespace = "default"
+
+  depends_on = [helm_release.backend]
+}
+
+# worker
+resource "helm_release" "lifecycle_worker" {
+  name      = "lifecycle-worker"
+  chart     = "./charts/lifecycle-worker"
+  namespace = "default"
+
+  depends_on = [helm_release.postgres, helm_release.valkey]
+}
+
 # jenkins
 module "jenkins" {
   source = "./modules/jenkins"
@@ -92,38 +138,6 @@ module "argo_cd" {
   depends_on = [module.eks] 
 }
 
-# RDS
-module "rds" {
-  source = "./modules/rds"
-  name = "capstone"
-  use_aurora = false  # aurora cluster (when true)
-  # --- RDS Only ---
-  engine = "postgres"
-  engine_version = "17.2"
-  parameter_group_family_rds = "postgres17"
-  # Common
-  instance_class = "db.t3.micro"
-  allocated_storage = 20
-  db_name = var.db_name
-  username = var.username
-  password = var.password
-  subnet_private_ids = module.vpc.private_subnet_ids
-  subnet_public_ids = module.vpc.public_subnet_ids
-  vpc_id = module.vpc.vpc_id
-  publicly_accessible = false
-  multi_az = false
-  backup_retention_period = 7
-  
-  parameters = {
-    max_connections = "200"
-    log_min_duration_statement = "500"
-  }
-
-  tags = {
-    Environment = "dev"
-    Project = "capstone"
-  }
-}
 
 # Grafana Prometeus
 module "monitoring" {

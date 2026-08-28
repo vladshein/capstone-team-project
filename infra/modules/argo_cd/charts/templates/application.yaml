@@ -1,17 +1,19 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: django-app
-  namespace: argocd # namespace for argo 
+  name: capstone-app-of-apps
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
 spec:
-  project: default # project by default in argo
+  project: default
   source:
-    repoURL: {{ .Values.repoURL | quote }}
-    targetRevision: "final-project" # branch terraform repo
-    path: {{ .Values.appPath | quote }}
+    repoURL: 'https://github.com/vladshein/capstone-team-project.git'
+    targetRevision: HEAD
+    path: charts/ # forder for charts with services
   destination:
-    server: https://kubernetes.default.svc
-    namespace: {{ .Values.namespace | default "dev" }}  # if dev ns not created we use default
+    server: 'https://kubernetes.default.svc'
+    namespace: default
   syncPolicy:
     automated:
       prune: true

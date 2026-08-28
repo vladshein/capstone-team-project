@@ -1,7 +1,0 @@
-# here (this charts ./charts/django-app/Chart.yaml) we describe Django application
-# how Django works into Kubernetes
-apiVersion: v2
-name: zmina-app
-description: Zmina project (capstonr team projekte)
-version: 0.1.0
-appVersion: "1.0.0"

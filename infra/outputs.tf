@@ -43,7 +43,3 @@ output "jenkins_namespace" {
   description = ""
   value = module.jenkins.jenkins_namespace
 }
-output "rds_address" {
-  description = ""
-  value = module.rds.db_endpoint
-}
