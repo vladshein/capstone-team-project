@@ -347,42 +347,47 @@ export const getBusinessShifts = async ({ companyId, ownerId, scope, page = 1, l
   const shiftWhere =
     scope === "archive"
       ? {
-          [Op.or]: [
-            { status: { [Op.in]: ["completed", "cancelled"] } },
-            { endTime: { [Op.lt]: now } },
-          ],
-        }
+        [Op.or]: [
+          { status: { [Op.in]: ["completed", "cancelled"] } },
+          // В архів потрапляють за часом тільки відкриті (open) зміни, на які ніхто не відгукнувся
+          { status: "open", endTime: { [Op.lt]: now } },
+        ],
+      }
       : {
-          status: { [Op.in]: ["open", "booked", "in_progress"] },
-          endTime: { [Op.gte]: now },
-        };
+        [Op.or]: [
+          // 1. Відкриті зміни, які ще актуальні по часу
+          { status: "open", endTime: { [Op.gte]: now } },
+          // 2. Заброньовані та в процесі — завжди висять в активних, доки бізнес не прийме рішення
+          { status: { [Op.in]: ["booked", "in_progress"] } },
+        ],
+      };
 
   const archiveIncludes = scope === "archive"
     ? [
-        {
-          model: ShiftApplication,
-          attributes: ["id", "workerId", "status"],
-          where: { status: { [Op.in]: ["completed", "no_show"] } },
-          required: false,
-          include: [
-            {
-              model: User,
-              attributes: ["id"],
-              include: [{
-                model: WorkerProfile,
-                attributes: ["firstName", "lastName"],
-              }],
-            },
-          ],
-        },
-        {
-          // В архіві бізнес бачить лише власний відгук, щоб його редагувати.
-          model: Review,
-          attributes: ["id", "rating", "comment"],
-          where: { reviewerId: ownerId },
-          required: false,
-        },
-      ]
+      {
+        model: ShiftApplication,
+        attributes: ["id", "workerId", "status"],
+        where: { status: { [Op.in]: ["completed", "no_show"] } },
+        required: false,
+        include: [
+          {
+            model: User,
+            attributes: ["id"],
+            include: [{
+              model: WorkerProfile,
+              attributes: ["firstName", "lastName"],
+            }],
+          },
+        ],
+      },
+      {
+        // В архіві бізнес бачить лише власний відгук, щоб його редагувати.
+        model: Review,
+        attributes: ["id", "rating", "comment"],
+        where: { reviewerId: ownerId },
+        required: false,
+      },
+    ]
     : [];
 
   const { count, rows } = await Shift.findAndCountAll({
@@ -742,19 +747,28 @@ export const getWorkerShiftHistory = async (
     whereCondition[Op.or] = [
       { status: { [Op.in]: ["rejected", "no_show"] } },
       {
-        status: { [Op.in]: ["pending", "approved"] },
-        // Shift ще не приєднаний у WHERE цього запиту, тому перевіряємо
-        // завершення через підзапит за id. Інакше PostgreSQL не бачить alias Shift.
+        status: "pending",
         shiftId: {
           [Op.in]: literal(`(SELECT "id" FROM "shifts" WHERE "endTime" < '${now.toISOString()}')`),
         },
       },
     ];
   } else {
-    whereCondition.status = { [Op.in]: ["pending", "approved"] };
+    // В активних тримаємо:
+    // 1. approved — завжди, поки бізнес не підтвердить завершення чи не поставить неявку
+    // 2. pending — лише якщо зміна ще не закінчилася
+    whereCondition[Op.or] = [
+      { status: "approved" },
+      {
+        status: "pending",
+        shiftId: {
+          [Op.in]: literal(`(SELECT "id" FROM "shifts" WHERE "endTime" >= '${now.toISOString()}')`),
+        },
+      },
+    ];
   }
 
-  // Якщо передано статус заявки (наприклад, 'approved' - актуальні, 'completed' - завершені)
+  // Якщо передано статус заявки явно
   if (status) {
     whereCondition.status = status;
   }
@@ -766,14 +780,12 @@ export const getWorkerShiftHistory = async (
     where: whereCondition,
     limit: limit,
     offset: offset,
-    // Пагінація з belongsTo-join не потребує підзапиту; так alias Shift
-    // лишається доступним і для сортування, і для умов архіву.
     subQuery: false,
     include: [
       {
         model: Shift,
         attributes: ["id", "startTime", "endTime", "hourlyRate", "bonusRate", "description", "status"],
-        ...(isCompleted || isArchive ? {} : { where: { endTime: { [Op.gte]: now } }, required: true }),
+        required: true,
         include: [
           { model: JobPosition, attributes: ["id", "title"] },
           {
@@ -789,9 +801,6 @@ export const getWorkerShiftHistory = async (
     ],
   });
 
-  // Не додаємо hasMany Review у головний paginated query: Sequelize через це
-  // генерує крихкі підзапити. Натомість одним запитом беремо відгуки тільки
-  // для змін поточної сторінки й додаємо дані лише власного відгуку.
   const shiftIds = rows.map((application) => application.Shift?.id).filter(Boolean);
   if (shiftIds.length > 0) {
     const reviews = await Review.findAll({
