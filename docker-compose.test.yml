@@ -1,0 +1,48 @@
+services:
+  test-postgres:
+    image: postgis/postgis:17-3.5-alpine
+    container_name: test-postgres
+    environment:
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+      POSTGRES_DB: test_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user -d test_db"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  test-valkey:
+    image: valkey/valkey:alpine
+    container_name: test-valkey
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  test-runner:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: test-runner
+    command: >
+      sh -c "
+        npm run db:m &&
+        npm run test
+      "
+    environment:
+      - NODE_ENV=test
+      - DATABASE_USERNAME=test_user
+      - DATABASE_PASSWORD=test_password
+      - DATABASE_NAME=test_db
+      - DATABASE_HOST=test-postgres
+      - DATABASE_PORT=5432
+      - REDIS_HOST=test-valkey
+      - REDIS_PORT=6379
+      - JWT_SECRET=test_jwt_secret_key_12345
+    depends_on:
+      test-postgres:
+        condition: service_healthy
+      test-valkey:
+        condition: service_healthy
