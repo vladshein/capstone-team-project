@@ -125,7 +125,7 @@ export default function Map({ center, zoom, markers, userLocation, selectedCity 
       {/* fixme: wtf? */}
       const popupHtml = shiftsAtLocation.length > 1
         ? `
-          <div style="width: 230px; max-height: 260px; overflow-y: auto; padding: 2px; font-family: Inter, Arial, sans-serif;">
+          <div style="width: 230px; max-height: 260px; overflow-y: auto; padding: 2px; font-family: var(--font-body);">
             <h3 style="margin: 0; color: #12131a; font-size: 13px; line-height: 17px; font-weight: 700;">Зміни на локації (${shiftsAtLocation.length})</h3>
             <p style="margin: 3px 0 5px; color: #64748b; font-size: 11px; line-height: 14px;">${escapeHtml(item.description)}</p>
             ${shiftsAtLocation.map((shift) => `
@@ -139,7 +139,7 @@ export default function Map({ center, zoom, markers, userLocation, selectedCity 
               </div>`).join("")}
           </div>`
         : `
-        <div style="width: 210px; padding: 2px; font-family: Inter, Arial, sans-serif;">
+        <div style="width: 210px; padding: 2px; font-family: var(--font-body);">
           <h3 style="margin: 0; color: #12131a; font-size: 13px; line-height: 17px; font-weight: 700;">${escapeHtml(item.title)}</h3>
           <p style="margin: 4px 0 7px; color: #64748b; font-size: 11px; line-height: 14px;">${escapeHtml(item.description)}</p>
           <p style="margin: -3px 0 7px; color: #64748b; font-size: 11px; line-height: 14px;">${escapeHtml(item.schedule)}</p>

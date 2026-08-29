@@ -14,7 +14,7 @@ export default function HomePage({ onOpenSignUp, onOpenBusinessSignUp }: HomePag
   const user = useAppSelector(selectUserInfo);
 
   return (
-    <div className="min-h-screen bg-bg font-['Inter'] text-ink antialiased">
+    <div className="min-h-screen bg-bg font-body text-ink antialiased">
       <Hero
         onOpenSignUp={onOpenSignUp}
         onOpenBusinessSignUp={handleBusinessCta}
