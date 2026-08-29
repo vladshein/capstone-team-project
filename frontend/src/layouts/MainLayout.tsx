@@ -18,7 +18,7 @@ export function MainLayout({
   onLogout,
 }: MainLayoutProps) {
   return (
-    <div className="flex min-h-screen flex-col bg-bg font-['Inter'] text-ink antialiased">
+    <div className="flex min-h-screen flex-col bg-bg font-body text-ink antialiased">
       <Header
         onOpenSignIn={onOpenSignIn}
         onOpenSignUp={onOpenSignUp}
