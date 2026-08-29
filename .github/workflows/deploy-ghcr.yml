@@ -113,7 +113,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ./frontend
-          file: ./frontend/Dockerfile.prod
+          file: ./frontend/Dockerfile.stage
           push: true
           tags: ${{ steps.meta-frontend.outputs.tags }}
           labels: ${{ steps.meta-frontend.outputs.labels }}
@@ -124,7 +124,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ./backend
-          file: ./backend/Dockerfile.prod
+          file: ./backend/Dockerfile.stage
           push: true
           tags: ${{ steps.meta-backend.outputs.tags }}
           labels: ${{ steps.meta-backend.outputs.labels }}
@@ -144,7 +144,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            cd /srv/stage
+            cd /srv/capstone-app-stage
             echo "${{ secrets.SERVER_GHCR_TOKEN }}" | docker login ghcr.io -u ${{ secrets.SERVER_GHCR_USER }} --password-stdin
             export IMAGE_TAG=${{ needs.image-push.outputs.image_tag }}
             echo "IMAGE_TAG=${IMAGE_TAG}" > .env

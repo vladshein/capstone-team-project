@@ -22,7 +22,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - stage-pgdata:/var/lib/postgresql/data
     networks:
       - stagenet
     healthcheck:
@@ -38,12 +38,12 @@ services:
     restart: always
     env_file: .env
     volumes:
-      - ./backups:/backups
+      - ./stage-backups:/stage-backups
     depends_on:
       stage-postgres:
         condition: service_healthy
     environment:
-      - POSTGRES_HOST=postgres
+      - POSTGRES_HOST=stage-postgres
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
@@ -52,10 +52,27 @@ services:
     networks:
       - stagenet      
 
+  stage-migration:
+    image: ghcr.io/${GITHUB_REPOSITORY}-backend:${IMAGE_TAG:-latest}
+    container_name: stage-migration
+    command: ["npm", "run", "db:m"]
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - DATABASE_USERNAME=${POSTGRES_USER}
+      - DATABASE_PASSWORD=${POSTGRES_PASSWORD}
+      - DATABASE_NAME=${POSTGRES_DB}
+      - DATABASE_HOST=stage-postgres
+      - DATABASE_PORT=5432
+    depends_on:
+      stage-postgres:
+        condition: service_healthy
+    networks:
+      - stagenet
+
   stage-backend:
-    build:
-      context: .
-      dockerfile: ./backend/Dockerfile.prod
+    image: ghcr.io/${GITHUB_REPOSITORY}-backend:${IMAGE_TAG:-latest}
     container_name: stage-backend
     restart: always
     env_file:
@@ -65,15 +82,16 @@ services:
       - DATABASE_USERNAME=${POSTGRES_USER}
       - DATABASE_PASSWORD=${POSTGRES_PASSWORD}
       - DATABASE_NAME=${POSTGRES_DB}
-      - DATABASE_HOST=${DB_HOST}
-      - DATABASE_PORT=${DB_PORT}
-      # Caddy передає IP відвідувача через X-Forwarded-For.
+      - DATABASE_HOST=stage-postgres
+      - DATABASE_PORT=5432
       - TRUST_PROXY=true
-    volumes:
-      - ./backend/public:/app/public
     depends_on:
-      - stage-postgres
-      - stage-valkey
+      stage-postgres:
+        condition: service_healthy
+      stage-valkey:
+        condition: service_healthy
+      stage-migration:
+        condition: service_completed_successfully
     healthcheck:
       test:
         ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:5000/ready').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))\""]
@@ -83,12 +101,11 @@ services:
       start_period: 15s
     networks:
       - stagenet
+      - capstone_basenet
 
   stage-lifecycle-worker:
-    build:
-      context: .
-      dockerfile: ./backend/Dockerfile.prod
-    container_name: lifecycle-worker
+    image: ghcr.io/${GITHUB_REPOSITORY}-backend:${IMAGE_TAG:-latest}
+    container_name: stage-lifecycle-worker
     restart: always
     command: ["node", "workers/shiftLifecycleWorker.js"]
     env_file:
@@ -98,23 +115,20 @@ services:
       - DATABASE_USERNAME=${POSTGRES_USER}
       - DATABASE_PASSWORD=${POSTGRES_PASSWORD}
       - DATABASE_NAME=${POSTGRES_DB}
-      - DATABASE_HOST=${DB_HOST}
-      - DATABASE_PORT=${DB_PORT}
+      - DATABASE_HOST=stage-postgres
+      - DATABASE_PORT=5432
     depends_on:
       stage-postgres:
         condition: service_healthy
       stage-valkey:
         condition: service_healthy
+      stage-migration:
+        condition: service_completed_successfully
     networks:
       - stagenet
 
   stage-frontend:
-    build:
-      context: .
-      dockerfile: ./frontend/Dockerfile.prod
-      target: production
-      args:
-        - VITE_API_URL=https://${FRONTEND_DOMAIN}/api
+    image: ghcr.io/${GITHUB_REPOSITORY}-frontend:${IMAGE_TAG:-latest}
     container_name: stage-frontend
     restart: always
     environment:
@@ -123,10 +137,13 @@ services:
       - stage-backend
     networks:
       - stagenet
+      - capstone_basenet
 
 volumes:
-  pgdata:
-  
+  stage-pgdata:
+
 networks:
   stagenet:
     driver: bridge
+  capstone_basenet:
+    external: true

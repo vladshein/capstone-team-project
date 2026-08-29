@@ -148,3 +148,4 @@ volumes:
 networks:
   basenet:
     driver: bridge
+    name: capstone_basenet
