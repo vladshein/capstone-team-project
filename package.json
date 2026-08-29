@@ -8,7 +8,7 @@
     "dev": "pnpm --parallel --filter \"./*\" dev",
     "build": "pnpm --recursive build",
     "test:load": "k6 run infra/test/load_test.js",
-    "test:load:vps": "k6 run --env TARGET_HOST=https://zmina.pp.ua:5000/api infra/test/load_test.js",
+    "test:load:vps": "k6 run --env TARGET_HOST=https://zmina.pp.ua infra/test/load_test.js",
     "test:load:aws": "k6 run --env TARGET_HOST=https://api.yourdomain-aws.com infra/test/load_test.js"
   },
   "pnpm": {
