@@ -1,0 +1,34 @@
+# config AgroCD
+server:
+  extraArgs:
+    - --insecure       
+  service:
+    type: LoadBalancer
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-type: nlb
+# RBAC (Role Based Access Control)
+configs:
+  cm:
+    admin.enabled: "true" # allow admin
+    timeout.relogin: "24h" # session type
+  params:
+    server.insecure: true
+# resources
+controller:
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+# Redis (for cache)
+redis:
+  enabled: true
+  resources:
+    limits:
+      cpu: 200m
+      memory: 128Mi
+# Application Set
+applicationSet:
+  enabled: true

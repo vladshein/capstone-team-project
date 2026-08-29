@@ -1,0 +1,29 @@
+FROM node:24-alpine AS builder
+WORKDIR /app
+
+RUN apk add --no-cache python3 make g++
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+COPY pnpm-workspace.yaml package.json ./
+COPY backend/package.json ./backend/
+
+RUN echo 'only-built-dependencies=["bcrypt", "@scarf/scarf"]' > /app/.npmrc
+
+RUN pnpm install --no-frozen-lockfile
+
+COPY backend/ ./backend/
+
+RUN pnpm --filter @capstone-project-shift --prod deploy --legacy /app/deployed-backend
+
+FROM node:24-alpine AS production
+USER node
+
+WORKDIR /app/backend
+
+COPY --chown=node:node --from=builder /app/deployed-backend ./
+
+ENV NODE_ENV=production
+ENV PORT=5000
+EXPOSE 5000
+
+CMD ["node", "app.js"]

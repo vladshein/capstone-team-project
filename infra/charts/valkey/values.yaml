@@ -1,0 +1,24 @@
+replicaCount: 1
+
+image:
+  repository: valkey/valkey
+  tag: "alpine"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 6379
+
+resources:
+  limits:
+    cpu: 250m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+persistence:
+  enabled: false # Якщо потрібен кеш без збереження на диск. Увімкни true, якщо потрібен AOF/RDB persistence.
+  storageClass: "gp2"
+  size: 2Gi
+

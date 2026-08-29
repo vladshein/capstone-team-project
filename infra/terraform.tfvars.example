@@ -1,0 +1,12 @@
+github_token=""
+
+# RDS
+db_name=""
+username=""
+password=""
+
+# Jenkins
+jenkins_admin_pass = ""
+
+# Grafana Prometeus
+grafana_admin_pass = ""

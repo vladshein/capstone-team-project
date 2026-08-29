@@ -2,6 +2,7 @@
     email {$ACME_EMAIL}
 }
 
+# --- PROD ---
 {$FRONTEND_DOMAIN} {
     handle /api/* {
         reverse_proxy backend:5000
@@ -9,5 +10,16 @@
 
     handle {
         reverse_proxy frontend:80
+    }
+}
+
+# --- STAGE ---
+{$STAGE_DOMAIN} {
+    handle /api/* {
+        reverse_proxy stage-backend:5000
+    }
+
+    handle {
+        reverse_proxy stage-frontend:80
     }
 }

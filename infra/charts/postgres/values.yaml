@@ -1,0 +1,23 @@
+replicaCount: 1
+
+image:
+  repository: postgis/postgis
+  tag: "17-3.5-alpine"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 5432
+
+persistence:
+  enabled: true
+  storageClass: "gp2" # Або "ebs-sc", залежно від конфігурації EBS CSI Driver в EKS
+  accessMode: ReadWriteOnce
+  size: 10Gi
+
+env:
+  POSTGRES_DB: capstone_db
+  POSTGRES_USER: postgres_user
+  # Secret
+  existingSecret: postgres-secret
+  secretPasswordKey: POSTGRES_PASSWORD

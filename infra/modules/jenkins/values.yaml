@@ -1,0 +1,89 @@
+controller:
+  admin:
+    username: admin
+    password: "${jenkins_admin_pass}"
+
+  serviceType: LoadBalancer
+  servicePort: 80
+  service:
+    port: 80
+    targetPort: 8080
+
+  resources:
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+
+  persistentVolume:
+    enabled: true
+    storageClass: "ebs-sc"
+    size: 10Gi
+
+  installPlugins:
+    - kubernetes:latest
+    - workflow-aggregator:latest
+    - git:latest
+    - configuration-as-code:latest
+    - credentials-binding:latest
+    - github:latest
+    - docker-plugin:latest
+    - docker-workflow:latest
+    - job-dsl:latest
+
+  serviceAccount:
+    name: jenkins-admin
+    create: false
+
+  JCasC:
+    configScripts:
+      credentials: |
+        credentials:
+          system:
+            domainCredentials:
+              - credentials:
+                  - usernamePassword:
+                      scope: GLOBAL
+                      id: github-token
+                      username: ${GITHUB_USER}
+                      password: ${GITHUB_TOKEN}
+                      description: GitHub PAT
+      seed-job: |
+        jobs:
+          - script: >
+              job('seed-job') {
+                description('Job to generate pipeline for Zmina project')
+                scm {
+                  git {
+                    remote {
+                      url('https://github.com/vladshein/capstone-team-project.git')
+                      credentials('github-token')
+                    }
+                    branches('*/main')
+                  }
+                }
+                steps {
+                  dsl {
+                    text('''
+                      pipelineJob("zmina") {
+                        definition {
+                          cpsScm {
+                            scm {
+                              git {
+                                remote {
+                                  url("https://github.com/vladshein/capstone-team-project.git'")
+                                  credentials("github-token")
+                                }
+                                branches("*/main")
+                              }
+                            }
+                            scriptPath("main/Jenkinsfile")    
+                          }
+                        }
+                      }
+                    ''')
+                  }
+                }
+              }
