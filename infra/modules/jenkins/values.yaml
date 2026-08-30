@@ -73,7 +73,7 @@ controller:
                             scm {
                               git {
                                 remote {
-                                  url("https://github.com/vladshein/capstone-team-project.git'")
+                                  url("https://github.com/vladshein/capstone-team-project.git")
                                   credentials("github-token")
                                 }
                                 branches("*/cloud-infra")

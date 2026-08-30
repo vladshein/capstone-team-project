@@ -19,8 +19,9 @@ spec:
         }
     }
 
-   environment {
-        ECR_REPO = ""
+    environment {
+        // 1. Вказуємо ECR URI до вашого backend або frontend
+        ECR_REPO = "211125349493.dkr.ecr.us-east-1.amazonaws.com/dev-backend"
         GITOPS_REPO = "github.com/vladshein/capstone-team-project.git"
         IMAGE_TAG = "${env.BUILD_NUMBER}"
     }
@@ -30,10 +31,15 @@ spec:
             steps {
                 container('kaniko') {
                     sh """
-                    /kaniko/executor --context ${workspace}/main/frontend \
-                        --dockerfile ${workspace}/main/frontend/Dockerfile \
-                        --destination ${ECR_REPO}:${IMAGE_TAG} \
-                        --destination ${ECR_REPO}:latest
+                    # Створюємо AWS ECR credentials для Kaniko без додаткових утиліт
+                    mkdir -p /kaniko/.docker
+                    
+                    # Запускаємо збірку з коректними змінними WORKSPACE (у верхньому регістрі)
+                    /kaniko/executor \
+                        --context \${WORKSPACE} \
+                        --dockerfile \${WORKSPACE}/Dockerfile \
+                        --destination \${ECR_REPO}:\${IMAGE_TAG} \
+                        --destination \${ECR_REPO}:latest
                     """
                 }
             }
@@ -46,15 +52,16 @@ spec:
                             sh """
                                 git config --global user.email "jenkins@example.com"
                                 git config --global user.name "Jenkins CI"
-                                git clone -b main https://\$GH_TOKEN@github.com/vladshein/capstone-team-project.git tmp_infra
+                                git clone -b cloud-infra https://\$GH_TOKEN@github.com/vladshein/capstone-team-project.git tmp_infra
                                 cd tmp_infra
-                                FILE_PATH="main/charts/zmina/values.yaml"
+                                
+                                FILE_PATH="charts/backend/values.yaml"
                                 if [ -f "\$FILE_PATH" ]; then
                                     echo "Update tag to : ${IMAGE_TAG}"
                                     sed -i "s/tag: .*/tag: \\"${IMAGE_TAG}\\"/" "\$FILE_PATH"
                                     git add "\$FILE_PATH"
-                                    git commit -m "Update Zmina Fontend image to ${IMAGE_TAG} (Build #${BUILD_NUMBER}) [skip ci]"
-                                    git push origin main
+                                    git commit -m "Update image tag to ${IMAGE_TAG} [skip ci]" || echo "No changes to commit"
+                                    git push origin cloud-infra
                                 else
                                     echo "error: file \$FILE_PATH not found"
                                     ls -R
@@ -68,4 +75,3 @@ spec:
         }
     }
 }
-
