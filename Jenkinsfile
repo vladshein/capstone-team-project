@@ -11,6 +11,13 @@ spec:
     image: gcr.io/kaniko-project/executor:debug
     command: ['sleep']
     args: ['99d']
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "1Gi"
+      limits:
+        cpu: "1500m"
+        memory: "2560Mi"
   - name: git
     image: alpine/git
     command: ['sleep']
@@ -26,36 +33,36 @@ spec:
     }
 
     stages {
-        stage('Build & Push Images') {
-            parallel {
-                stage('Backend Build') {
-                    steps {
-                        container('kaniko') {
-                            sh """
-                            mkdir -p /kaniko/.docker
-                            /kaniko/executor \
-                                --context \${WORKSPACE} \
-                                --dockerfile \${WORKSPACE}/backend/Dockerfile.prod \
-                                --destination \${BACKEND_ECR}:\${IMAGE_TAG} \
-                                --destination \${BACKEND_ECR}:latest
-                            """
-                        }
-                    }
+        stage('Backend Build') {
+            steps {
+                container('kaniko') {
+                    sh """
+                    mkdir -p /kaniko/.docker
+                    /kaniko/executor \
+                        --context \${WORKSPACE} \
+                        --dockerfile \${WORKSPACE}/backend/Dockerfile.prod \
+                        --snapshot-mode=redo \
+                        --destination \${BACKEND_ECR}:\${IMAGE_TAG} \
+                        --destination \${BACKEND_ECR}:latest
+                    """
                 }
-                stage('Frontend Build') {
-                    steps {
-                        container('kaniko') {
-                            sh """
-                            mkdir -p /kaniko/.docker
-                            /kaniko/executor \
-                                --context \${WORKSPACE} \
-                                --dockerfile \${WORKSPACE}/frontend/Dockerfile.prod \
-                                --target production \
-                                --destination \${FRONTEND_ECR}:\${IMAGE_TAG} \
-                                --destination \${FRONTEND_ECR}:latest
-                            """
-                        }
-                    }
+            }
+        }
+
+        stage('Frontend Build') {
+            steps {
+                container('kaniko') {
+                    sh """
+                    mkdir -p /kaniko/.docker
+                    /kaniko/executor \
+                        --context \${WORKSPACE} \
+                        --dockerfile \${WORKSPACE}/frontend/Dockerfile.prod \
+                        --target production \
+                        --snapshot-mode=redo \
+                        --build-arg VITE_API_URL=/api \
+                        --destination \${FRONTEND_ECR}:\${IMAGE_TAG} \
+                        --destination \${FRONTEND_ECR}:latest
+                    """
                 }
             }
         }
