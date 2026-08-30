@@ -10,7 +10,7 @@ service:
   port: 5432
 
 persistence:
-  enabled: true
+  enabled: false
   storageClass: "gp2" # Або "ebs-sc", залежно від конфігурації EBS CSI Driver в EKS
   accessMode: ReadWriteOnce
   size: 10Gi

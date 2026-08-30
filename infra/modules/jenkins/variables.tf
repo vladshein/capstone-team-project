@@ -46,3 +46,7 @@ variable "github_token" {
   type = string
   sensitive = true
 }
+variable "github_user" {
+  description = "github user"
+  type = string
+}

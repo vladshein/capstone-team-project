@@ -1,12 +1,12 @@
 replicaCount: 1
 
 image:
-  repository: <your-aws-account-id>.dkr.ecr.us-east-1.amazonaws.com/capstone-team-project-frontend
+  repository: ""
   tag: "latest"
   pullPolicy: Always
 
 service:
-  type: LoadBalancer # або NodePort / ClusterIP (якщо використовується Ingress)
+  type: LoadBalancer #  NodePort / ClusterIP (if Ingress)
   port: 5173
 
 env:

@@ -32,9 +32,12 @@ spec:
                 secretKeyRef:
                   name: {{ default (include "postgres.fullname" .) .Values.env.existingSecret }}
                   key: {{ .Values.env.secretPasswordKey }}
+          {{- if .Values.persistence.enabled }}
           volumeMounts:
             - name: postgres-data
               mountPath: /var/lib/postgresql/data
+          {{- end }}
+  {{- if .Values.persistence.enabled }}
   volumeClaimTemplates:
     - metadata:
         name: postgres-data
@@ -44,3 +47,4 @@ spec:
         resources:
           requests:
             storage: {{ .Values.persistence.size | quote }}
+  {{- end }}

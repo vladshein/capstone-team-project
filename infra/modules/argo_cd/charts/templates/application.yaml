@@ -9,7 +9,7 @@ spec:
   project: default
   source:
     repoURL: 'https://github.com/vladshein/capstone-team-project.git'
-    targetRevision: HEAD
+    targetRevision: cloud-infra
     path: charts/ # forder for charts with services
   destination:
     server: 'https://kubernetes.default.svc'
