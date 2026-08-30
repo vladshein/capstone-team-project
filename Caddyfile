@@ -2,8 +2,7 @@
     email {$ACME_EMAIL}
 }
 
-# --- PROD ---
-{$FRONTEND_DOMAIN} {
+zmina.pp.ua {
     handle /api/* {
         reverse_proxy backend:5000
     }
@@ -13,8 +12,7 @@
     }
 }
 
-# --- STAGE ---
-{$STAGE_DOMAIN} {
+stage.zmina.pp.ua {
     handle /api/* {
         reverse_proxy stage-backend:5000
     }
