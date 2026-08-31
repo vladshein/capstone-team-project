@@ -1,4 +1,4 @@
-replicaCount: 5
+replicaCount: 10
 
 image:
   repository: "211125349493.dkr.ecr.us-east-1.amazonaws.com/dev-backend"
