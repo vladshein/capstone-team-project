@@ -39,6 +39,7 @@ spec:
                         --context \${WORKSPACE} \
                         --dockerfile \${WORKSPACE}/backend/Dockerfile.prod \
                         --snapshot-mode=redo \
+                        --compressed-caching=false \
                         --destination \${BACKEND_ECR}:\${IMAGE_TAG} \
                         --destination \${BACKEND_ECR}:latest
                     """
@@ -65,7 +66,7 @@ spec:
         memory: "2Gi"
       limits:
         cpu: "2000m"
-        memory: "4Gi"
+        memory: "6Gi"
 '''
                 }
             }
@@ -78,6 +79,7 @@ spec:
                         --dockerfile \${WORKSPACE}/frontend/Dockerfile.prod \
                         --target production \
                         --snapshot-mode=redo \
+                        --compressed-caching=false \
                         --build-arg VITE_API_URL=/api \
                         --destination \${FRONTEND_ECR}:\${IMAGE_TAG} \
                         --destination \${FRONTEND_ECR}:latest
@@ -114,14 +116,12 @@ spec:
 
                                 VALUES_FILE="charts/zmina/values.yaml"
                                 if [ -f "\$VALUES_FILE" ]; then
-                                    echo "Updating image tags to ${IMAGE_TAG}..."
                                     sed -i "s/tag: .*/tag: \\"${IMAGE_TAG}\\"/g" "\$VALUES_FILE"
-                                    
                                     git add "\$VALUES_FILE"
-                                    git commit -m "Update Backend & Frontend image tags to ${IMAGE_TAG} [skip ci]" || echo "No changes to commit"
+                                    git commit -m "Update tags to ${IMAGE_TAG} [skip ci]" || echo "No changes"
                                     git push origin cloud-infra
                                 else
-                                    echo "error: file \$VALUES_FILE not found in GitOps repo"
+                                    echo "File \$VALUES_FILE not found"
                                     exit 1
                                 fi
                             """
