@@ -53,12 +53,21 @@ module "vpc" {
 }
 
 # elastic container registry
+# for backend
 module "ecr" {
   source          = "./modules/ecr"
   environment     = "dev"
-  repository_name = "backend" # Назва репозиторію має відповідати імені вашого сервісу
+  repository_name = "backend"
   scan_on_push    = true
 }
+# ecr for frontend
+module "ecr_frontend" {
+  source          = "./modules/ecr"
+  environment     = "dev"
+  repository_name = "frontend"
+  scan_on_push    = true
+}
+
 
 # eks
 module "eks" {
@@ -161,13 +170,14 @@ resource "helm_release" "backend" {
     file("${path.module}/charts/backend/values.yaml")
   ]
 
-  set =[{
+  set = [{
     name  = "image.repository"
-    value = module.ecr.repository_url
+    value = module.ecr_backend.repository_url
   }] 
   
   depends_on = [helm_release.postgres, helm_release.valkey]
 }
+
 
 # frontend
 resource "helm_release" "frontend" {
@@ -181,7 +191,7 @@ resource "helm_release" "frontend" {
 
   set = [{
     name  = "image.repository"
-    value = module.ecr.repository_url
+    value = module.ecr_frontend.repository_url
   }]
 
   depends_on = [helm_release.backend]
