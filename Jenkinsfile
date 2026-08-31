@@ -13,11 +13,11 @@ spec:
     args: ['99d']
     resources:
       requests:
-        cpu: "500m"
-        memory: "1Gi"
+        cpu: "1000m"
+        memory: "2Gi"
       limits:
-        cpu: "1500m"
-        memory: "2560Mi"
+        cpu: "2000m"
+        memory: "4Gi"
   - name: git
     image: alpine/git
     command: ['sleep']
