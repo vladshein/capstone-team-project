@@ -1,8 +1,18 @@
 pipeline {
-    agent {
-        kubernetes {
-            serviceAccount 'jenkins-admin'
-            yaml """
+    agent none
+
+    environment {
+        BACKEND_ECR  = "211125349493.dkr.ecr.us-east-1.amazonaws.com/dev-backend"
+        FRONTEND_ECR = "211125349493.dkr.ecr.us-east-1.amazonaws.com/dev-frontend"
+        IMAGE_TAG    = "${env.BUILD_NUMBER}"
+    }
+
+    stages {
+        stage('Backend Build') {
+            agent {
+                kubernetes {
+                    serviceAccount 'jenkins-admin'
+                    yaml '''
 apiVersion: v1
 kind: Pod
 spec:
@@ -18,22 +28,9 @@ spec:
       limits:
         cpu: "2000m"
         memory: "4Gi"
-  - name: git
-    image: alpine/git
-    command: ['sleep']
-    args: ['99d']
-"""
-        }
-    }
-
-    environment {
-        BACKEND_ECR  = "211125349493.dkr.ecr.us-east-1.amazonaws.com/dev-backend"
-        FRONTEND_ECR = "211125349493.dkr.ecr.us-east-1.amazonaws.com/dev-frontend"
-        IMAGE_TAG    = "${env.BUILD_NUMBER}"
-    }
-
-    stages {
-        stage('Backend Build') {
+'''
+                }
+            }
             steps {
                 container('kaniko') {
                     sh """
@@ -50,6 +47,28 @@ spec:
         }
 
         stage('Frontend Build') {
+            agent {
+                kubernetes {
+                    serviceAccount 'jenkins-admin'
+                    yaml '''
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: kaniko
+    image: gcr.io/kaniko-project/executor:debug
+    command: ['sleep']
+    args: ['99d']
+    resources:
+      requests:
+        cpu: "1000m"
+        memory: "2Gi"
+      limits:
+        cpu: "2000m"
+        memory: "4Gi"
+'''
+                }
+            }
             steps {
                 container('kaniko') {
                     sh """
@@ -68,6 +87,21 @@ spec:
         }
 
         stage('Update GitOps Manifests') {
+            agent {
+                kubernetes {
+                    serviceAccount 'jenkins-admin'
+                    yaml '''
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: git
+    image: alpine/git
+    command: ['sleep']
+    args: ['99d']
+'''
+                }
+            }
             steps {
                 container('git') {
                     script {
