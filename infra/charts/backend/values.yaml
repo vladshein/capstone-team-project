@@ -2,7 +2,7 @@ replicaCount: 2
 
 image:
   repository: ""
-  tag: "latest"
+  tag: "8"
 
 env:
   PORT: "5000"
