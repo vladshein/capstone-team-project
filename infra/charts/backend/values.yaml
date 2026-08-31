@@ -11,6 +11,7 @@ env:
   POSTGRES_DB: "capstone_db"
   VALKEY_HOST: "valkey"
   VALKEY_PORT: "6379"
+  FRONTEND_URL: "http://a85d022f9af1e4981ace003ed41c2458-984925192.us-east-1.elb.amazonaws.com"
 
 service:
   type: ClusterIP
