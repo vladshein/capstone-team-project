@@ -115,13 +115,11 @@ spec:
                                 git clone -b cloud-infra https://\$GH_TOKEN@github.com/vladshein/capstone-team-project.git tmp_infra
                                 cd tmp_infra
 
-                                # Динамічний пошук файлу values.yaml
-                                VALUES_FILE\=$(find . -type f -name "values.yaml" | head -n 1)
+                                VALUES_FILE=\$(find . -type f -name "values.yaml" | head -n 1)
 
                                 if [ -n "\$VALUES_FILE" ]; then
                                     echo "Found values file at: \$VALUES_FILE"
                                     
-                                    # Замінює значення tag: "..." або tag: ... на новий IMAGE_TAG
                                     sed -i -E "s/(tag:\\s*)[\\"']?[^\\"']+[\\"']?/\\1\\"${IMAGE_TAG}\\"/g" "\$VALUES_FILE"
                                     
                                     git add "\$VALUES_FILE"
