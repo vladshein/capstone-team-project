@@ -1,9 +1,17 @@
-replicaCount: 2
+replicaCount: 5
 
 image:
   repository: "211125349493.dkr.ecr.us-east-1.amazonaws.com/dev-backend"
   tag: "8"
   pullPolicy: IfNotPresent
+  
+resources:
+  requests:
+    cpu: "200m"
+    memory: "256Mi"
+  limits:
+    cpu: "1000m"
+    memory: "512Mi"
 
 env:
   PORT: "5000"
@@ -14,7 +22,7 @@ env:
   VALKEY_PORT: "6379"
   FRONTEND_URL: "http://a85d022f9af1e4981ace003ed41c2458-984925192.us-east-1.elb.amazonaws.com"
   POSTGRES_USER: "test"
-  POSTGRES_PASSWOR: "Test#123"
+  POSTGRES_PASSWORD: "Test#123"
   DATABASE_USERNAME: "test"
   DATABASE_PASSWORD: "Test#123"
   DATABASE_NAME: "capstone_db"
