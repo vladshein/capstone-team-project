@@ -107,7 +107,7 @@ spec:
             steps {
                 container('git') {
                     script {
-                        withCredentials([string(credentialsId: 'github-token', variable: 'GH_TOKEN')]) {
+                        withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GH_USER', passwordVariable: 'GH_TOKEN')]) {
                             sh """
                                 git config --global user.email "jenkins@example.com"
                                 git config --global user.name "Jenkins CI"
