@@ -111,17 +111,25 @@ spec:
                             sh """
                                 git config --global user.email "jenkins@example.com"
                                 git config --global user.name "Jenkins CI"
+                                
                                 git clone -b cloud-infra https://\$GH_TOKEN@github.com/vladshein/capstone-team-project.git tmp_infra
                                 cd tmp_infra
 
-                                VALUES_FILE="charts/zmina/values.yaml"
-                                if [ -f "\$VALUES_FILE" ]; then
-                                    sed -i "s/tag: .*/tag: \\"${IMAGE_TAG}\\"/g" "\$VALUES_FILE"
+                                # Динамічний пошук файлу values.yaml
+                                VALUES_FILE\=$(find . -type f -name "values.yaml" | head -n 1)
+
+                                if [ -n "\$VALUES_FILE" ]; then
+                                    echo "Found values file at: \$VALUES_FILE"
+                                    
+                                    # Замінює значення tag: "..." або tag: ... на новий IMAGE_TAG
+                                    sed -i -E "s/(tag:\\s*)[\\"']?[^\\"']+[\\"']?/\\1\\"${IMAGE_TAG}\\"/g" "\$VALUES_FILE"
+                                    
                                     git add "\$VALUES_FILE"
-                                    git commit -m "Update tags to ${IMAGE_TAG} [skip ci]" || echo "No changes"
+                                    git commit -m "Update tags to ${IMAGE_TAG} [skip ci]" || echo "No changes to commit"
                                     git push origin cloud-infra
                                 else
-                                    echo "File \$VALUES_FILE not found"
+                                    echo "ERROR: values.yaml was not found in repo"
+                                    ls -la
                                     exit 1
                                 fi
                             """
