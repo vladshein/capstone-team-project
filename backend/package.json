@@ -17,7 +17,8 @@
     "db:m:executed": "node db/migrator.js executed",
     "email:verify": "node scripts/verifySmtp.js",
     "db:seed": "node --input-type=module -e \"import('./db/models/seedDBs.js').then(m => m.default()).then(() => { console.log('Seeded'); process.exit(0); })\"",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

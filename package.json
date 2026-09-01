@@ -7,7 +7,10 @@
     "dev:frontend": "pnpm --filter frontend dev",
     "dev": "pnpm --parallel --filter \"./*\" dev",
     "build": "pnpm --recursive build",
+    "test": "pnpm --recursive test",
+    "test:coverage": "pnpm --recursive test:coverage",
     "test:load": "k6 run infra/test/load_test.js",
+    "test:load:smoke": "k6 run --env PROFILE=smoke infra/test/load_test.js",
     "test:load:vps": "k6 run --env TARGET_HOST=https://zmina.pp.ua infra/test/load_test.js",
     "test:load:aws": "k6 run --env TARGET_HOST=https://api.yourdomain-aws.com infra/test/load_test.js"
   },

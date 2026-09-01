@@ -230,7 +230,11 @@ Seeder seeder-1786204972180.js created successfully!
 
 ### Тести
 
-Обидва сервіси використовують Jest.
+Обидва сервіси використовують Jest. Юніт- та контролерні тести повністю
+ізольовані від БД і Valkey (мок-моделі Sequelize через
+`jest.unstable_mockModule`), тому запускаються без піднятих контейнерів.
+Частина бекенд-тестів (файли `*.integration.test.js`) звертається до реальних
+Postgres/Valkey.
 
 Бекенд:
 ```bash
@@ -243,6 +247,100 @@ docker compose exec frontend npm run test
 ```
 
 Без Docker (з відповідної папки, `backend` або `frontend`): `npm test` / `npm run test`. Для фронтенду є також watch-режим для розробки: `npm run test:watch`.
+
+Запустити обидва набори одразу з кореня монорепозиторію:
+```bash
+pnpm test
+```
+
+#### Тестове покриття (coverage)
+
+Покриття рахує Jest із прапорцем `--coverage`. Він доданий у три скрипти —
+окремо в кожному пакеті й один агрегувальний у корені:
+
+| Скрипт | Де запускати | Що робить |
+|---|---|---|
+| `npm run test:coverage` | `backend/` | `node --experimental-vm-modules … jest --coverage` по бекенду |
+| `npm run test:coverage` | `frontend/` | `jest --coverage` по фронтенду |
+| `pnpm test:coverage` | корінь репозиторію | `pnpm --recursive test:coverage` — обидва пакети підряд |
+
+У Docker: `docker compose exec backend npm run test:coverage` та
+`docker compose exec frontend npm run test:coverage`.
+
+Репортери задано в конфігах (`backend/jest.config.mjs`,
+`frontend/jest.config.cjs`) — `text` + `text-summary` у консоль і `lcov`
+(HTML-звіт у `<пакет>/coverage/lcov-report/index.html`), тож окремі прапорці
+не потрібні.
+
+**Що саме потрапляє в знаменник.** `collectCoverageFrom` у конфігах навмисно
+звужено, щоб відсоток був стабільним і порівнюваним у часі:
+
+- бекенд — прикладний код (`controllers`, `services`, `middlewares`,
+  `helpers`, `schemas`, `routes`, `queues`); виключено мертвий код-заготовку
+  (`recipes*`, `followers*`), точку входу фонового процесу `workers/`
+  (робить side-effects під час імпорту) і dev-монтування Swagger UI;
+- фронтенд — підсистема аналітичної статистики (ядро візуалізації
+  `lib/charts`, доменні Redux-зрізи `redux/worker-statistics` і
+  `redux/business-statistics`, сервісний шар, доменні обгортки графіка та
+  картки `StatCard`).
+
+**Пороги покриття (`coverageThreshold`).** Прогін `test:coverage` падає,
+якщо покриття опускається нижче зафіксованого рівня — «храповик» проти
+регресій. Глобальні пороги трохи нижчі за поточний рівень; для ключових
+модулів (`helpers/jwt.js`, `middlewares/errorHandler.js`, сервіси та
+контролер статистики) задано жорсткіші пофайлові пороги. Звичайний
+`npm test` / `pnpm test` (без `--coverage`) порогів не застосовує.
+
+**Точкове покриття одного модуля/каталогу.** Треба додати `--coverageThreshold='{}'`,
+інакше Jest поскаржиться, що не знайшов даних для решти файлів із порогів
+у конфізі (`Coverage data for ./… was not found`), і завершиться кодом 1:
+
+```bash
+# backend (з папки backend/) — один сервіс і його тест
+npm run test:coverage -- --collectCoverageFrom='services/workerStatisticsServices.js' \
+  --coverageThreshold='{}' tests/workerStatisticsServices.test.js
+
+# frontend (з папки frontend/) — лише тести сторінок
+npm run test:coverage -- --coverageThreshold='{}' src/test/pages
+```
+
+Повний `npm run test:coverage` (без аргументів) пороги застосовує й має
+завершуватися кодом 0.
+
+**Читання звіту.** Підсумковий рядок `All files` у таблиці показує відсоток
+покритих інструкцій (`% Stmts`), гілок (`% Branch`), функцій (`% Funcs`) і
+рядків (`% Lines`). Повний HTML-звіт — у `<пакет>/coverage/lcov-report/index.html`:
+
+```bash
+# Windows, Git Bash — прямі слеші
+start backend/coverage/lcov-report/index.html
+
+# Windows, PowerShell / cmd
+start backend\coverage\lcov-report\index.html
+
+# Linux
+xdg-open backend/coverage/lcov-report/index.html
+# macOS
+open backend/coverage/lcov-report/index.html
+```
+
+Якщо `start` у Git Bash не спрацював — відкрий файл вручну або через
+`explorer backend/coverage/lcov-report/index.html`.
+
+Каталог `coverage/` вже додано до `.gitignore` і в репозиторій не потрапляє.
+
+#### Навантажувальне тестування (k6)
+
+`infra/test/load_test.js` — сценарій [k6](https://k6.io/) для перевірки НФВ
+(p95 < 500 мс, помилок < 1 %) на публічному читанні (біржа змін, карта,
+довідники, картка зміни) та потоці ротації токена `POST /api/auth/refresh`.
+
+Запуск (потрібен встановлений k6 і піднята ціль): `pnpm test:load` — з кореня
+репозиторію. Профіль — `--env PROFILE=smoke|rps150|rps1000|rps5000` (за
+замовчуванням `rps150`), ціль — `--env TARGET_HOST=…` (за замовчуванням
+`http://localhost:5000`); скрипти `pnpm test:load:smoke` і `pnpm test:load:vps`
+— готові пресети. Підсумок (критерії pass/fail, p95/p99 по кожному ендпоінту)
+пишеться у `infra/test/results/summary.json`.
 
 ### Корисні команди
 

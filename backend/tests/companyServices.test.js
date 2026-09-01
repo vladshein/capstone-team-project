@@ -5,6 +5,7 @@ const findCompanies = jest.fn();
 const findCompany = jest.fn();
 const createCompanyRecord = jest.fn();
 const createLocationRecord = jest.fn();
+const findReview = jest.fn();
 
 const Company = {
   findByPk: findCompanyByPk,
@@ -17,6 +18,12 @@ const User = {};
 const Shift = {};
 const JobPosition = {};
 const Category = {};
+// getCompanyById додатково рахує середній рейтинг власника через Review.findOne;
+// у цих юніт-тестах агрегат нас не цікавить, тож віддаємо порожній результат.
+const Review = {
+  findOne: findReview,
+  sequelize: { fn: jest.fn(), col: jest.fn() },
+};
 
 jest.unstable_mockModule("../db/models/index.js", () => ({
   Company,
@@ -25,6 +32,7 @@ jest.unstable_mockModule("../db/models/index.js", () => ({
   Shift,
   JobPosition,
   Category,
+  Review,
 }));
 
 const {
@@ -68,8 +76,9 @@ describe("company services", () => {
   });
 
   test("gets a public company without exposing the owner phone number", async () => {
-    const company = { id: 15, name: "Кав'ярня" };
+    const company = { id: 15, name: "Кав'ярня", ownerId: 7, setDataValue: jest.fn() };
     findCompanyByPk.mockResolvedValue(company);
+    findReview.mockResolvedValue(null);
 
     await expect(getCompanyById(15)).resolves.toBe(company);
 
@@ -80,7 +89,8 @@ describe("company services", () => {
   });
 
   test("includes the owner phone only for an authenticated company lookup", async () => {
-    findCompanyByPk.mockResolvedValue({ id: 15 });
+    findCompanyByPk.mockResolvedValue({ id: 15, ownerId: 7, setDataValue: jest.fn() });
+    findReview.mockResolvedValue(null);
 
     await getCompanyById(15, { includePhone: true });
 

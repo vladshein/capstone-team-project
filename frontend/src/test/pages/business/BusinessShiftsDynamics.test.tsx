@@ -1,5 +1,5 @@
 import type { ComponentProps } from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { BusinessShiftsDynamics } from "../../../pages/business/BusinessShiftsDynamics";
 import type { BusinessShiftsStatistics } from "../../../redux/business-statistics/types";
@@ -90,5 +90,54 @@ describe("BusinessShiftsDynamics", () => {
     // MIN_SLOTS is 6, so 5 placeholder months should precede the single real one.
     expect(screen.getByText("Бер 26")).toBeInTheDocument();
     expect(screen.getByText("Сер 26")).toBeInTheDocument();
+  });
+
+  const hoverBar = (label: string) => {
+    const bar = screen.getByText(label).parentElement as HTMLElement;
+    fireEvent.mouseEnter(bar);
+    return bar;
+  };
+
+  it("formats the count-metric tooltip on hover", () => {
+    renderChart();
+
+    hoverBar("Сер 26");
+    expect(
+      screen.getByText("2026-08: 1 завершено, 1 no-show"),
+    ).toBeInTheDocument();
+  });
+
+  it("formats the hours-metric tooltip", async () => {
+    const user = userEvent.setup();
+    renderChart();
+
+    await user.click(screen.getByRole("button", { name: "Години" }));
+    hoverBar("Сер 26");
+
+    expect(screen.getByText("2026-08: 8.0 год")).toBeInTheDocument();
+  });
+
+  it("formats the spend-metric tooltip with the currency formatter", async () => {
+    const user = userEvent.setup();
+    renderChart();
+
+    await user.click(screen.getByRole("button", { name: "Гроші" }));
+    hoverBar("Сер 26");
+
+    expect(screen.getByText(/^2026-08: 1[\s  ]?600 ₴$/)).toBeInTheDocument();
+  });
+
+  it("shows a 'no data' tooltip for a placeholder slot", () => {
+    renderChart({
+      data: {
+        totals: monthlyData.totals,
+        series: [
+          { period: "2026-08", completedShifts: 1, noShows: 0, scheduledHours: 8, spend: 1600 },
+        ],
+      },
+    });
+
+    hoverBar("Бер 26");
+    expect(screen.getByText("Бер 26: немає даних")).toBeInTheDocument();
   });
 });
