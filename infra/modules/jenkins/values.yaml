@@ -61,7 +61,7 @@ controller:
                       url('https://github.com/vladshein/capstone-team-project.git')
                       credentials('github-token')
                     }
-                    branches('*/main')
+                    branches('*/cloud-infra')
                   }
                 }
                 steps {
@@ -73,13 +73,13 @@ controller:
                             scm {
                               git {
                                 remote {
-                                  url("https://github.com/vladshein/capstone-team-project.git'")
+                                  url("https://github.com/vladshein/capstone-team-project.git")
                                   credentials("github-token")
                                 }
-                                branches("*/main")
+                                branches("*/cloud-infra")
                               }
                             }
-                            scriptPath("main/Jenkinsfile")    
+                            scriptPath("Jenkinsfile")    
                           }
                         }
                       }

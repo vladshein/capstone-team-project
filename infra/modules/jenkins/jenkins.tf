@@ -58,13 +58,14 @@ resource "helm_release" "jenkins" {
     templatefile("${path.module}/values.yaml", {
       jenkins_admin_pass = var.jenkins_admin_pass
       GITHUB_TOKEN = var.github_token
+      GITHUB_USER  = var.github_user
     })
   ]
 
   set = [
     {
       name = "controller.serviceAccount.create"
-      value = "false" # we created SA, above, via kubernetes_service_account_v1
+      value = "false" 
     },
     {
       name = "controller.serviceAccount.name"

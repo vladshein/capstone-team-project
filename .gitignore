@@ -41,13 +41,12 @@ ai-report.md
 
 
 infra/.terraform/*
-
 infra/*.tfstate
-infra/*.tfstate.*
-infra/crash.log
-infra/crash.*.log
+terraform.tfstate*
 infra/*.tfvars
 infra/*.tfvars.json
+infra/crash.log
+infra/crash.*.log
 
 infra/.terraform.lock.hcl
 

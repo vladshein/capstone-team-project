@@ -1,13 +1,14 @@
 replicaCount: 1
 
 image:
-  repository: <your-aws-account-id>.dkr.ecr.us-east-1.amazonaws.com/capstone-team-project-frontend
+  repository: "211125349493.dkr.ecr.us-east-1.amazonaws.com/dev-frontend"
   tag: "latest"
   pullPolicy: Always
 
 service:
-  type: LoadBalancer # або NodePort / ClusterIP (якщо використовується Ingress)
-  port: 5173
+  type: LoadBalancer
+  port: 80
+  targetPort: 5173
 
 env:
-  VITE_API_URL: "http://backend:5000"
+  VITE_API_URL: "/api"

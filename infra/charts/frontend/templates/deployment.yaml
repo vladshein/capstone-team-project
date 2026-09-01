@@ -14,12 +14,20 @@ spec:
       labels:
         app: frontend
     spec:
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: frontend-nginx-conf
       containers:
         - name: frontend
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - containerPort: {{ .Values.service.port }}
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: default.conf
           env:
             {{- range $key, $value := .Values.env }}
             - name: {{ $key }}

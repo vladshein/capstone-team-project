@@ -1,7 +1,9 @@
+{{- range $app := list "backend" "frontend" "lifecycle-worker" "postgres" "valkey" }}
+---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: capstone-app-of-apps
+  name: {{ $app }}
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -9,8 +11,8 @@ spec:
   project: default
   source:
     repoURL: 'https://github.com/vladshein/capstone-team-project.git'
-    targetRevision: HEAD
-    path: charts/ # forder for charts with services
+    targetRevision: cloud-infra
+    path: infra/charts/{{ $app }}
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: default
@@ -20,3 +22,4 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+{{- end }}
