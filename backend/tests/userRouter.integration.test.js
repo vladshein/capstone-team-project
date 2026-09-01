@@ -12,8 +12,6 @@ const resolveProfileStrategy = jest.fn((req, _res, next) => {
 });
 const getCurrentUser = jest.fn((_req, res) => res.json({ id: 7, profileCompleted: true }));
 const getUserById = jest.fn((req, res) => res.json({ id: Number(req.params.userId) }));
-const getFollowingController = jest.fn((_req, res) => res.json({}));
-const getFollowersController = jest.fn((_req, res) => res.json({}));
 const updateAvatarController = jest.fn((_req, res) => res.sendStatus(204));
 
 jest.unstable_mockModule("../middlewares/authenticate.js", () => ({ default: authenticate }));
@@ -26,8 +24,6 @@ jest.unstable_mockModule("../middlewares/upload.js", () => ({
 jest.unstable_mockModule("../controllers/userControllers.js", () => ({
   getCurrentUser,
   getUserById,
-  getFollowingController,
-  getFollowersController,
 }));
 jest.unstable_mockModule("../controllers/authControllers.js", () => ({
   updateAvatarController,

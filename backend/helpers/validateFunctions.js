@@ -1,32 +1,8 @@
 import HttpError from "./HttpError.js";
 
 /**
- * Validate request body (req.body), for examle:
- * {
- *   "email": "example(dot)example.com"
- *   "pass": "123"
- * }
- *
- * @param {*} schema
- * @returns
- */
-export const validateBody = (schema) => {
-  const func = (req, _, next) => {
-    const { error } = schema.validate(req.body, {
-      abortEarly: false,
-    });
-    if (error) {
-      throw HttpError(400, error.message);
-    }
-    next();
-  };
-
-  return func;
-};
-
-/**
- * Validate query string (req.query), for example:
- *      .../recipes/my?page=1&limit=10
+ * Validate query string (req.query), e.g. `.../api/shifts?page=1&limit=10`.
+ * On success puts the sanitized value in `req.validatedQuery`.
  *
  * @param {*} schema
  * @returns
@@ -49,8 +25,8 @@ export const validateQuery = (schema) => (req, res, next) => {
 };
 
 /**
- * Validate request params (req.params), for example:
- *      .../api/recipes/ffasfdsfsf88sdf8s
+ * Validate request params (req.params), e.g. `.../api/reviews/:reviewId`.
+ * On success puts the sanitized value in `req.validatedParams`.
  *
  * @param {*} schema
  * @returns
