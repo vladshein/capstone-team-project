@@ -1,7 +1,5 @@
 import jwt from "jsonwebtoken";
 
-// helpers/jwt.js читає секрети з process.env під час імпорту — виставляємо їх
-// до динамічного import.
 process.env.JWT_SECRET = process.env.JWT_SECRET || "test_access_secret";
 process.env.JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "test_refresh_secret";
 process.env.JWT_EMAIL_VERIFICATION_SECRET =

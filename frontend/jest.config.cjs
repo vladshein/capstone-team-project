@@ -23,9 +23,6 @@ module.exports = {
     "src/pages/business/BusinessShiftsDynamics.tsx",
     "src/components/ui/StatCard.tsx",
     "!src/**/types.ts",
-    // worker-statistics/constants.ts не імпортується ніде (воркерські thunk'и
-    // задають типи екшенів рядковими літералами) — мертвий код у знаменнику.
-    "!src/redux/worker-statistics/constants.ts",
   ],
   coverageReporters: ["text", "text-summary", "lcov"],
   coverageThreshold: {

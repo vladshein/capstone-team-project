@@ -20,11 +20,6 @@ export default {
     "schemas/**/*.js",
     "routes/**/*.js",
     "queues/**/*.js",
-    // Мертвий код-заготовка з попереднього навчального проєкту (рецепти,
-    // підписки): відповідні роути закоментовані в app.js і не змонтовані.
-    "!**/recipes*.js",
-    "!**/followers*.js",
-    "!**/followRouter.js",
     // Точка входу фонового процесу: під час імпорту робить side-effects
     // (sequelize.authenticate(), new Worker(...), реєстрація SIGINT/SIGTERM),
     // тож юніт-тест без живого Valkey/БД неможливий без рефакторингу

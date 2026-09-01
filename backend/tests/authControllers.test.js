@@ -20,9 +20,6 @@ jest.unstable_mockModule("../services/authServices.js", () => ({
   ensureEmailIsNotVerified,
   getPasswordResetRequestUserId,
   resetUserPassword,
-  // Imported by the controller module, but follower functionality is outside
-  // the API coverage scope of this test suite.
-  getUserFollowers: jest.fn(),
 }));
 
 jest.unstable_mockModule("../queues/shiftLifecycleQueue.js", () => ({

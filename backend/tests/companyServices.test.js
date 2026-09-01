@@ -18,8 +18,6 @@ const User = {};
 const Shift = {};
 const JobPosition = {};
 const Category = {};
-// getCompanyById додатково рахує середній рейтинг власника через Review.findOne;
-// у цих юніт-тестах агрегат нас не цікавить, тож віддаємо порожній результат.
 const Review = {
   findOne: findReview,
   sequelize: { fn: jest.fn(), col: jest.fn() },

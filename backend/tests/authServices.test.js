@@ -59,7 +59,6 @@ const {
   loginUser,
   refreshUser,
   updateAvatar,
-  getUserFollowers,
   getEmailVerificationRecipient,
   getPasswordResetRecipient,
   getPasswordResetRequestUserId,
@@ -462,24 +461,5 @@ describe("auth services", () => {
       expect.stringMatching(/public[\\/]avatars[\\/]new-avatar\.png$/),
     );
     expect(user.update).toHaveBeenCalledWith({ avatar: "avatars/new-avatar.png" });
-  });
-
-  test("returns a user's followers and returns an empty array for an unknown user", async () => {
-    const followers = [{ id: 3, email: "follower@example.com" }];
-    findUserByPk.mockResolvedValueOnce({ followers }).mockResolvedValueOnce(null);
-
-    await expect(getUserFollowers(42)).resolves.toBe(followers);
-    await expect(getUserFollowers(999)).resolves.toEqual([]);
-
-    expect(findUserByPk).toHaveBeenNthCalledWith(1, 42, {
-      include: [
-        {
-          model: expect.anything(),
-          as: "followers",
-          attributes: ["id", "name", "email", "avatar"],
-          through: { attributes: [] },
-        },
-      ],
-    });
   });
 });
