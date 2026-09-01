@@ -331,16 +331,13 @@ open backend/coverage/lcov-report/index.html
 
 #### Навантажувальне тестування (k6)
 
-`infra/test/load_test.js` — сценарій [k6](https://k6.io/) для перевірки НФВ
-(p95 < 500 мс, помилок < 1 %) на публічному читанні (біржа змін, карта,
-довідники, картка зміни) та потоці ротації токена `POST /api/auth/refresh`.
+`infra/test/load_test.js` — сценарій [k6](https://k6.io/) для `GET /api/shifts`
+із порогами за нефункціональними вимогами (p95 < 500 мс, помилок < 1 %).
 
 Запуск (потрібен встановлений k6 і піднята ціль): `pnpm test:load` — з кореня
-репозиторію. Профіль — `--env PROFILE=smoke|rps150|rps1000|rps5000` (за
-замовчуванням `rps150`), ціль — `--env TARGET_HOST=…` (за замовчуванням
-`http://localhost:5000`); скрипти `pnpm test:load:smoke` і `pnpm test:load:vps`
-— готові пресети. Підсумок (критерії pass/fail, p95/p99 по кожному ендпоінту)
-пишеться у `infra/test/results/summary.json`.
+репозиторію, за замовчуванням проти `http://localhost:5000`. Готові пресети:
+`pnpm test:load:vps` (проти `https://zmina.pp.ua`), `pnpm test:load:aws`; ціль
+можна задати й напряму — `--env TARGET_HOST=…`.
 
 ### Корисні команди
 
