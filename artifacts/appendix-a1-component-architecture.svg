@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="820" viewBox="0 0 1200 820" role="img" aria-labelledby="title description">
+  <title id="title">Компонентна архітектура платформи Зміна</title>
+  <desc id="description">Користувач працює з React-клієнтом, який взаємодіє з Express API та PostgreSQL. API передає фонові задачі до BullMQ і Valkey, які обробляє lifecycle worker.</desc>
+  <defs>
+    <filter id="shadow" x="-15%" y="-15%" width="130%" height="140%">
+      <feDropShadow dx="0" dy="5" stdDeviation="7" flood-color="#182235" flood-opacity="0.10"/>
+    </filter>
+    <marker id="arrow-dark" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#536275"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#13B981"/>
+    </marker>
+    <style>
+      .title { font: 700 31px Arial, sans-serif; fill: #182235; }
+      .node-title { font: 700 23px Arial, sans-serif; fill: #182235; }
+      .node-text { font: 400 17px Arial, sans-serif; fill: #617087; }
+      .edge-label { font: 600 15px Arial, sans-serif; fill: #617087; }
+      .note { font: 400 16px Arial, sans-serif; fill: #617087; }
+      .node { fill: #FFFFFF; stroke: #CBD5E1; stroke-width: 2; }
+      .node-accent { fill: #ECFDF5; stroke: #13B981; stroke-width: 2; }
+      .node-queue { fill: #F8FAFC; stroke: #94A3B8; stroke-width: 2; }
+      .arrow { fill: none; stroke: #536275; stroke-width: 3; marker-end: url(#arrow-dark); }
+      .arrow-accent { fill: none; stroke: #13B981; stroke-width: 3; marker-end: url(#arrow-green); }
+    </style>
+  </defs>
+
+  <rect width="1200" height="820" fill="#FFFFFF"/>
+  <text x="600" y="64" text-anchor="middle" class="title">Компонентна архітектура платформи «Зміна»</text>
+
+  <g filter="url(#shadow)">
+    <rect class="node" x="355" y="105" width="350" height="74" rx="20"/>
+  </g>
+  <text x="530" y="151" text-anchor="middle" class="node-title">Користувач</text>
+
+  <g filter="url(#shadow)">
+    <rect class="node-accent" x="330" y="246" width="400" height="112" rx="22"/>
+  </g>
+  <text x="530" y="292" text-anchor="middle" class="node-title">React + TypeScript</text>
+  <text x="530" y="320" text-anchor="middle" class="node-text">клієнтська частина: інтерфейс, стан, карта</text>
+
+  <g filter="url(#shadow)">
+    <rect class="node" x="330" y="430" width="400" height="124" rx="22"/>
+  </g>
+  <text x="530" y="477" text-anchor="middle" class="node-title">Express + Node.js</text>
+  <text x="530" y="505" text-anchor="middle" class="node-text">REST API та бізнес-логіка</text>
+  <text x="530" y="530" text-anchor="middle" class="node-text">автентифікація, зміни, заявки, відгуки</text>
+
+  <g filter="url(#shadow)">
+    <rect class="node" x="330" y="650" width="400" height="112" rx="22"/>
+  </g>
+  <text x="530" y="696" text-anchor="middle" class="node-title">PostgreSQL</text>
+  <text x="530" y="724" text-anchor="middle" class="node-text">користувачі, зміни, заявки, відгуки</text>
+
+  <g filter="url(#shadow)">
+    <rect class="node-queue" x="825" y="430" width="300" height="124" rx="22"/>
+  </g>
+  <text x="975" y="477" text-anchor="middle" class="node-title">BullMQ + Valkey</text>
+  <text x="975" y="505" text-anchor="middle" class="node-text">черга фонових завдань</text>
+  <text x="975" y="530" text-anchor="middle" class="node-text">події та email-сповіщення</text>
+
+  <g filter="url(#shadow)">
+    <rect class="node-accent" x="825" y="650" width="300" height="112" rx="22"/>
+  </g>
+  <text x="975" y="696" text-anchor="middle" class="node-title">Lifecycle worker</text>
+  <text x="975" y="724" text-anchor="middle" class="node-text">статуси змін і надсилання листів</text>
+
+  <path class="arrow-accent" d="M530 179 L530 246"/>
+  <text x="555" y="218" class="edge-label">веббраузер</text>
+
+  <path class="arrow-accent" d="M530 358 L530 430"/>
+  <text x="555" y="400" class="edge-label">HTTPS / REST API</text>
+
+  <path class="arrow" d="M530 554 L530 650"/>
+  <text x="555" y="608" class="edge-label">Sequelize / SQL</text>
+
+  <path class="arrow" d="M730 492 L825 492"/>
+  <text x="778" y="472" text-anchor="middle" class="edge-label">створення задач</text>
+
+  <path class="arrow-accent" d="M975 554 L975 650"/>
+  <text x="997" y="608" class="edge-label">обробка задач</text>
+
+  <path class="arrow" d="M825 706 L730 706"/>
+  <text x="778" y="687" text-anchor="middle" class="edge-label">оновлення даних</text>
+
+  <text x="600" y="800" text-anchor="middle" class="note">Основний сценарій виконується через REST API, а фонові події обробляються worker-процесом через чергу завдань.</text>
+</svg>
