@@ -6,7 +6,6 @@ import {
   resetUserPassword,
   refreshUser,
   updateAvatar,
-  getUserFollowers,
   verifyUserEmail,
 } from "../services/authServices.js";
 import {
@@ -117,14 +116,4 @@ export const updateAvatarController = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-};
-
-export const getFollowersController = async (req, res) => {
-  const { id } = req.user;
-
-  const followers = await getUserFollowers(id);
-
-  res.status(200).json({
-    followers,
-  });
 };

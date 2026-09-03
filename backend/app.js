@@ -99,8 +99,6 @@ app.use("/api-docs", swaggerDocs());
 app.use("/api/reviews", reviewRouter);
 app.use("/api/disputes", disputeRouter);
 app.use("/api/admin", adminDisputeRouter);
-// app.use('/api/recipes'cipesRouter);
-// app.use('/api/following', followRouter);
 
 // Error handling
 app.use(notFoundHandler);

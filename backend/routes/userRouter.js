@@ -4,8 +4,6 @@ import authenticate from "../middlewares/authenticate.js";
 import resolveProfileStrategy from "../middlewares/resolveProfileStrategy.js";
 import {
   getCurrentUser,
-  getFollowingController,
-  getFollowersController,
   getUserById,
 } from "./../controllers/userControllers.js";
 import { updateAvatarController } from "../controllers/authControllers.js";
@@ -24,10 +22,6 @@ userRouter.patch(
   upload.single("avatar"),
   updateAvatarController,
 );
-// userRouter.get('/followers', authenticate, getFollowersController);
-// userRouter.get('/following', authenticate, getFollowingController);
 userRouter.get("/:userId", authenticate, getUserById);
-userRouter.get("/:userId/following", authenticate, getFollowingController);
-userRouter.get("/:userId/followers", authenticate, getFollowersController);
 
 export default userRouter;

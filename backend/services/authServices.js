@@ -278,22 +278,3 @@ export const updateAvatar = async (user, file) => {
 
   return { avatar };
 };
-
-export const getUserFollowers = async (userId) => {
-  const user = await User.findByPk(userId, {
-    include: [
-      {
-        model: User,
-        as: "followers",
-        attributes: ["id", "name", "email", "avatar"],
-        through: { attributes: [] },
-      },
-    ],
-  });
-
-  if (!user) {
-    return [];
-  }
-
-  return user.followers;
-};
