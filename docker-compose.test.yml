@@ -33,6 +33,7 @@ services:
       "
     environment:
       - NODE_ENV=test
+      - DATABASE_DIALECT=postgres
       - DATABASE_USERNAME=test_user
       - DATABASE_PASSWORD=test_password
       - DATABASE_NAME=test_db
