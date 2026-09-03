@@ -28,6 +28,8 @@ services:
     container_name: test-runner
     command: >
       sh -c "
+        echo 'Waiting for database to be ready...' &&
+        sleep 3 &&
         npm run db:m &&
         npm run test
       "
