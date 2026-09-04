@@ -18,6 +18,7 @@ import { shiftReducer } from "./shift/slice";
 import { workerStatisticsReducer } from "./worker-statistics/slice";
 import { businessStatisticsReducer } from "./business-statistics/slice";
 import type { AuthState } from "./auth/types";
+import walletReducer from './walletSlice';
 
 const authPersistConfig: PersistConfig<AuthState> = {
   key: "auth",
@@ -31,6 +32,7 @@ const rootReducer = combineReducers({
   companiesProfile: companiesProfileReducer,
   shift: shiftReducer,
   workerStatistics: workerStatisticsReducer,
+  wallet: walletReducer,
   businessStatistics: businessStatisticsReducer,
 });
 
