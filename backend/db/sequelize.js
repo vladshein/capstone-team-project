@@ -16,7 +16,7 @@ const connectionParams = isProduction
       },
     }
   : {
-      dialect: process.env.DATABASE_DIALECT_DEV,
+      dialect: process.env.DATABASE_DIALECT_DEV || "postgres",
       username: process.env.DATABASE_USERNAME_DEV,
       password: process.env.DATABASE_PASSWORD_DEV,
       host: process.env.DATABASE_HOST_DEV,

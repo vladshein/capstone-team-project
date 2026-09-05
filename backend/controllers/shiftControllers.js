@@ -294,7 +294,7 @@ export const completeBusinessShiftApplication = async (req, res, next) => {
 
     const holdTx = transactions && transactions[0];
     if (holdTx) {
-      const invoiceId = holdTx.external_id || holdTx.externalId;
+      const invoiceId = holdTx.external_id;
       const totalHeldAmount = Number(holdTx.amount);
 
       // Вираховуємо чисту суму виконавця (віднімаємо 15% комісії від суми холду)
@@ -309,24 +309,44 @@ export const completeBusinessShiftApplication = async (req, res, next) => {
         });
       }
 
-      // 3. Зараховуємо чисті кошти у гаманець виконавця
-      const [workerWallet] = await Wallet.findOrCreate({
-        where: { userId: workerId },
-        defaults: { userId: workerId, balance: 0, currency: "UAH" },
-      });
+      // 3–4. Однією DB-транзакцією зараховуємо кошти й фіксуємо виплату.
+      // Унікальний partial index є остаточним захистом від дубля при конкурентних запитах.
+      await sequelize.transaction(async (dbTransaction) => {
+        const existingPayout = await Transaction.findOne({
+          where: { shiftId, type: "release_payout" },
+          transaction: dbTransaction,
+          lock: dbTransaction.LOCK.UPDATE,
+        });
 
-      await workerWallet.increment("balance", { by: workerPayout });
+        if (existingPayout) return;
 
-      // 4. Фіксуємо транзакцію виплати для виконавця
-      await Transaction.create({
-        senderId: holdTx.senderId,
-        receiverId: workerId,
-        shiftId,
-        amount: workerPayout,
-        type: "release_payout",
-        status: "completed",
-        description: `Виплата за зміну #${shiftId} (комісія сервісу: ${platformFee / 100} грн)`,
-      });
+        const [wallet] = await Wallet.findOrCreate({
+          where: { userId: workerId },
+          defaults: { userId: workerId, balance: 0, frozenBalance: 0 },
+          transaction: dbTransaction,
+        });
+        const workerWallet = await Wallet.findByPk(wallet.id, {
+          transaction: dbTransaction,
+          lock: dbTransaction.LOCK.UPDATE,
+        });
+
+        await workerWallet.increment("balance", {
+          by: workerPayout,
+          transaction: dbTransaction,
+        });
+
+        await Transaction.create({
+          senderId: holdTx.senderId,
+          receiverId: workerId,
+          shiftId,
+          amount: workerPayout,
+          type: "release_payout",
+          status: "completed",
+          description: `Виплата за зміну #${shiftId} (комісія сервісу: ${platformFee} грн)`,
+        }, { transaction: dbTransaction });
+       }).catch((error) => {
+         if (error?.name !== "SequelizeUniqueConstraintError") throw error;
+       });
     }
 
     queueShiftNotification({
@@ -371,7 +391,7 @@ export const markBusinessShiftApplicationNoShow = async (req, res, next) => {
 
     const holdTx = transactions && transactions[0];
     if (holdTx) {
-      const invoiceId = holdTx.external_id || holdTx.externalId;
+      const invoiceId = holdTx.external_id;
 
       // 2. Скасовуємо холд у Monobank
       if (invoiceId) {

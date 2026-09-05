@@ -25,7 +25,11 @@ const Transaction = sequelize.define(
     externalId: {
       type: DataTypes.STRING,
       allowNull: true,
-      field: 'external_id', // якщо використовується snake_case
+      field: "external_id",
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
     },
   },
   {

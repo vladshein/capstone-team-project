@@ -1,5 +1,6 @@
+import { Op } from 'sequelize';
 import { monopayService } from '../services/monopayService.js';
-import { sequelize, Shift, ShiftApplication, Wallet, Transaction, User } from '../db/models/index.js';
+import { sequelize, Shift, ShiftApplication, Wallet, Transaction } from '../db/models/index.js';
 import HttpError from '../helpers/HttpError.js';
 
 export const createShiftInvoice = async (req, res, next) => {
@@ -32,7 +33,7 @@ export const createShiftInvoice = async (req, res, next) => {
         );
 
         const existingTx = existingTxs && existingTxs[0];
-        const invoiceId = existingTx?.external_id || existingTx?.externalId;
+        const invoiceId = existingTx?.external_id;
 
         if (existingTx && invoiceId) {
             try {
@@ -108,7 +109,7 @@ export const handleMonoWebhook = async (req, res, next) => {
         const [transactions] = await sequelize.query(
             `SELECT id, "shiftId", "receiverId" 
        FROM transactions 
-       WHERE external_id = :invoiceId OR "externalId" = :invoiceId 
+       WHERE external_id = :invoiceId
        LIMIT 1`,
             { replacements: { invoiceId } }
         );
@@ -215,7 +216,7 @@ export const verifyShiftInvoice = async (req, res, next) => {
             return res.status(200).json({ success: true, status: 'completed' });
         }
 
-        const invoiceId = tx.external_id || tx.externalId;
+        const invoiceId = tx.external_id;
         let monoStatus = null;
 
         if (invoiceId) {
@@ -291,27 +292,39 @@ export const getWalletOverview = async (req, res, next) => {
             defaults: {
                 userId,
                 balance: 0,
-                pendingBalance: 0,
+                frozenBalance: 0,
                 currency: 'UAH',
             },
         });
 
         const transactions = await Transaction.findAll({
             where: {
-                [User.sequelize.Op?.or || 'senderId']: userId,
+                [Op.or]: [
+                    { senderId: userId },
+                    { receiverId: userId },
+                ],
             },
-            order: [['createdAt', 'DESC']],
+            order: [['created_at', 'DESC']],
             limit: 15,
+        });
+
+        const walletTransactions = transactions.map((transaction) => {
+            const data = transaction.toJSON();
+
+            return {
+                ...data,
+                createdAt: data.created_at ?? data.createdAt,
+            };
         });
 
         res.status(200).json({
             wallet: {
                 id: wallet.id,
                 balance: Number(wallet.balance),
-                pendingBalance: Number(wallet.pendingBalance),
+                frozenBalance: Number(wallet.frozenBalance),
                 currency: wallet.currency || 'UAH',
             },
-            transactions,
+            transactions: walletTransactions,
         });
     } catch (error) {
         next(error);
@@ -324,7 +337,7 @@ export const verifyInvoiceStatus = async (req, res, next) => {
 
         const [transactions] = await sequelize.query(
             `SELECT * FROM transactions 
-       WHERE external_id = :invoiceId OR "externalId" = :invoiceId 
+       WHERE external_id = :invoiceId
        LIMIT 1`,
             { replacements: { invoiceId } }
         );
