@@ -17,10 +17,6 @@ services:
     container_name: stage-postgres
     restart: always
     env_file: .env
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - stage-pgdata:/var/lib/postgresql/data
     networks:
@@ -42,13 +38,6 @@ services:
     depends_on:
       stage-postgres:
         condition: service_healthy
-    environment:
-      - POSTGRES_HOST=stage-postgres
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - SCHEDULE=@daily
-      - BACKUP_KEEP_DAYS=7
     networks:
       - stagenet      
 
@@ -58,13 +47,6 @@ services:
     command: ["npm", "run", "db:m"]
     env_file:
       - .env
-    environment:
-      - NODE_ENV=production
-      - DATABASE_USERNAME=${POSTGRES_USER}
-      - DATABASE_PASSWORD=${POSTGRES_PASSWORD}
-      - DATABASE_NAME=${POSTGRES_DB}
-      - DATABASE_HOST=stage-postgres
-      - DATABASE_PORT=5432
     depends_on:
       stage-postgres:
         condition: service_healthy
@@ -77,14 +59,6 @@ services:
     restart: always
     env_file:
       - .env
-    environment:
-      - NODE_ENV=production
-      - DATABASE_USERNAME=${POSTGRES_USER}
-      - DATABASE_PASSWORD=${POSTGRES_PASSWORD}
-      - DATABASE_NAME=${POSTGRES_DB}
-      - DATABASE_HOST=stage-postgres
-      - DATABASE_PORT=5432
-      - TRUST_PROXY=true
     depends_on:
       stage-postgres:
         condition: service_healthy
@@ -110,13 +84,6 @@ services:
     command: ["node", "workers/shiftLifecycleWorker.js"]
     env_file:
       - .env
-    environment:
-      - NODE_ENV=production
-      - DATABASE_USERNAME=${POSTGRES_USER}
-      - DATABASE_PASSWORD=${POSTGRES_PASSWORD}
-      - DATABASE_NAME=${POSTGRES_DB}
-      - DATABASE_HOST=stage-postgres
-      - DATABASE_PORT=5432
     depends_on:
       stage-postgres:
         condition: service_healthy
@@ -131,8 +98,8 @@ services:
     image: ghcr.io/${GITHUB_REPOSITORY}-frontend:${IMAGE_TAG:-latest}
     container_name: stage-frontend
     restart: always
-    environment:
-      - VITE_API_URL=https://${FRONTEND_DOMAIN}/api
+    env_file:
+      - .env
     depends_on:
       - stage-backend
     networks:

@@ -161,3 +161,4 @@ jobs:
             docker compose pull
             docker compose up -d --remove-orphans
             docker image prune -f
+            docker compose -f docker-compose.stage.yml exec -ti backend npm run db:m
