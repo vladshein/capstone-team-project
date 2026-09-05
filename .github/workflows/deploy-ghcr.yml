@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - cloud-infra
-      
+
   workflow_dispatch:
 
 env:
@@ -126,7 +126,7 @@ jobs:
       - name: Build and push Frontend image
         uses: docker/build-push-action@v6
         with:
-          context: ./frontend
+          context: .
           file: ./frontend/Dockerfile.stage
           push: true
           tags: ${{ steps.meta-frontend.outputs.tags }}
@@ -137,7 +137,7 @@ jobs:
       - name: Build and push Backend image
         uses: docker/build-push-action@v6
         with:
-          context: ./backend
+          context: .
           file: ./backend/Dockerfile.stage
           push: true
           tags: ${{ steps.meta-backend.outputs.tags }}
