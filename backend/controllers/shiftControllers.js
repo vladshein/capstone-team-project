@@ -294,7 +294,7 @@ export const completeBusinessShiftApplication = async (req, res, next) => {
 
     const holdTx = transactions && transactions[0];
     if (holdTx) {
-      const invoiceId = holdTx.external_id || holdTx.externalId;
+      const invoiceId = holdTx.external_id;
       const totalHeldAmount = Number(holdTx.amount);
 
       // Вираховуємо чисту суму виконавця (віднімаємо 15% комісії від суми холду)
@@ -371,7 +371,7 @@ export const markBusinessShiftApplicationNoShow = async (req, res, next) => {
 
     const holdTx = transactions && transactions[0];
     if (holdTx) {
-      const invoiceId = holdTx.external_id || holdTx.externalId;
+      const invoiceId = holdTx.external_id;
 
       // 2. Скасовуємо холд у Monobank
       if (invoiceId) {
