@@ -53,7 +53,8 @@ const buildShiftSearchQuery = ({
     if (dateTo) whereCondition.startTime[Op.lt] = dateTo;
   }
 
-  const durationHours = 'EXTRACT(EPOCH FROM ("Shift"."endTime" - "Shift"."startTime")) / 3600';
+  const durationHours =
+    'EXTRACT(EPOCH FROM ("Shift"."endTime" - "Shift"."startTime")) / 3600';
   const andConditions = [];
   const durationConditions = [];
   if (durationFilters?.includes("До 4 год")) {
@@ -67,7 +68,8 @@ const buildShiftSearchQuery = ({
   if (durationFilters?.includes("Понад 8 год")) {
     durationConditions.push(where(literal(durationHours), { [Op.gt]: 8 }));
   }
-  if (durationConditions.length) andConditions.push({ [Op.or]: durationConditions });
+  if (durationConditions.length)
+    andConditions.push({ [Op.or]: durationConditions });
 
   if (search) {
     const searchPattern = `%${search}%`;
@@ -99,7 +101,8 @@ const buildShiftSearchQuery = ({
   }
 
   const earnings = `(${durationHours} * "Shift"."hourlyRate" + "Shift"."bonusRate")`;
-  const hasCoordinates = Number.isFinite(latitude) && Number.isFinite(longitude);
+  const hasCoordinates =
+    Number.isFinite(latitude) && Number.isFinite(longitude);
   const distance = hasCoordinates
     ? `6371 * acos(least(1, greatest(-1, cos(radians(${latitude})) * cos(radians("Location"."latitude")) * cos(radians("Location"."longitude") - radians(${longitude})) + sin(radians(${latitude})) * sin(radians("Location"."latitude")))))`
     : null;
@@ -111,9 +114,16 @@ const buildShiftSearchQuery = ({
 
   let order = [["startTime", "ASC"]];
   if (sort === "date_desc") order = [["startTime", "DESC"]];
-  if (sort === "price_desc") order = [[literal(earnings), "DESC"], ["startTime", "ASC"]];
+  if (sort === "price_desc")
+    order = [
+      [literal(earnings), "DESC"],
+      ["startTime", "ASC"],
+    ];
   if (sort === "nearest" && distance) {
-    order = [[literal(distance), "ASC"], ["startTime", "ASC"]];
+    order = [
+      [literal(distance), "ASC"],
+      ["startTime", "ASC"],
+    ];
   }
 
   return { whereCondition, locationInclude, order };
@@ -213,7 +223,10 @@ export const getAllShifts = async ({
         where: whereCondition,
         include: [...searchFacetInclude, partnerFacetLocation],
         group: ["Location.Company.id", "Location.Company.name"],
-        order: [[literal('COUNT("Shift"."id")'), "DESC"], [literal('"Location->Company"."name"'), "ASC"]],
+        order: [
+          [literal('COUNT("Shift"."id")'), "DESC"],
+          [literal('"Location->Company"."name"'), "ASC"],
+        ],
         raw: true,
       }),
     ]);
@@ -242,7 +255,8 @@ export const getAllShifts = async ({
 
 /** Повертає лише поля, потрібні для маркерів карти, без пагінації карток. */
 export const getShiftMapMarkers = async (filters) => {
-  const { whereCondition, locationInclude, order } = buildShiftSearchQuery(filters);
+  const { whereCondition, locationInclude, order } =
+    buildShiftSearchQuery(filters);
   const partnerFacetLocation = buildPartnerFacetLocation(filters.city);
   const searchFacetInclude = filters.search
     ? [{ model: JobPosition, attributes: [] }]
@@ -254,17 +268,17 @@ export const getShiftMapMarkers = async (filters) => {
       where: whereCondition,
       order,
       limit: MAP_MARKERS_LIMIT + 1,
-      include: [
-        { model: JobPosition, attributes: ["title"] },
-        locationInclude,
-      ],
+      include: [{ model: JobPosition, attributes: ["title"] }, locationInclude],
     }),
     Shift.findAll({
       attributes: [[fn("COUNT", col("Shift.id")), "count"]],
       where: whereCondition,
       include: [...searchFacetInclude, partnerFacetLocation],
       group: ["Location.Company.id", "Location.Company.name"],
-      order: [[literal('COUNT("Shift"."id")'), "DESC"], [literal('"Location->Company"."name"'), "ASC"]],
+      order: [
+        [literal('COUNT("Shift"."id")'), "DESC"],
+        [literal('"Location->Company"."name"'), "ASC"],
+      ],
       raw: true,
     }),
   ]);
@@ -331,7 +345,13 @@ export const createShifts = async (shiftsData) => {
 };
 
 /** Повертає зміни однієї компанії лише її власнику. */
-export const getBusinessShifts = async ({ companyId, ownerId, scope, page = 1, limit = 8 }) => {
+export const getBusinessShifts = async ({
+  companyId,
+  ownerId,
+  scope,
+  page = 1,
+  limit = 8,
+}) => {
   const company = await Company.findOne({ where: { id: companyId, ownerId } });
 
   if (!company) {
@@ -344,48 +364,47 @@ export const getBusinessShifts = async ({ companyId, ownerId, scope, page = 1, l
   const shiftWhere =
     scope === "archive"
       ? {
-        [Op.or]: [
-          { status: { [Op.in]: ["completed", "cancelled"] } },
-          // В архів потрапляють за часом тільки відкриті (open) зміни, на які ніхто не відгукнувся
-          { status: "open", endTime: { [Op.lt]: now } },
-        ],
-      }
+          [Op.or]: [
+            { status: { [Op.in]: ["completed", "cancelled"] } },
+            // В архів потрапляють за часом тільки відкриті (open) зміни, на які ніхто не відгукнувся
+            { status: "open", endTime: { [Op.lt]: now } },
+          ],
+        }
       : {
-        [Op.or]: [
-          // 1. Відкриті зміни, які ще актуальні по часу
-          { status: "open", endTime: { [Op.gte]: now } },
-          // 2. Заброньовані та в процесі — завжди висять в активних, доки бізнес не прийме рішення
-          { status: { [Op.in]: ["booked", "in_progress"] } },
-        ],
-      };
+          status: { [Op.in]: ["open", "booked", "in_progress"] },
+          endTime: { [Op.gte]: now },
+        };
 
-  const archiveIncludes = scope === "archive"
-    ? [
-      {
-        model: ShiftApplication,
-        attributes: ["id", "workerId", "status"],
-        where: { status: { [Op.in]: ["completed", "no_show"] } },
-        required: false,
-        include: [
+  const archiveIncludes =
+    scope === "archive"
+      ? [
           {
-            model: User,
-            attributes: ["id"],
-            include: [{
-              model: WorkerProfile,
-              attributes: ["firstName", "lastName"],
-            }],
+            model: ShiftApplication,
+            attributes: ["id", "workerId", "status"],
+            where: { status: { [Op.in]: ["completed", "no_show"] } },
+            required: false,
+            include: [
+              {
+                model: User,
+                attributes: ["id"],
+                include: [
+                  {
+                    model: WorkerProfile,
+                    attributes: ["firstName", "lastName"],
+                  },
+                ],
+              },
+            ],
           },
-        ],
-      },
-      {
-        // В архіві бізнес бачить лише власний відгук, щоб його редагувати.
-        model: Review,
-        attributes: ["id", "rating", "comment"],
-        where: { reviewerId: ownerId },
-        required: false,
-      },
-    ]
-    : [];
+          {
+            // В архіві бізнес бачить лише власний відгук, щоб його редагувати.
+            model: Review,
+            attributes: ["id", "rating", "comment"],
+            where: { reviewerId: ownerId },
+            required: false,
+          },
+        ]
+      : [];
 
   const { count, rows } = await Shift.findAndCountAll({
     where: shiftWhere,
@@ -420,7 +439,12 @@ export const getBusinessShifts = async ({ companyId, ownerId, scope, page = 1, l
  * Повертає зміни компанії з активними заявками. Пагінація застосовується до
  * змін, а не до заявок: усі кандидати на одну зміну завжди приходять разом.
  */
-export const getBusinessShiftApplications = async ({ companyId, ownerId, page = 1, limit = 8 }) => {
+export const getBusinessShiftApplications = async ({
+  companyId,
+  ownerId,
+  page = 1,
+  limit = 8,
+}) => {
   const company = await Company.findOne({ where: { id: companyId, ownerId } });
 
   if (!company) {
@@ -480,17 +504,31 @@ export const getBusinessShiftWorkerSummary = async ({ shiftId, ownerId }) => {
         model: Shift,
         required: true,
         attributes: ["id"],
-        include: [{
-          model: Location,
-          required: true,
-          attributes: ["id"],
-          include: [{ model: Company, attributes: ["id"], where: { ownerId }, required: true }],
-        }],
+        include: [
+          {
+            model: Location,
+            required: true,
+            attributes: ["id"],
+            include: [
+              {
+                model: Company,
+                attributes: ["id"],
+                where: { ownerId },
+                required: true,
+              },
+            ],
+          },
+        ],
       },
       {
         model: User,
         attributes: ["id", "avatar"],
-        include: [{ model: WorkerProfile, attributes: ["firstName", "lastName", "rating", "avatarUrl"] }],
+        include: [
+          {
+            model: WorkerProfile,
+            attributes: ["firstName", "lastName", "rating", "avatarUrl"],
+          },
+        ],
       },
     ],
   });
@@ -505,7 +543,10 @@ export const getBusinessShiftWorkerSummary = async ({ shiftId, ownerId }) => {
 };
 
 /** Повертає тільки кількість нових заявок, без важких даних виконавців і змін. */
-export const getPendingBusinessShiftApplicationsCount = async ({ companyId, ownerId }) => {
+export const getPendingBusinessShiftApplicationsCount = async ({
+  companyId,
+  ownerId,
+}) => {
   const company = await Company.findOne({ where: { id: companyId, ownerId } });
 
   if (!company) {
@@ -533,18 +574,24 @@ export const getPendingBusinessShiftApplicationsCount = async ({ companyId, owne
 };
 
 /** Приймає або відхиляє заявку на зміну від імені власника компанії. */
-export const decideBusinessShiftApplication = async ({ applicationId, ownerId, decision }) => {
+export const decideBusinessShiftApplication = async ({
+  applicationId,
+  ownerId,
+  decision,
+}) => {
   return Shift.sequelize.transaction(async (transaction) => {
     const application = await ShiftApplication.findByPk(applicationId, {
       include: [
         {
           model: Shift,
           required: true,
-          include: [{
-            model: Location,
-            required: true,
-            include: [{ model: Company, required: true }],
-          }],
+          include: [
+            {
+              model: Location,
+              required: true,
+              include: [{ model: Company, required: true }],
+            },
+          ],
         },
       ],
       transaction,
@@ -558,7 +605,10 @@ export const decideBusinessShiftApplication = async ({ applicationId, ownerId, d
     if (application.status !== "pending") {
       return { application: null, reason: "status" };
     }
-    if (application.Shift.status !== "open" || new Date(application.Shift.startTime) <= new Date()) {
+    if (
+      application.Shift.status !== "open" ||
+      new Date(application.Shift.startTime) <= new Date()
+    ) {
       return { application: null, reason: "unavailable" };
     }
 
@@ -591,7 +641,11 @@ export const decideBusinessShiftApplication = async ({ applicationId, ownerId, d
       await ShiftApplication.update(
         { status: "rejected" },
         {
-          where: { shiftId: application.shiftId, status: "pending", id: { [Op.ne]: application.id } },
+          where: {
+            shiftId: application.shiftId,
+            status: "pending",
+            id: { [Op.ne]: application.id },
+          },
           transaction,
         },
       );
@@ -604,18 +658,23 @@ export const decideBusinessShiftApplication = async ({ applicationId, ownerId, d
 };
 
 /** Підтверджує виконання зміни її власником після завершення робочого часу. */
-export const completeBusinessShiftApplication = async ({ applicationId, ownerId }) => {
+export const completeBusinessShiftApplication = async ({
+  applicationId,
+  ownerId,
+}) => {
   return Shift.sequelize.transaction(async (transaction) => {
     const application = await ShiftApplication.findByPk(applicationId, {
       include: [
         {
           model: Shift,
           required: true,
-          include: [{
-            model: Location,
-            required: true,
-            include: [{ model: Company, required: true }],
-          }],
+          include: [
+            {
+              model: Location,
+              required: true,
+              include: [{ model: Company, required: true }],
+            },
+          ],
         },
       ],
       transaction,
@@ -626,7 +685,10 @@ export const completeBusinessShiftApplication = async ({ applicationId, ownerId 
     if (application.Shift.Location.Company.ownerId !== ownerId) {
       return { application: null, reason: "forbidden" };
     }
-    if (application.status !== "approved" || application.Shift.status !== "booked") {
+    if (
+      application.status !== "approved" ||
+      application.Shift.status !== "booked"
+    ) {
       return { application: null, reason: "status" };
     }
     if (new Date(application.Shift.endTime) > new Date()) {
@@ -640,18 +702,25 @@ export const completeBusinessShiftApplication = async ({ applicationId, ownerId 
 };
 
 /** Позначає підтвердженого виконавця як такого, що не з'явився на зміну. */
-export const markBusinessShiftApplicationNoShow = async ({ applicationId, ownerId }) => {
+export const markBusinessShiftApplicationNoShow = async ({
+  applicationId,
+  ownerId,
+}) => {
   return Shift.sequelize.transaction(async (transaction) => {
     const application = await ShiftApplication.findByPk(applicationId, {
-      include: [{
-        model: Shift,
-        required: true,
-        include: [{
-          model: Location,
+      include: [
+        {
+          model: Shift,
           required: true,
-          include: [{ model: Company, required: true }],
-        }],
-      }],
+          include: [
+            {
+              model: Location,
+              required: true,
+              include: [{ model: Company, required: true }],
+            },
+          ],
+        },
+      ],
       transaction,
       lock: transaction.LOCK.UPDATE,
     });
@@ -660,7 +729,10 @@ export const markBusinessShiftApplicationNoShow = async ({ applicationId, ownerI
     if (application.Shift.Location.Company.ownerId !== ownerId) {
       return { application: null, reason: "forbidden" };
     }
-    if (application.status !== "approved" || application.Shift.status !== "booked") {
+    if (
+      application.status !== "approved" ||
+      application.Shift.status !== "booked"
+    ) {
       return { application: null, reason: "status" };
     }
     if (new Date(application.Shift.endTime) > new Date()) {
@@ -706,7 +778,8 @@ export const cancelShift = async (shiftId) => {
       transaction,
       lock: transaction.LOCK.UPDATE,
     });
-    if (!shift) return { shift: null, affectedWorkerIds: [], reason: "not_found" };
+    if (!shift)
+      return { shift: null, affectedWorkerIds: [], reason: "not_found" };
     if (["cancelled", "completed"].includes(shift.status)) {
       return { shift: null, affectedWorkerIds: [], reason: "final" };
     }
@@ -753,15 +826,19 @@ export const createShiftApplication = async (shiftId, workerId) => {
 export const cancelWorkerShiftApplication = async (applicationId, workerId) => {
   const application = await ShiftApplication.findOne({
     where: { id: applicationId, workerId },
-    include: [{
-      model: Shift,
-      attributes: ["id", "startTime"],
-      include: [{
-        model: Location,
-        attributes: ["id"],
-        include: [{ model: Company, attributes: ["ownerId"] }],
-      }],
-    }],
+    include: [
+      {
+        model: Shift,
+        attributes: ["id", "startTime"],
+        include: [
+          {
+            model: Location,
+            attributes: ["id"],
+            include: [{ model: Company, attributes: ["ownerId"] }],
+          },
+        ],
+      },
+    ],
   });
 
   if (!application) return { application: null, reason: "not_found" };
@@ -797,25 +874,17 @@ export const getWorkerShiftHistory = async (
     whereCondition[Op.or] = [
       { status: { [Op.in]: ["rejected", "no_show"] } },
       {
-        status: "pending",
+        status: { [Op.in]: ["pending", "approved"] },
         shiftId: {
-          [Op.in]: literal(`(SELECT "id" FROM "shifts" WHERE "endTime" < '${now.toISOString()}')`),
+          [Op.in]: literal(
+            `(SELECT "id" FROM "shifts" WHERE "endTime" < '${now.toISOString()}')`,
+          ),
         },
       },
     ];
   } else {
-    // В активних тримаємо:
-    // 1. approved — завжди, поки бізнес не підтвердить завершення чи не поставить неявку
-    // 2. pending — лише якщо зміна ще не закінчилася
-    whereCondition[Op.or] = [
-      { status: "approved" },
-      {
-        status: "pending",
-        shiftId: {
-          [Op.in]: literal(`(SELECT "id" FROM "shifts" WHERE "endTime" >= '${now.toISOString()}')`),
-        },
-      },
-    ];
+    // В активних тримаємо підтверджені заявки та pending-заявки на майбутні зміни.
+    whereCondition.status = { [Op.in]: ["pending", "approved"] };
   }
 
   // Якщо передано статус заявки явно
@@ -834,8 +903,20 @@ export const getWorkerShiftHistory = async (
     include: [
       {
         model: Shift,
-        attributes: ["id", "startTime", "endTime", "hourlyRate", "bonusRate", "description", "status"],
+        attributes: [
+          "id",
+          "startTime",
+          "endTime",
+          "hourlyRate",
+          "bonusRate",
+          "description",
+          "status",
+        ],
         required: true,
+        where:
+          !isCompleted && !isArchive
+            ? { endTime: { [Op.gte]: now } }
+            : undefined,
         include: [
           { model: JobPosition, attributes: ["id", "title"] },
           {
@@ -846,12 +927,12 @@ export const getWorkerShiftHistory = async (
         ],
       },
     ],
-    order: [
-      [Shift, "startTime", isCompleted || isArchive ? "DESC" : "ASC"],
-    ],
+    order: [[Shift, "startTime", isCompleted || isArchive ? "DESC" : "ASC"]],
   });
 
-  const shiftIds = rows.map((application) => application.Shift?.id).filter(Boolean);
+  const shiftIds = rows
+    .map((application) => application.Shift?.id)
+    .filter(Boolean);
   if (shiftIds.length > 0) {
     const reviews = await Review.findAll({
       attributes: ["id", "shiftId", "rating", "comment"],
@@ -861,11 +942,18 @@ export const getWorkerShiftHistory = async (
     const reviewIdsByShift = new Map();
     reviews.forEach((review) => {
       const ids = reviewIdsByShift.get(review.shiftId) ?? [];
-      ids.push({ id: review.id, rating: review.rating, comment: review.comment });
+      ids.push({
+        id: review.id,
+        rating: review.rating,
+        comment: review.comment,
+      });
       reviewIdsByShift.set(review.shiftId, ids);
     });
     rows.forEach((application) => {
-      application.Shift?.setDataValue("Reviews", reviewIdsByShift.get(application.Shift.id) ?? []);
+      application.Shift?.setDataValue(
+        "Reviews",
+        reviewIdsByShift.get(application.Shift.id) ?? [],
+      );
     });
   }
 

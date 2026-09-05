@@ -20,6 +20,7 @@ const updateShift = jest.fn();
 const cancelShift = jest.fn();
 const getWorkerShiftHistory = jest.fn();
 const enqueueShiftNotification = jest.fn();
+const sequelize = { query: jest.fn() };
 
 jest.unstable_mockModule("../services/shiftServices.js", () => ({
   getAllShifts,
@@ -45,6 +46,11 @@ jest.unstable_mockModule("../services/shiftServices.js", () => ({
 jest.unstable_mockModule("../queues/shiftLifecycleQueue.js", () => ({
   enqueueShiftNotification,
 }));
+jest.unstable_mockModule("../db/models/index.js", () => ({
+  sequelize,
+  Wallet: {},
+  Transaction: {},
+}));
 
 const shiftController = await import("../controllers/shiftControllers.js");
 
@@ -56,7 +62,10 @@ const createResponse = () => {
   return response;
 };
 
-const ownerShift = ({ status = "open", startTime = "2035-01-01T10:00:00.000Z" } = {}) => ({
+const ownerShift = ({
+  status = "open",
+  startTime = "2035-01-01T10:00:00.000Z",
+} = {}) => ({
   id: 15,
   status,
   startTime,
@@ -67,6 +76,7 @@ describe("shift controllers: HTTP contracts", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     enqueueShiftNotification.mockResolvedValue(undefined);
+    sequelize.query.mockResolvedValue([[]]);
   });
 
   test("normalizes list filters, page and limit before loading shifts", async () => {
@@ -121,7 +131,11 @@ describe("shift controllers: HTTP contracts", () => {
   test("requires a city or a complete radius search before requesting map markers", async () => {
     const response = createResponse();
 
-    await shiftController.getShiftMapMarkers({ query: { latitude: "50.45" } }, response, jest.fn());
+    await shiftController.getShiftMapMarkers(
+      { query: { latitude: "50.45" } },
+      response,
+      jest.fn(),
+    );
 
     expect(getShiftMapMarkers).not.toHaveBeenCalled();
     expect(response.status).toHaveBeenCalledWith(400);
@@ -131,7 +145,11 @@ describe("shift controllers: HTTP contracts", () => {
   });
 
   test("passes normalized radius filters to the map service", async () => {
-    const result = { data: [{ id: 15 }], isTruncated: false, partnerOptions: [] };
+    const result = {
+      data: [{ id: 15 }],
+      isTruncated: false,
+      partnerOptions: [],
+    };
     getShiftMapMarkers.mockResolvedValue(result);
     const response = createResponse();
 
@@ -223,12 +241,23 @@ describe("shift controllers: HTTP contracts", () => {
     );
 
     expect(createShifts).toHaveBeenCalledWith([
-      expect.objectContaining({ startTime: new Date("2035-01-01T10:00:00.000Z"), endTime: new Date("2035-01-01T18:00:00.000Z") }),
-      expect.objectContaining({ startTime: new Date("2035-01-02T10:00:00.000Z"), endTime: new Date("2035-01-02T18:00:00.000Z") }),
-      expect.objectContaining({ startTime: new Date("2035-01-03T10:00:00.000Z"), endTime: new Date("2035-01-03T18:00:00.000Z") }),
+      expect.objectContaining({
+        startTime: new Date("2035-01-01T10:00:00.000Z"),
+        endTime: new Date("2035-01-01T18:00:00.000Z"),
+      }),
+      expect.objectContaining({
+        startTime: new Date("2035-01-02T10:00:00.000Z"),
+        endTime: new Date("2035-01-02T18:00:00.000Z"),
+      }),
+      expect.objectContaining({
+        startTime: new Date("2035-01-03T10:00:00.000Z"),
+        endTime: new Date("2035-01-03T18:00:00.000Z"),
+      }),
     ]);
     expect(createShift).not.toHaveBeenCalled();
-    expect(response.json).toHaveBeenCalledWith(expect.objectContaining({ createdCount: 3 }));
+    expect(response.json).toHaveBeenCalledWith(
+      expect.objectContaining({ createdCount: 3 }),
+    );
   });
 
   test("rejects a shift creation attempt for an unowned location", async () => {
@@ -271,7 +300,11 @@ describe("shift controllers: HTTP contracts", () => {
     const response = createResponse();
 
     await shiftController.decideBusinessShiftApplication(
-      { params: { applicationId: "91" }, body: { status: "approved" }, user: { id: 7 } },
+      {
+        params: { applicationId: "91" },
+        body: { status: "approved" },
+        user: { id: 7 },
+      },
       response,
       jest.fn(),
     );
@@ -300,11 +333,18 @@ describe("shift controllers: HTTP contracts", () => {
   });
 
   test("returns an unavailable response when a decision arrives too late", async () => {
-    decideBusinessShiftApplication.mockResolvedValue({ application: null, reason: "unavailable" });
+    decideBusinessShiftApplication.mockResolvedValue({
+      application: null,
+      reason: "unavailable",
+    });
     const response = createResponse();
 
     await shiftController.decideBusinessShiftApplication(
-      { params: { applicationId: "91" }, body: { status: "approved" }, user: { id: 7 } },
+      {
+        params: { applicationId: "91" },
+        body: { status: "approved" },
+        user: { id: 7 },
+      },
       response,
       jest.fn(),
     );
@@ -396,7 +436,10 @@ describe("shift controllers: HTTP contracts", () => {
   });
 
   test("maps worker cancellation reasons to a client error", async () => {
-    cancelWorkerShiftApplication.mockResolvedValue({ application: null, reason: "started" });
+    cancelWorkerShiftApplication.mockResolvedValue({
+      application: null,
+      reason: "started",
+    });
     const next = jest.fn();
 
     await shiftController.cancelWorkerApplication(
@@ -533,14 +576,17 @@ describe("shift controllers: HTTP contracts", () => {
     expect(updateShift).not.toHaveBeenCalled();
     expect(next).toHaveBeenCalledWith(
       expect.objectContaining({
-        message: "Не можна редагувати зміну, яка вже заброньована робітником або завершена.",
+        message:
+          "Не можна редагувати зміну, яка вже заброньована робітником або завершена.",
         status: 400,
       }),
     );
   });
 
   test("does not update a shift after its original start time", async () => {
-    getShiftById.mockResolvedValue(ownerShift({ startTime: "2020-01-01T10:00:00.000Z" }));
+    getShiftById.mockResolvedValue(
+      ownerShift({ startTime: "2020-01-01T10:00:00.000Z" }),
+    );
     const next = jest.fn();
 
     await shiftController.updateShift(
@@ -610,14 +656,17 @@ describe("shift controllers: HTTP contracts", () => {
     expect(cancelShift).not.toHaveBeenCalled();
     expect(next).toHaveBeenCalledWith(
       expect.objectContaining({
-        message: "Цю зміну не можна скасувати, вона вже завершена або скасована раніше.",
+        message:
+          "Цю зміну не можна скасувати, вона вже завершена або скасована раніше.",
         status: 400,
       }),
     );
   });
 
   test("does not cancel a shift after its start time", async () => {
-    getShiftById.mockResolvedValue(ownerShift({ startTime: "2020-01-01T10:00:00.000Z" }));
+    getShiftById.mockResolvedValue(
+      ownerShift({ startTime: "2020-01-01T10:00:00.000Z" }),
+    );
     const next = jest.fn();
 
     await shiftController.cancelShift(
@@ -636,7 +685,10 @@ describe("shift controllers: HTTP contracts", () => {
   });
 
   test("maps missing worker applications to a not-found response", async () => {
-    cancelWorkerShiftApplication.mockResolvedValue({ application: null, reason: "not_found" });
+    cancelWorkerShiftApplication.mockResolvedValue({
+      application: null,
+      reason: "not_found",
+    });
     const next = jest.fn();
 
     await shiftController.cancelWorkerApplication(
@@ -651,7 +703,10 @@ describe("shift controllers: HTTP contracts", () => {
   });
 
   test("maps applications with a final status to a cancellation error", async () => {
-    cancelWorkerShiftApplication.mockResolvedValue({ application: null, reason: "status" });
+    cancelWorkerShiftApplication.mockResolvedValue({
+      application: null,
+      reason: "status",
+    });
     const next = jest.fn();
 
     await shiftController.cancelWorkerApplication(
@@ -686,7 +741,9 @@ describe("shift controllers: HTTP contracts", () => {
     );
 
     expect(response.status).toHaveBeenCalledWith(200);
-    expect(response.json).toHaveBeenCalledWith({ message: "Заявку скасовано." });
+    expect(response.json).toHaveBeenCalledWith({
+      message: "Заявку скасовано.",
+    });
     expect(enqueueShiftNotification).toHaveBeenCalledWith({
       event: "application_withdrawn",
       recipientUserId: 1241,
@@ -695,7 +752,12 @@ describe("shift controllers: HTTP contracts", () => {
   });
 
   test("normalizes worker history query parameters and returns the service result", async () => {
-    const result = { totalItems: 1, totalPages: 1, currentPage: 2, data: [{ id: 91 }] };
+    const result = {
+      totalItems: 1,
+      totalPages: 1,
+      currentPage: 2,
+      data: [{ id: 91 }],
+    };
     getWorkerShiftHistory.mockResolvedValue(result);
     const response = createResponse();
 
@@ -751,7 +813,10 @@ describe("shift controllers: HTTP contracts", () => {
     const response = createResponse();
 
     await shiftController.getBusinessShiftApplications(
-      { query: { companyId: "12", summary: "true", page: "-4", limit: "99" }, user: { id: 7 } },
+      {
+        query: { companyId: "12", summary: "true", page: "-4", limit: "99" },
+        user: { id: 7 },
+      },
       response,
       jest.fn(),
     );

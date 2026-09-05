@@ -1,8 +1,7 @@
 services:
-  
   # PostgreSQL (GIS)
   postgres:
-    image: postgis/postgis:16-3.4
+    image: postgis/postgis:17-3.5-alpine
     container_name: postgres
     restart: always
     ports:
@@ -10,7 +9,7 @@ services:
     environment:
       - POSTGRES_USER=${DB_ROOT_USER}
       - POSTGRES_PASSWORD=${DB_ROOT_PASSWORD}
-      - POSTGRES_DB=${DB_ROOT_NAME}  
+      - POSTGRES_DB=${DB_ROOT_NAME}
     volumes:
       - pgdata:/var/lib/postgresql/data
     networks:
@@ -48,12 +47,13 @@ services:
     ports:
       - "5000:5000"
     env_file:
-      - ./backend/.env  
+      - ./backend/.env
     environment:
       - REDIS_HOST=${REDIS_HOST}
       - REDIS_PORT=${REDIS_PORT}
       - JWT_SECRET=${JWT_SECRET}
       - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - MONOBANK_API_TOKEN=${MONOBANK_API_TOKEN}
     volumes:
       - ./backend:/app
       - /app/node_modules
@@ -64,7 +64,10 @@ services:
         condition: service_healthy
     healthcheck:
       test:
-        ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:5000/ready').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))\""]
+        [
+          "CMD-SHELL",
+          'node -e "fetch(''http://127.0.0.1:5000/ready'').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"',
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -84,6 +87,7 @@ services:
     environment:
       - REDIS_HOST=${REDIS_HOST}
       - REDIS_PORT=${REDIS_PORT}
+      - MONOBANK_API_TOKEN=${MONOBANK_API_TOKEN}
     volumes:
       - ./backend:/app
       - /app/node_modules
@@ -108,7 +112,7 @@ services:
     ports:
       - "5173:5173"
     env_file:
-      - ./frontend/.env  
+      - ./frontend/.env
     environment:
       - CHOKIDAR_USEPOLLING=true
     volumes:

@@ -4,7 +4,7 @@ export interface WalletData {
   wallet: {
     id: number;
     balance: number;
-    pendingBalance: number;
+    frozenBalance: number;
     currency: string;
   };
   transactions: Array<{
