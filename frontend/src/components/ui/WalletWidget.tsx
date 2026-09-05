@@ -4,7 +4,7 @@ import { fetchWallet } from '../../redux/walletSlice';
 
 export const WalletWidget: React.FC = () => {
   const dispatch = useDispatch<any>();
-  const { balance, pendingBalance, currency, transactions, isLoading } = useSelector(
+  const { balance, frozenBalance, currency, transactions, isLoading } = useSelector(
     (state: any) => state.wallet
   );
 
@@ -28,7 +28,7 @@ export const WalletWidget: React.FC = () => {
         <div className="bg-surface-secondary px-4 py-2 rounded-xl border border-border">
           <span className="text-xs text-text-secondary block">Заблоковано (у ході змін)</span>
           <span className="text-lg font-semibold text-accent">
-            {pendingBalance.toLocaleString('uk-UA')} {currency}
+            {frozenBalance.toLocaleString('uk-UA')} {currency}
           </span>
         </div>
       </div>

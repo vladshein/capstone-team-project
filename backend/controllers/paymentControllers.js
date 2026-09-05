@@ -321,7 +321,7 @@ export const getWalletOverview = async (req, res, next) => {
             wallet: {
                 id: wallet.id,
                 balance: Number(wallet.balance),
-                pendingBalance: Number(wallet.frozenBalance),
+                frozenBalance: Number(wallet.frozenBalance),
                 currency: wallet.currency || 'UAH',
             },
             transactions: walletTransactions,

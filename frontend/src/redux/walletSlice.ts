@@ -3,7 +3,7 @@ import { paymentsApi, WalletData } from '../api/payments';
 
 interface WalletState {
   balance: number;
-  pendingBalance: number;
+  frozenBalance: number;
   currency: string;
   transactions: WalletData['transactions'];
   isLoading: boolean;
@@ -12,7 +12,7 @@ interface WalletState {
 
 const initialState: WalletState = {
   balance: 0,
-  pendingBalance: 0,
+  frozenBalance: 0,
   currency: 'UAH',
   transactions: [],
   isLoading: false,
@@ -44,7 +44,7 @@ const walletSlice = createSlice({
       .addCase(fetchWallet.fulfilled, (state, action: PayloadAction<WalletData>) => {
         state.isLoading = false;
         state.balance = action.payload.wallet.balance;
-        state.pendingBalance = action.payload.wallet.pendingBalance;
+        state.frozenBalance = action.payload.wallet.frozenBalance;
         state.currency = action.payload.wallet.currency;
         state.transactions = action.payload.transactions;
       })
