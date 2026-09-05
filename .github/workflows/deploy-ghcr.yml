@@ -1,6 +1,10 @@
 name: Build and Deploy to GHCR
 
 on:
+  push:
+    branches:
+      - cloud-infra
+      
   workflow_dispatch:
 
 env:
