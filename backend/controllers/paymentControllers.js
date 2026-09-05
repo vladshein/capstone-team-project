@@ -304,7 +304,7 @@ export const getWalletOverview = async (req, res, next) => {
                     { receiverId: userId },
                 ],
             },
-            order: [['createdAt', 'DESC']],
+            order: [['created_at', 'DESC']],
             limit: 15,
         });
 
