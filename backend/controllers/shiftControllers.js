@@ -342,7 +342,7 @@ export const completeBusinessShiftApplication = async (req, res, next) => {
           amount: workerPayout,
           type: "release_payout",
           status: "completed",
-          description: `Виплата за зміну #${shiftId} (комісія сервісу: ${platformFee / 100} грн)`,
+          description: `Виплата за зміну #${shiftId} (комісія сервісу: ${platformFee} грн)`,
         }, { transaction: dbTransaction });
       });
     }
