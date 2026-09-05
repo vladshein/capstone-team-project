@@ -344,7 +344,9 @@ export const completeBusinessShiftApplication = async (req, res, next) => {
           status: "completed",
           description: `Виплата за зміну #${shiftId} (комісія сервісу: ${platformFee} грн)`,
         }, { transaction: dbTransaction });
-      });
+       }).catch((error) => {
+         if (error?.name !== "SequelizeUniqueConstraintError") throw error;
+       });
     }
 
     queueShiftNotification({
