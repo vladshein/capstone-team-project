@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, ClipboardList, MapPin, Star, UsersRound } from "lucide-react";
+import { CalendarDays, ClipboardList, CreditCard, MapPin, Star, UsersRound } from "lucide-react";
 import { Link, useOutletContext } from "react-router-dom";
 
 import {
@@ -15,6 +15,7 @@ import { Modal } from "../../components/ui/Modal";
 import { ReviewModal } from "../../components/reviews/ReviewModal";
 import { createReview } from "../../api/reviews";
 import type { BusinessDashboardOutletContext } from "./BusinessDashboardPage";
+import { paymentsApi } from "../../api/payments";
 
 const APPLICATIONS_PER_PAGE = 8;
 
@@ -36,16 +37,18 @@ export function BusinessApplicationsTab() {
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
   const applications = useMemo(
-    () => applicationGroups.flatMap((shift) =>
-      shift.ShiftApplications.map((application) => ({ ...application, Shift: shift })),
-    ),
-    [applicationGroups],
+    () =>
+      applicationGroups.flatMap((shift) =>
+        shift.ShiftApplications.map((application) => ({ ...application, Shift: shift }))
+      ),
+    [applicationGroups]
   );
 
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
     setError(null);
+
     void getBusinessShiftApplications(company.id, page, APPLICATIONS_PER_PAGE)
       .then((response) => {
         if (cancelled) return;
@@ -53,26 +56,51 @@ export function BusinessApplicationsTab() {
         setTotalPages(response.totalPages);
       })
       .catch((requestError) => {
-        if (!cancelled) setError(requestError instanceof Error ? requestError.message : "Не вдалося завантажити заявки.");
+        if (!cancelled) {
+          setError(requestError instanceof Error ? requestError.message : "Не вдалося завантажити заявки.");
+        }
       })
-      .finally(() => { if (!cancelled) setIsLoading(false); });
-    return () => { cancelled = true; };
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [company.id, page, reloadKey]);
 
-  useEffect(() => { setPage(1); }, [company.id]);
+  useEffect(() => {
+    setPage(1);
+  }, [company.id]);
 
-  const handleDecision = async (
-    applicationId: number,
-    status: "approved" | "rejected",
-  ) => {
+  const handleApproveWithPayment = async (shiftId: number, applicationId: number) => {
     setProcessingId(applicationId);
     setError(null);
     try {
-      await decideBusinessShiftApplication(applicationId, status);
-      setReloadKey((key) => key + 1);
-      onApplicationsChanged();
+      const invoice = await paymentsApi.createInvoice(shiftId, applicationId);
+      if (invoice?.pageUrl) {
+        window.location.href = invoice.pageUrl;
+      } else {
+        throw new Error("Не отримано платіжне посилання Monobank.");
+      }
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Не вдалося оновити заявку.");
+      setError(requestError instanceof Error ? requestError.message : "Помилка при створенні рахунку.");
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleReject = async (applicationId: number) => {
+    setProcessingId(applicationId);
+    setError(null);
+    try {
+      await decideBusinessShiftApplication(applicationId, "rejected");
+      setReloadKey((key) => key + 1);
+      onApplicationsChanged?.();
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Не вдалося відхилити заявку.");
     } finally {
       setProcessingId(null);
     }
@@ -82,15 +110,32 @@ export function BusinessApplicationsTab() {
     setProcessingId(applicationId);
     setError(null);
     try {
-      await completeBusinessShiftApplication(applicationId);
       const application = applications.find((item) => item.id === applicationId);
-      const profile = application?.User.WorkerProfile;
-      setReviewTarget(application ? {
-        shiftId: application.Shift.id,
-        workerName: profile ? `${profile.firstName} ${profile.lastName}` : "виконавця",
-        isNoShow: false,
-      } : null);
-      setReloadKey((key) => key + 1);
+      const profile = application?.User?.WorkerProfile;
+
+      await completeBusinessShiftApplication(applicationId);
+
+      // Оновлюємо групи заявок локально
+      setApplicationGroups((prevGroups) =>
+        prevGroups
+          .map((group) => ({
+            ...group,
+            ShiftApplications: group.ShiftApplications.filter((item) => item.id !== applicationId),
+          }))
+          .filter((group) => group.ShiftApplications.length > 0)
+      );
+
+      setReviewTarget(
+        application
+          ? {
+              shiftId: application.Shift.id,
+              workerName: profile ? `${profile.firstName} ${profile.lastName}` : "виконавця",
+              isNoShow: false,
+            }
+          : null
+      );
+
+      onApplicationsChanged?.();
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Не вдалося підтвердити виконання.");
     } finally {
@@ -100,18 +145,30 @@ export function BusinessApplicationsTab() {
 
   const handleNoShow = async () => {
     if (!applicationToMarkNoShow) return;
-    setProcessingId(applicationToMarkNoShow.id);
+    const targetApp = applicationToMarkNoShow;
+    setProcessingId(targetApp.id);
     setError(null);
     try {
-      await markBusinessShiftApplicationNoShow(applicationToMarkNoShow.id);
-      const profile = applicationToMarkNoShow.User.WorkerProfile;
+      await markBusinessShiftApplicationNoShow(targetApp.id);
+
+      setApplicationGroups((prevGroups) =>
+        prevGroups
+          .map((group) => ({
+            ...group,
+            ShiftApplications: group.ShiftApplications.filter((item) => item.id !== targetApp.id),
+          }))
+          .filter((group) => group.ShiftApplications.length > 0)
+      );
+
+      const profile = targetApp.User?.WorkerProfile;
       setReviewTarget({
-        shiftId: applicationToMarkNoShow.Shift.id,
+        shiftId: targetApp.Shift.id,
         workerName: profile ? `${profile.firstName} ${profile.lastName}` : "виконавця",
         isNoShow: true,
       });
       setApplicationToMarkNoShow(null);
-      setReloadKey((key) => key + 1);
+
+      onApplicationsChanged?.();
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Не вдалося зафіксувати неявку.");
     } finally {
@@ -140,134 +197,209 @@ export function BusinessApplicationsTab() {
       <div className="flex min-h-52 flex-col items-center justify-center px-6 py-10 text-center">
         <ClipboardList className="h-8 w-8 text-accent/80" />
         <h2 className="mt-4 font-heading text-lg font-semibold">Поки немає заявок</h2>
-        <p className="mt-2 max-w-md text-sm text-text-muted">{error ?? "Відгуки виконавців з'являться тут після публікації зміни."}</p>
+        <p className="mt-2 max-w-md text-sm text-text-muted">
+          {error ?? "Відгуки виконавців з'являться тут після публікації зміни."}
+        </p>
       </div>
     );
   }
 
   return (
-    <>
-      <div className="space-y-5 p-5">
+    <div className="space-y-5 p-5">
       {applicationGroups.map((group) => {
         const shift = group;
-        const pendingCount = group.ShiftApplications.filter((application) => application.status === "pending").length;
-        const schedule = new Date(shift.startTime).toLocaleString("uk-UA", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+        const pendingCount = group.ShiftApplications.filter((app) => app.status === "pending").length;
+        const schedule = new Date(shift.startTime).toLocaleString("uk-UA", {
+          day: "numeric",
+          month: "long",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
 
         return (
           <section key={shift.id} className="overflow-hidden rounded-[var(--radius-card)] border border-border bg-bg">
             <header className="flex flex-col gap-3 border-b border-border bg-bg-muted px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-text-subtle">Зміна</p>
-                <Link to={`/shifts/${shift.id}`} className="mt-1 inline-block font-heading text-lg font-semibold text-ink transition-colors hover:text-accent-text hover:underline">
+                <Link
+                  to={`/shifts/${shift.id}`}
+                  className="mt-1 inline-block font-heading text-lg font-semibold text-ink transition-colors hover:text-accent-text hover:underline"
+                >
                   {shift.JobPosition.title}
                 </Link>
                 <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-text-muted">
-                  <span className="flex items-center gap-1.5"><CalendarDays className="h-4 w-4" />{schedule}</span>
-                  <span className="flex items-center gap-1.5"><MapPin className="h-4 w-4" />{shift.Location.title}, {shift.Location.city}</span>
+                  <span className="flex items-center gap-1.5">
+                    <CalendarDays className="h-4 w-4" />
+                    {schedule}
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <MapPin className="h-4 w-4" />
+                    {shift.Location.title}, {shift.Location.city}
+                  </span>
                 </div>
               </div>
-              <span className={`inline-flex w-fit items-center gap-1.5 rounded-[var(--radius-pill)] px-3 py-1.5 text-xs font-semibold ${pendingCount ? "bg-warning/10 text-warning" : "bg-accent/10 text-accent-text"}`}>
+              <span
+                className={`inline-flex w-fit items-center gap-1.5 rounded-[var(--radius-pill)] px-3 py-1.5 text-xs font-semibold ${
+                  pendingCount ? "bg-warning/10 text-warning" : "bg-accent/10 text-accent-text"
+                }`}
+              >
                 <UsersRound className="h-4 w-4" />
                 {pendingCount ? `Нові: ${pendingCount}` : "Виконавця обрано"}
               </span>
             </header>
 
             <div className="divide-y divide-border">
-            {group.ShiftApplications.map((storedApplication) => {
-        const application: BusinessShiftApplication = { ...storedApplication, Shift: shift };
-        const profile = application.User.WorkerProfile;
-        const workerName = profile ? `${profile.firstName} ${profile.lastName}` : "Виконавець";
-        const isApproved = application.status === "approved";
-        const requiresCompletionDecision = isApproved && new Date(application.Shift.endTime) <= new Date();
-        const canComplete = requiresCompletionDecision;
-        const applicationLabel = requiresCompletionDecision
-          ? "Потрібне рішення"
-          : isApproved
-            ? "Підтверджено"
-            : "Нова заявка";
-        const applicationLabelClass = requiresCompletionDecision
-          ? "bg-warning/10 text-warning"
-          : isApproved
-            ? "bg-accent/10 text-accent-text"
-            : "bg-warning/10 text-warning";
+              {group.ShiftApplications.map((storedApplication) => {
+                const application: BusinessShiftApplication = { ...storedApplication, Shift: shift };
+                const profile = application.User.WorkerProfile;
+                const workerName = profile ? `${profile.firstName} ${profile.lastName}` : "Виконавець";
+                const isApproved = application.status === "approved";
+                const requiresCompletionDecision = isApproved && new Date(application.Shift.endTime) <= new Date();
+                const canComplete = requiresCompletionDecision;
+                const applicationLabel = requiresCompletionDecision
+                  ? "Потрібне рішення"
+                  : isApproved
+                  ? "Підтверджено"
+                  : "Нова заявка";
+                const applicationLabelClass = requiresCompletionDecision
+                  ? "bg-warning/10 text-warning"
+                  : isApproved
+                  ? "bg-accent/10 text-accent-text"
+                  : "bg-warning/10 text-warning";
 
-        return (
-          <article key={application.id} className="flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Link to={`/workers/${application.User.id}`} className="font-heading font-semibold transition-colors hover:text-accent-text hover:underline">{workerName}</Link>
-                <span className={`rounded-[var(--radius-pill)] px-3 py-1 text-xs font-medium ${applicationLabelClass}`}>{applicationLabel}</span>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm text-text-muted">
-                <span className="flex items-center gap-1.5"><Star className="h-4 w-4" />Рейтинг: {Number(profile?.rating) > 0 ? Number(profile?.rating).toFixed(2) : "ще немає відгуків"}</span>
-                <span className="flex items-center gap-1.5"><MapPin className="h-4 w-4" />{application.Shift.Location.address}</span>
-              </div>
-            </div>
-            <div className="flex shrink-0 flex-wrap gap-2">
-              {application.status === "pending" && (
-                <>
-                <button
-                  type="button"
-                  onClick={() => handleDecision(application.id, "approved")}
-                  disabled={processingId === application.id}
-                  className="min-h-[40px] rounded-[var(--radius-pill)] bg-accent px-4 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-wait disabled:opacity-60"
-                >
-                  {processingId === application.id ? "Зберігаємо…" : "Підтвердити"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDecision(application.id, "rejected")}
-                  disabled={processingId === application.id}
-                  className="min-h-[40px] rounded-[var(--radius-pill)] px-4 text-sm font-medium text-danger transition-colors hover:bg-danger/10 disabled:cursor-wait disabled:opacity-60"
-                >
-                  Відхилити
-                </button>
-                </>
-              )}
-              {isApproved && (
-                <>
-                <button
-                  type="button"
-                  onClick={() => handleCompletion(application.id)}
-                  disabled={!canComplete || processingId === application.id}
-                  title={canComplete ? undefined : "Доступно після завершення зміни"}
-                  className="min-h-[40px] rounded-[var(--radius-pill)] bg-accent px-4 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {processingId === application.id ? "Зберігаємо…" : "Підтвердити виконання"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setApplicationToMarkNoShow(application)}
-                  disabled={!canComplete || processingId === application.id}
-                  title={canComplete ? undefined : "Доступно після завершення зміни"}
-                  className="min-h-[40px] rounded-[var(--radius-pill)] px-4 text-sm font-medium text-danger transition-colors hover:bg-danger/10 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Не з’явився
-                </button>
-                </>
-              )}
-            </div>
-          </article>
-            );
-          })}
+                return (
+                  <article
+                    key={application.id}
+                    className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Link
+                          to={`/workers/${application.User.id}`}
+                          className="font-heading font-semibold transition-colors hover:text-accent-text hover:underline"
+                        >
+                          {workerName}
+                        </Link>
+                        <span className={`rounded-[var(--radius-pill)] px-3 py-1 text-xs font-medium ${applicationLabelClass}`}>
+                          {applicationLabel}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-sm text-text-muted">
+                        На зміну:{" "}
+                        <Link
+                          to={`/shifts/${application.Shift.id}`}
+                          className="font-medium text-text transition-colors hover:text-accent-text hover:underline"
+                        >
+                          {application.Shift.JobPosition.title}
+                        </Link>
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm text-text-muted">
+                        <span className="flex items-center gap-1.5">
+                          <CalendarDays className="h-4 w-4" />
+                          {schedule}
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <Star className="h-4 w-4" />
+                          Рейтинг: {Number(profile?.rating) > 0 ? Number(profile?.rating).toFixed(2) : "ще немає відгуків"}
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <MapPin className="h-4 w-4" />
+                          {application.Shift.Location.city}, {application.Shift.Location.address}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                      {application.status === "pending" && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handleApproveWithPayment(application.Shift.id, application.id)}
+                            disabled={processingId === application.id}
+                            className="flex min-h-[40px] items-center gap-1.5 rounded-[var(--radius-pill)] bg-accent px-4 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-wait disabled:opacity-60"
+                          >
+                            <CreditCard className="h-4 w-4" />
+                            {processingId === application.id ? "Створюємо інвойс…" : "Підтвердити та оплатити"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleReject(application.id)}
+                            disabled={processingId === application.id}
+                            className="min-h-[40px] rounded-[var(--radius-pill)] px-4 text-sm font-medium text-danger transition-colors hover:bg-danger/10 disabled:cursor-wait disabled:opacity-60"
+                          >
+                            Відхилити
+                          </button>
+                        </>
+                      )}
+                      {isApproved && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handleCompletion(application.id)}
+                            disabled={!canComplete || processingId === application.id}
+                            title={canComplete ? undefined : "Доступно після завершення зміни"}
+                            className="min-h-[40px] rounded-[var(--radius-pill)] bg-accent px-4 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {processingId === application.id ? "Зберігаємо…" : "Підтвердити виконання"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setApplicationToMarkNoShow(application)}
+                            disabled={!canComplete || processingId === application.id}
+                            title={canComplete ? undefined : "Доступно після завершення зміни"}
+                            className="min-h-[40px] rounded-[var(--radius-pill)] px-4 text-sm font-medium text-danger transition-colors hover:bg-danger/10 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            Не з’явився
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           </section>
         );
       })}
-      </div>
+
       {totalPages > 1 && (
         <nav className="mt-6 flex items-center justify-center gap-1.5 px-5 pb-5" aria-label="Пагінація заявок">
-          <button type="button" onClick={() => setPage((value) => value - 1)} disabled={page === 1} className="min-h-[40px] rounded-[var(--radius-pill)] border border-border px-3 text-sm text-text-muted disabled:cursor-not-allowed disabled:opacity-40">Назад</button>
+          <button
+            type="button"
+            onClick={() => setPage((value) => value - 1)}
+            disabled={page === 1}
+            className="min-h-[40px] rounded-[var(--radius-pill)] border border-border px-3 text-sm text-text-muted disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Назад
+          </button>
           {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
-            <button key={pageNumber} type="button" onClick={() => setPage(pageNumber)} aria-current={pageNumber === page ? "page" : undefined} className={`flex h-10 w-10 items-center justify-center rounded-[var(--radius-pill)] text-sm font-medium transition-colors ${pageNumber === page ? "bg-accent text-white" : "border border-border text-text hover:border-accent"}`}>{pageNumber}</button>
+            <button
+              key={pageNumber}
+              type="button"
+              onClick={() => setPage(pageNumber)}
+              aria-current={pageNumber === page ? "page" : undefined}
+              className={`flex h-10 w-10 items-center justify-center rounded-[var(--radius-pill)] text-sm font-medium transition-colors ${
+                pageNumber === page ? "bg-accent text-white" : "border border-border text-text hover:border-accent"
+              }`}
+            >
+              {pageNumber}
+            </button>
           ))}
-          <button type="button" onClick={() => setPage((value) => value + 1)} disabled={page === totalPages} className="min-h-[40px] rounded-[var(--radius-pill)] border border-border px-3 text-sm text-text-muted disabled:cursor-not-allowed disabled:opacity-40">Далі</button>
+          <button
+            type="button"
+            onClick={() => setPage((value) => value + 1)}
+            disabled={page === totalPages}
+            className="min-h-[40px] rounded-[var(--radius-pill)] border border-border px-3 text-sm text-text-muted disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Далі
+          </button>
         </nav>
       )}
 
       <Modal
         isOpen={applicationToMarkNoShow !== null}
-        onClose={() => { if (processingId === null) setApplicationToMarkNoShow(null); }}
+        onClose={() => {
+          if (processingId === null) setApplicationToMarkNoShow(null);
+        }}
         title="Позначити неявку?"
       >
         <p className="text-sm leading-6 text-text-muted">
@@ -275,22 +407,42 @@ export function BusinessApplicationsTab() {
         </p>
         {error && <p className="mt-3 text-sm text-danger">{error}</p>}
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-          <button type="button" onClick={() => setApplicationToMarkNoShow(null)} disabled={processingId !== null} className="min-h-[44px] rounded-[var(--radius-pill)] border border-border px-5 text-sm font-semibold text-text transition-colors hover:border-accent disabled:opacity-60">Повернутися</button>
-          <button type="button" onClick={handleNoShow} disabled={processingId !== null} className="min-h-[44px] rounded-[var(--radius-pill)] bg-danger px-5 text-sm font-semibold text-white transition-colors hover:opacity-90 disabled:cursor-wait disabled:opacity-60">{processingId !== null ? "Зберігаємо…" : "Підтвердити неявку"}</button>
+          <button
+            type="button"
+            onClick={() => setApplicationToMarkNoShow(null)}
+            disabled={processingId !== null}
+            className="min-h-[44px] rounded-[var(--radius-pill)] border border-border px-5 text-sm font-semibold text-text transition-colors hover:border-accent disabled:opacity-60"
+          >
+            Повернутися
+          </button>
+          <button
+            type="button"
+            onClick={handleNoShow}
+            disabled={processingId !== null}
+            className="min-h-[44px] rounded-[var(--radius-pill)] bg-danger px-5 text-sm font-semibold text-white transition-colors hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
+          >
+            {processingId !== null ? "Зберігаємо…" : "Підтвердити неявку"}
+          </button>
         </div>
       </Modal>
 
       <ReviewModal
         isOpen={reviewTarget !== null}
-        onClose={() => { if (!isSubmittingReview) setReviewTarget(null); }}
+        onClose={() => {
+          if (!isSubmittingReview) setReviewTarget(null);
+        }}
         title={reviewTarget?.isNoShow ? "Оцініть виконавця після неявки" : "Оцініть виконання зміни"}
-        description={reviewTarget?.isNoShow
-          ? `Залиште відгук про ${reviewTarget.workerName}, щоб інші компанії бачили історію співпраці.`
-          : `Як пройшла зміна з ${reviewTarget?.workerName}?`}
+        description={
+          reviewTarget?.isNoShow
+            ? `Залиште відгук про ${reviewTarget.workerName}, щоб інші компанії бачили історію співпраці.`
+            : `Як пройшла зміна з ${reviewTarget?.workerName}?`
+        }
         isSubmitting={isSubmittingReview}
         error={error}
         onSubmit={handleReviewSubmit}
       />
-    </>
+    </div>
   );
 }
+
+export default BusinessApplicationsTab;

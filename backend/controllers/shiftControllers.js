@@ -1,4 +1,6 @@
 import * as shiftService from "../services/shiftServices.js";
+import { sequelize, Wallet, Transaction } from "../db/models/index.js";
+import { monopayService } from "../services/monopayService.js";
 import { enqueueShiftNotification } from "../queues/shiftLifecycleQueue.js";
 
 // Надсилання листа не має ламати вже успішну дію користувача, якщо Valkey або
@@ -81,7 +83,6 @@ const parseShiftFilters = (query) => {
 
 /**
  * Обробляє запит на отримання всіх змін.
- * Витягує параметри запиту та формує HTTP-відповідь.
  */
 export const getAllShifts = async (req, res, next) => {
   try {
@@ -94,16 +95,14 @@ export const getAllShifts = async (req, res, next) => {
       ...parseShiftFilters(req.query),
     });
 
-    // 3. Відправляємо успішну відповідь
     res.status(200).json(result);
   } catch (error) {
-    next(error); // Передаємо помилку в центральний errorHandler
+    next(error);
   }
 };
 
 /**
- * Повертає мінімальні дані для маркерів на карті за тими самими фільтрами,
- * що й список змін. Пагінація списку на цей endpoint не впливає.
+ * Повертає мінімальні дані для маркерів на карті.
  */
 export const getShiftMapMarkers = async (req, res, next) => {
   try {
@@ -120,7 +119,6 @@ export const getShiftMapMarkers = async (req, res, next) => {
     }
 
     const result = await shiftService.getShiftMapMarkers(filters);
-
     res.status(200).json(result);
   } catch (error) {
     next(error);
@@ -133,8 +131,6 @@ export const getShiftMapMarkers = async (req, res, next) => {
 export const getShiftById = async (req, res, next) => {
   try {
     const shiftId = req.params.id;
-
-    // Передаємо запит у Service layer
     const shift = await shiftService.getShiftById(shiftId);
 
     if (!shift) {
@@ -145,7 +141,7 @@ export const getShiftById = async (req, res, next) => {
 
     res.status(200).json(shift);
   } catch (error) {
-    next(error); // Передаємо помилку в центральний errorHandler
+    next(error);
   }
 };
 
@@ -168,8 +164,6 @@ export const getBusinessShifts = async (req, res, next) => {
       limit,
     });
 
-    // Дані кабінету залежать від поточного часу: кеш може залишити
-    // завершену зміну в активному списку після зміни дати.
     res.set("Cache-Control", "no-store");
     res.status(200).json(shifts);
   } catch (error) {
@@ -270,7 +264,7 @@ export const decideBusinessShiftApplication = async (req, res, next) => {
   }
 };
 
-/** Підтверджує, що виконавець завершив підтверджену зміну. */
+/** Підтверджує, що виконавець завершив підтверджену зміну (фіналізація коштів). */
 export const completeBusinessShiftApplication = async (req, res, next) => {
   try {
     const applicationId = Number(req.params.applicationId);
@@ -287,6 +281,54 @@ export const completeBusinessShiftApplication = async (req, res, next) => {
     if (result.reason === "status") return res.status(400).json({ message: "Можна завершити лише підтверджену зміну." });
     if (result.reason === "not_finished") return res.status(400).json({ message: "Підтвердити виконання можна після завершення зміни." });
 
+    const shiftId = result.application.shiftId;
+    const workerId = result.application.workerId;
+
+    // 1. Шукаємо холд-транзакцію для цієї зміни
+    const [transactions] = await sequelize.query(
+      `SELECT * FROM transactions 
+       WHERE "shiftId" = :shiftId AND status = 'completed' AND type = 'hold'
+       ORDER BY id DESC LIMIT 1`,
+      { replacements: { shiftId } }
+    );
+
+    const holdTx = transactions && transactions[0];
+    if (holdTx) {
+      const invoiceId = holdTx.external_id || holdTx.externalId;
+      const totalHeldAmount = Number(holdTx.amount);
+
+      // Вираховуємо чисту суму виконавця (віднімаємо 15% комісії від суми холду)
+      // Формула: workerPayout = totalHeldAmount / 1.15
+      const workerPayout = Math.round(totalHeldAmount / 1.15);
+      const platformFee = totalHeldAmount - workerPayout;
+
+      // 2. Списуємо заблоковані кошти в Monobank (повну суму)
+      if (invoiceId) {
+        await monopayService.finalizeHold(invoiceId, totalHeldAmount).catch((err) => {
+          console.warn("⚠️ Mono finalize warning:", err.message);
+        });
+      }
+
+      // 3. Зараховуємо чисті кошти у гаманець виконавця
+      const [workerWallet] = await Wallet.findOrCreate({
+        where: { userId: workerId },
+        defaults: { userId: workerId, balance: 0, currency: "UAH" },
+      });
+
+      await workerWallet.increment("balance", { by: workerPayout });
+
+      // 4. Фіксуємо транзакцію виплати для виконавця
+      await Transaction.create({
+        senderId: holdTx.senderId,
+        receiverId: workerId,
+        shiftId,
+        amount: workerPayout,
+        type: "release_payout",
+        status: "completed",
+        description: `Виплата за зміну #${shiftId} (комісія сервісу: ${platformFee / 100} грн)`,
+      });
+    }
+
     queueShiftNotification({
       event: "application_completed",
       recipientUserId: result.application.workerId,
@@ -300,7 +342,7 @@ export const completeBusinessShiftApplication = async (req, res, next) => {
   }
 };
 
-/** Позначає підтвердженого виконавця як такого, що не з'явився. */
+/** Позначає підтвердженого виконавця як такого, що не з'явився (розблокування коштів). */
 export const markBusinessShiftApplicationNoShow = async (req, res, next) => {
   try {
     const applicationId = Number(req.params.applicationId);
@@ -317,6 +359,34 @@ export const markBusinessShiftApplicationNoShow = async (req, res, next) => {
     if (result.reason === "status") return res.status(400).json({ message: "Неявку можна позначити лише для підтвердженої зміни." });
     if (result.reason === "not_finished") return res.status(400).json({ message: "Позначити неявку можна після завершення зміни." });
 
+    const shiftId = result.application.shiftId;
+
+    // 1. Знаходимо заблоковану транзакцію
+    const [transactions] = await sequelize.query(
+      `SELECT * FROM transactions 
+       WHERE "shiftId" = :shiftId AND status = 'completed' AND type = 'hold'
+       ORDER BY id DESC LIMIT 1`,
+      { replacements: { shiftId } }
+    );
+
+    const holdTx = transactions && transactions[0];
+    if (holdTx) {
+      const invoiceId = holdTx.external_id || holdTx.externalId;
+
+      // 2. Скасовуємо холд у Monobank
+      if (invoiceId) {
+        await monopayService.cancelHold(invoiceId).catch((err) => {
+          console.warn("⚠️ Mono cancel hold warning:", err.message);
+        });
+      }
+
+      // 3. Позначаємо транзакцію як cancelled (скасовано/повернуто)
+      await sequelize.query(
+        `UPDATE transactions SET status = 'cancelled' WHERE id = :id`,
+        { replacements: { id: holdTx.id } }
+      );
+    }
+
     queueShiftNotification({
       event: "application_no_show",
       recipientUserId: result.application.workerId,
@@ -331,13 +401,11 @@ export const markBusinessShiftApplicationNoShow = async (req, res, next) => {
 };
 
 /**
- * Обробляє запит на створення нової зміни (тільки для замовників/бізнесу).
+ * Обробляє запит на створення нової зміни.
  */
 export const createShift = async (req, res, next) => {
   try {
     const userId = req.user.id;
-
-    // Всі дані вже провалідовані через Joi у validateBody
     const {
       locationId,
       positionId,
@@ -356,16 +424,13 @@ export const createShift = async (req, res, next) => {
       throw error;
     }
 
-    // 1. Перевірка безпеки: чи належить ця локація цьому користувачу?
     const hasLocationAccess = await shiftService.verifyLocationOwnership(
       locationId,
       userId,
     );
     if (!hasLocationAccess) {
-      const error = new Error(
-        "У вас немає прав створювати зміну на цій локації.",
-      );
-      error.status = 403; // Forbidden
+      const error = new Error("У вас немає прав створювати зміну на цій локації.");
+      error.status = 403;
       throw error;
     }
 
@@ -378,7 +443,7 @@ export const createShift = async (req, res, next) => {
       hourlyRate,
       bonusRate: bonusRate || 0.0,
       description,
-      status: "open", // За замовчуванням нова зміна є відкритою
+      status: "open",
     };
     // 2. Створення однієї зміни або серії щоденних змін
     let createdShifts;
@@ -406,7 +471,7 @@ export const createShift = async (req, res, next) => {
       createdCount: createdShifts.length,
     });
   } catch (error) {
-    next(error); // Передаємо помилку в центральний errorHandler
+    next(error);
   }
 };
 
@@ -513,7 +578,6 @@ export const updateShift = async (req, res, next) => {
     const shiftId = req.params.id;
     const userId = req.user.id;
 
-    // 1. Отримуємо зміну
     const shift = await shiftService.getShiftById(shiftId);
     if (!shift) {
       const error = new Error("Зміну не знайдено.");
@@ -521,19 +585,17 @@ export const updateShift = async (req, res, next) => {
       throw error;
     }
 
-    // 2. Перевірка власника (через зв'язки Shift -> Location -> Company)
     if (shift.Location.Company.ownerId !== userId) {
       const error = new Error("У вас немає прав на редагування цієї зміни.");
       error.status = 403;
       throw error;
     }
 
-    // 3. Бізнес-логіка: забороняємо редагувати зміну, якщо вона вже заброньована або завершена
     if (shift.status !== "open") {
       const error = new Error(
         "Не можна редагувати зміну, яка вже заброньована робітником або завершена.",
       );
-      error.status = 400; // Bad Request
+      error.status = 400;
       throw error;
     }
     if (new Date(shift.startTime) <= new Date()) {
@@ -547,7 +609,6 @@ export const updateShift = async (req, res, next) => {
       throw error;
     }
 
-    // 4. Оновлення
     const updatedShift = await shiftService.updateShift(shiftId, req.body);
 
     res.status(200).json({
@@ -560,7 +621,7 @@ export const updateShift = async (req, res, next) => {
 };
 
 /**
- * Обробляє запит на скасування зміни
+ * Обробляє запит на скасування зміни (з поверненням холду, якщо зміна була заброньована)
  */
 export const cancelShift = async (req, res, next) => {
   try {
@@ -574,14 +635,12 @@ export const cancelShift = async (req, res, next) => {
       throw error;
     }
 
-    // Перевірка власника
     if (shift.Location.Company.ownerId !== userId) {
       const error = new Error("У вас немає прав на скасування цієї зміни.");
       error.status = 403;
       throw error;
     }
 
-    // Якщо вона вже скасована або успішно завершена
     if (shift.status === "cancelled" || shift.status === "completed") {
       const error = new Error(
         "Цю зміну не можна скасувати, вона вже завершена або скасована раніше.",
@@ -594,9 +653,6 @@ export const cancelShift = async (req, res, next) => {
       error.status = 400;
       throw error;
     }
-
-    // TODO в майбутньому: якщо статус був 'booked' (робітник вже знайшовся),
-    // тут треба додати логіку повернення коштів з холду (Frozen Balance) на звичайний баланс бізнесу.
 
     const cancellationResult = await shiftService.cancelShift(shiftId);
     if (cancellationResult?.reason === "not_found") {
@@ -636,7 +692,7 @@ export const cancelShift = async (req, res, next) => {
 };
 
 /**
- * Обробляє запит на отримання історії взятих робіт для робітника.
+ * Обробляє запит на отримання історії робіт для виконавця.
  */
 export const getWorkerShifts = async (req, res, next) => {
   try {
@@ -646,7 +702,7 @@ export const getWorkerShifts = async (req, res, next) => {
     const result = await shiftService.getWorkerShiftHistory(workerId, {
       page: page ? parseInt(page, 10) : 1,
       limit: limit ? parseInt(limit, 10) : 10,
-      status, // Можна передавати '?status=approved' для актуальних або '?status=completed' для завершених
+      status,
       shiftId: shiftId ? parseInt(shiftId, 10) : undefined,
       scope: ["active", "completed", "archive"].includes(scope) ? scope : "active",
     });

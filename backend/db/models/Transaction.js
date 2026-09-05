@@ -22,6 +22,11 @@ const Transaction = sequelize.define(
       defaultValue: "pending",
       allowNull: false,
     },
+    externalId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'external_id', // якщо використовується snake_case
+    },
   },
   {
     tableName: "transactions",
