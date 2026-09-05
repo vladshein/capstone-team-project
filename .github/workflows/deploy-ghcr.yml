@@ -159,10 +159,10 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             cd /srv/capstone-app-stage
-            echo "${{ secrets.SERVER_GHCR_TOKEN }}" | docker login ghcr.io -u ${{ secrets.SERVER_GHCR_USER }} --password-stdin
-            export IMAGE_TAG=${{ needs.image-push.outputs.image_tag }}
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            export IMAGE_TAG=latest
             echo "IMAGE_TAG=${IMAGE_TAG}" > .env
-            docker compose pull
-            docker compose up -d --remove-orphans
+            docker compose -f docker-compose.stage.yml pull
+            docker compose -f docker-compose.stage.yml up -d --remove-orphans
             docker image prune -f
-            docker compose -f docker-compose.stage.yml exec -ti backend npm run db:m
+            docker compose -f docker-compose.stage.yml exec -T backend npm run db:m
