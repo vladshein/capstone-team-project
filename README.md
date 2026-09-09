@@ -16,6 +16,12 @@ DB_HOST=postgres
 DB_PORT=5432
 REDIS_HOST=valkey
 REDIS_PORT=6379
+
+# docker-compose.yml підставляє ці значення в сервіс backend через ${...}.
+# Без них Compose підставляє порожній рядок і backend падає на старті
+# з "JWT_SECRET is not set in .env". Значення мають збігатися з backend/.env.
+JWT_SECRET=
+JWT_REFRESH_SECRET=
 ```
 
 У папці `./frontend` проекту створіть файл `.env` (можна скопіювати з `.env.template`):
@@ -63,7 +69,7 @@ DATABASE_HOST_DEV=postgres
 DATABASE_NAME_DEV=test
 DATABASE_PORT_DEV=5432
 ```
-> ⚠️ змінні ...USER..., ...PASSWORD..., ...NAME... - в корні та бекенді повинні бути одинакові
+> ⚠️ змінні ...USER..., ...PASSWORD..., ...NAME..., а також `JWT_SECRET` і `JWT_REFRESH_SECRET` - в корні та бекенді повинні бути одинакові
 
 > ⚠️ Значення вище — приклад для локальної розробки. Не використовуйте ці креденшли в продакшн-середовищі.
 

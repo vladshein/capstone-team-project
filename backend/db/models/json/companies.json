@@ -30,5 +30,25 @@
     "ownerId": 1,
     "name": "Event Staff Co",
     "edrpou": "10000012"
-  }
+  },
+  {"id":300,"ownerId":1,"name":"ТОВ «Продукти Щодня»","edrpou":"41000001","legalAddress":"м. Київ, Печерськ"},
+  {"id":301,"ownerId":1,"name":"ТОВ «Кур'єр Експрес»","edrpou":"41000002","legalAddress":"м. Київ, Поділ"},
+  {"id":302,"ownerId":1,"name":"ТОВ «Зоря Маркет»","edrpou":"41000003","legalAddress":"м. Київ, Оболонь"},
+  {"id":303,"ownerId":1,"name":"ТОВ «Смачна Хата»","edrpou":"41000004","legalAddress":"м. Київ, Голосіїв"},
+  {"id":304,"ownerId":1,"name":"ТОВ «Кава Ранок»","edrpou":"41000005","legalAddress":"м. Київ, Солом'янка"},
+  {"id":305,"ownerId":1,"name":"ТОВ «СкладЛогік»","edrpou":"41000006","legalAddress":"м. Київ, Святошино"},
+  {"id":306,"ownerId":1,"name":"ТОВ «Маркет Плюс»","edrpou":"41000007","legalAddress":"м. Київ, Лук'янівка"},
+  {"id":307,"ownerId":1,"name":"ТОВ «Швидка Доставка»","edrpou":"41000008","legalAddress":"м. Київ, Лівобережна"},
+  {"id":308,"ownerId":1,"name":"ТОВ «Чисто Сервіс»","edrpou":"41000009","legalAddress":"м. Київ, Троєщина"},
+  {"id":309,"ownerId":1,"name":"ТОВ «Техно Маркет»","edrpou":"41000010","legalAddress":"м. Київ, Виноградар"},
+  {"id":310,"ownerId":1,"name":"ТОВ «Драйв АЗК»","edrpou":"41000011","legalAddress":"м. Київ, Стара Дарниця"},
+  {"id":311,"ownerId":1,"name":"ТОВ «Бургер Хаус»","edrpou":"41000012","legalAddress":"м. Київ, Теремки"},
+  {"id":312,"ownerId":1,"name":"ТОВ «Буд Маркет»","edrpou":"41000013","legalAddress":"м. Київ, Нивки"},
+  {"id":313,"ownerId":1,"name":"ТОВ «Івент Стейшн»","edrpou":"41000014","legalAddress":"м. Київ, Осокорки"},
+  {"id":314,"ownerId":1,"name":"ТОВ «Клін Тім»","edrpou":"41000015","legalAddress":"м. Київ, Русанівка"},
+  {"id":315,"ownerId":1,"name":"ТОВ «Гіпер Сіті»","edrpou":"41000016","legalAddress":"м. Київ, Татарка"},
+  {"id":316,"ownerId":1,"name":"ТОВ «Синема Плюс»","edrpou":"41000017","legalAddress":"м. Київ, Феофанія"},
+  {"id":317,"ownerId":1,"name":"ТОВ «Київська Пекарня»","edrpou":"41000018","legalAddress":"м. Київ, Харківський масив"},
+  {"id":318,"ownerId":1,"name":"ТОВ «Фреш Маркет»","edrpou":"41000019","legalAddress":"м. Київ, Академмістечко"},
+  {"id":319,"ownerId":1,"name":"ТОВ «Гарант Безпека»","edrpou":"41000020","legalAddress":"м. Київ, Позняки"}
 ]
