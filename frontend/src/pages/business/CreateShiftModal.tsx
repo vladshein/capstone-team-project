@@ -6,7 +6,10 @@ import type { BusinessShift, CreateShiftPayload } from "../../api/shifts";
 import { Modal } from "../../components/ui/Modal";
 import { companiesProfileService } from "../../services/companiesProfileService";
 import type { Location } from "../../redux/companies-profile/types";
-import { AddressSearch, type AddressLocation } from "../../components/map/search/AddressSearch";
+import {
+  AddressSearch,
+  type AddressLocation,
+} from "../../components/map/search/AddressSearch";
 import { MapPointPicker } from "../../components/map/search/MapPointPicker";
 import { TimePicker } from "../../components/ui/TimePicker";
 
@@ -37,13 +40,26 @@ const earliestShiftDate = () => {
   return `${year}-${month}-${day}`;
 };
 
+const formatDateInput = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const formatTimeInput = (date: Date) =>
+  `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+
 const getDaysInclusive = (startDate: string, endDate: string) => {
   const [startYear, startMonth, startDay] = startDate.split("-").map(Number);
   const [endYear, endMonth, endDay] = endDate.split("-").map(Number);
-  return Math.floor(
-    (Date.UTC(endYear, endMonth - 1, endDay) - Date.UTC(startYear, startMonth - 1, startDay)) /
-      86_400_000,
-  ) + 1;
+  return (
+    Math.floor(
+      (Date.UTC(endYear, endMonth - 1, endDay) -
+        Date.UTC(startYear, startMonth - 1, startDay)) /
+        86_400_000,
+    ) + 1
+  );
 };
 
 const formatShiftCount = (count: number) => {
@@ -57,7 +73,8 @@ const formatShiftCount = (count: number) => {
 
 // У поточній БД тестові посади дублюються для різних міст у форматі
 // «Посада (Київ)». Для форми показуємо одну читабельну назву без міста.
-const getPositionTitle = (title: string) => title.replace(/\s*\([^)]*\)\s*$/, "").trim();
+const getPositionTitle = (title: string) =>
+  title.replace(/\s*\([^)]*\)\s*$/, "").trim();
 
 interface ReverseGeocodeResult {
   display_name?: string;
@@ -117,15 +134,19 @@ export function CreateShiftModal({
       const start = new Date(initialShift.startTime);
       const end = new Date(initialShift.endTime);
       const initialCategoryId =
-        initialShift.Category?.id ?? initialShift.category?.id ?? initialShift.categoryId;
+        initialShift.Category?.id ??
+        initialShift.category?.id ??
+        initialShift.categoryId;
       setIsNewLocation(false);
       setLocationId(String(initialShift.Location.id));
       setCategoryId(initialCategoryId ? String(initialCategoryId) : "");
-      setPositionId(String(initialShift.JobPosition?.id ?? initialShift.positionId ?? ""));
-      setDate(isDuplicate ? earliestShiftDate() : start.toISOString().slice(0, 10));
+      setPositionId(
+        String(initialShift.JobPosition?.id ?? initialShift.positionId ?? ""),
+      );
+      setDate(isDuplicate ? earliestShiftDate() : formatDateInput(start));
       setEndDate("");
-      setStartTime(start.toISOString().slice(11, 16));
-      setEndTime(end.toISOString().slice(11, 16));
+      setStartTime(formatTimeInput(start));
+      setEndTime(formatTimeInput(end));
       setHourlyRate(String(initialShift.hourlyRate));
       setBonusRate(String(initialShift.bonusRate));
       setDescription(initialShift.description ?? "");
@@ -133,7 +154,9 @@ export function CreateShiftModal({
       setEndDate("");
       setIsNewLocation(locations.length === 0);
       if (locations.length > 0) {
-        setLocationId((currentLocationId) => currentLocationId || String(locations[0].id));
+        setLocationId(
+          (currentLocationId) => currentLocationId || String(locations[0].id),
+        );
       }
     }
 
@@ -147,7 +170,8 @@ export function CreateShiftModal({
         }
       })
       .catch(() => {
-        if (!cancelled) setFormError("Не вдалося завантажити посади та категорії.");
+        if (!cancelled)
+          setFormError("Не вдалося завантажити посади та категорії.");
       })
       .finally(() => {
         if (!cancelled) setIsLoadingOptions(false);
@@ -230,22 +254,31 @@ export function CreateShiftModal({
     let selectedLocationId = Number(locationId);
     try {
       if (isNewLocation) {
-        if (!locationTitle.trim() || !locationCity.trim() || !locationAddress.trim()) {
+        if (
+          !locationTitle.trim() ||
+          !locationCity.trim() ||
+          !locationAddress.trim()
+        ) {
           setFormError("Заповніть назву, місто й адресу робочої локації.");
           return;
         }
         if (!locationCoordinates) {
-          setFormError("Оберіть адресу з підказок, щоб зберегти точку на карті.");
+          setFormError(
+            "Оберіть адресу з підказок, щоб зберегти точку на карті.",
+          );
           return;
         }
         setIsCreatingLocation(true);
-        const { data } = await companiesProfileService.createCompanyLocation(companyId, {
-          title: locationTitle.trim(),
-          city: locationCity.trim(),
-          address: locationAddress.trim(),
-          latitude: locationCoordinates.latitude,
-          longitude: locationCoordinates.longitude,
-        });
+        const { data } = await companiesProfileService.createCompanyLocation(
+          companyId,
+          {
+            title: locationTitle.trim(),
+            city: locationCity.trim(),
+            address: locationAddress.trim(),
+            latitude: locationCoordinates.latitude,
+            longitude: locationCoordinates.longitude,
+          },
+        );
         selectedLocationId = data.data.id;
         await onLocationCreated();
       }
@@ -259,10 +292,12 @@ export function CreateShiftModal({
         hourlyRate: rate,
         bonusRate: bonus,
         description: description.trim(),
-        repeatDays,
+        ...(initialShift === null || isDuplicate ? { repeatDays } : {}),
       });
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : "Не вдалося створити зміну.");
+      setFormError(
+        error instanceof Error ? error.message : "Не вдалося створити зміну.",
+      );
     } finally {
       setIsCreatingLocation(false);
     }
@@ -277,7 +312,10 @@ export function CreateShiftModal({
     });
   };
 
-  const handleMapPointSelect = (point: { latitude: number; longitude: number }) => {
+  const handleMapPointSelect = (point: {
+    latitude: number;
+    longitude: number;
+  }) => {
     setLocationCoordinates(point);
     setIsResolvingMapPoint(true);
 
@@ -296,11 +334,18 @@ export function CreateShiftModal({
       })
       .then((result) => {
         const address = result.address;
-        const city = address?.city ?? address?.town ?? address?.village ?? address?.municipality;
-        const street = [address?.road, address?.house_number].filter(Boolean).join(", ");
+        const city =
+          address?.city ??
+          address?.town ??
+          address?.village ??
+          address?.municipality;
+        const street = [address?.road, address?.house_number]
+          .filter(Boolean)
+          .join(", ");
 
         if (city) setLocationCity(city);
-        if (street || result.display_name) setLocationAddress(street || result.display_name || "");
+        if (street || result.display_name)
+          setLocationAddress(street || result.display_name || "");
       })
       // Точка лишається валідною навіть якщо зовнішній геокодер тимчасово недоступний.
       .catch(() => undefined)
@@ -308,7 +353,18 @@ export function CreateShiftModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={isDuplicate ? "Повторити зміну" : initialShift ? "Редагувати зміну" : "Створити зміну"} size="wide">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={
+        isDuplicate
+          ? "Повторити зміну"
+          : initialShift
+            ? "Редагувати зміну"
+            : "Створити зміну"
+      }
+      size="wide"
+    >
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="text-sm font-medium">
@@ -323,14 +379,29 @@ export function CreateShiftModal({
               disabled={isLoadingOptions}
             >
               <option value="">Оберіть категорію</option>
-              {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
             </select>
           </label>
           <label className="text-sm font-medium">
             Посада
-            <select value={positionId} onChange={(event) => setPositionId(event.target.value)} className={inputClass} disabled={isLoadingOptions || !categoryId}>
-              <option value="">{categoryId ? "Оберіть посаду" : "Спершу оберіть категорію"}</option>
-              {availablePositions.map((position) => <option key={position.id} value={position.id}>{position.title}</option>)}
+            <select
+              value={positionId}
+              onChange={(event) => setPositionId(event.target.value)}
+              className={inputClass}
+              disabled={isLoadingOptions || !categoryId}
+            >
+              <option value="">
+                {categoryId ? "Оберіть посаду" : "Спершу оберіть категорію"}
+              </option>
+              {availablePositions.map((position) => (
+                <option key={position.id} value={position.id}>
+                  {position.title}
+                </option>
+              ))}
             </select>
           </label>
         </div>
@@ -339,7 +410,12 @@ export function CreateShiftModal({
           <legend className="px-1 text-sm font-medium">Робоча локація</legend>
           {locations.length > 0 && (!initialShift || isDuplicate) && (
             <label className="flex cursor-pointer items-center gap-2 text-sm text-text-muted">
-              <input type="checkbox" checked={isNewLocation} onChange={(event) => setIsNewLocation(event.target.checked)} className="accent-accent" />
+              <input
+                type="checkbox"
+                checked={isNewLocation}
+                onChange={(event) => setIsNewLocation(event.target.checked)}
+                className="accent-accent"
+              />
               <Plus className="h-4 w-4" />
               Додати нову локацію
             </label>
@@ -358,29 +434,66 @@ export function CreateShiftModal({
                     <MapPin className="h-3.5 w-3.5" />
                     {isMapPickerOpen ? "Сховати мапу" : "Вказати точку на мапі"}
                   </button>
-                  <p className={`text-xs ${locationCoordinates ? "text-accent-text" : "text-text-subtle"}`}>
-                  {locationCoordinates
-                    ? isResolvingMapPoint
-                      ? "Визначаємо адресу для обраної точки…"
-                      : "Точку обрано — координати буде збережено для карти."
-                    : "Оберіть адресу з підказок або поставте точку на мапі."}
+                  <p
+                    className={`text-xs ${locationCoordinates ? "text-accent-text" : "text-text-subtle"}`}
+                  >
+                    {locationCoordinates
+                      ? isResolvingMapPoint
+                        ? "Визначаємо адресу для обраної точки…"
+                        : "Точку обрано — координати буде збережено для карти."
+                      : "Оберіть адресу з підказок або поставте точку на мапі."}
                   </p>
                 </div>
                 {isMapPickerOpen && (
                   <div className="mt-3">
-                    <MapPointPicker value={locationCoordinates} onChange={handleMapPointSelect} />
+                    <MapPointPicker
+                      value={locationCoordinates}
+                      onChange={handleMapPointSelect}
+                    />
                   </div>
                 )}
               </div>
-              <label className="text-sm font-medium">Назва точки<input value={locationTitle} onChange={(event) => setLocationTitle(event.target.value)} className={inputClass} placeholder="Напр. Магазин на Подолі" /></label>
-              <label className="text-sm font-medium">Місто<input value={locationCity} onChange={(event) => setLocationCity(event.target.value)} className={inputClass} placeholder="Київ" /></label>
-              <label className="text-sm font-medium sm:col-span-2">Адреса<input value={locationAddress} onChange={(event) => setLocationAddress(event.target.value)} className={inputClass} placeholder="вул. Хрещатик, 1" /></label>
+              <label className="text-sm font-medium">
+                Назва точки
+                <input
+                  value={locationTitle}
+                  onChange={(event) => setLocationTitle(event.target.value)}
+                  className={inputClass}
+                  placeholder="Напр. Магазин на Подолі"
+                />
+              </label>
+              <label className="text-sm font-medium">
+                Місто
+                <input
+                  value={locationCity}
+                  onChange={(event) => setLocationCity(event.target.value)}
+                  className={inputClass}
+                  placeholder="Київ"
+                />
+              </label>
+              <label className="text-sm font-medium sm:col-span-2">
+                Адреса
+                <input
+                  value={locationAddress}
+                  onChange={(event) => setLocationAddress(event.target.value)}
+                  className={inputClass}
+                  placeholder="вул. Хрещатик, 1"
+                />
+              </label>
             </div>
           ) : (
             <label className="mt-3 block text-sm font-medium">
               Оберіть локацію
-              <select value={locationId} onChange={(event) => setLocationId(event.target.value)} className={inputClass}>
-                {locations.map((location) => <option key={location.id} value={location.id}>{location.title} — {location.city}, {location.address}</option>)}
+              <select
+                value={locationId}
+                onChange={(event) => setLocationId(event.target.value)}
+                className={inputClass}
+              >
+                {locations.map((location) => (
+                  <option key={location.id} value={location.id}>
+                    {location.title} — {location.city}, {location.address}
+                  </option>
+                ))}
               </select>
             </label>
           )}
@@ -391,44 +504,110 @@ export function CreateShiftModal({
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="text-sm font-medium">
               Дата початку
-              <input type="date" min={earliestShiftDate()} value={date} onChange={(event) => setDate(event.target.value)} className={inputClass} />
+              <input
+                type="date"
+                min={earliestShiftDate()}
+                value={date}
+                onChange={(event) => setDate(event.target.value)}
+                className={inputClass}
+              />
             </label>
             {(!initialShift || isDuplicate) && (
               <label className="text-sm font-medium">
-                Кінцева дата <span className="font-normal text-text-subtle">(необов’язково)</span>
-                <input type="date" min={date} value={endDate} onChange={(event) => setEndDate(event.target.value)} className={inputClass} />
+                Кінцева дата{" "}
+                <span className="font-normal text-text-subtle">
+                  (необов’язково)
+                </span>
+                <input
+                  type="date"
+                  min={date}
+                  value={endDate}
+                  onChange={(event) => setEndDate(event.target.value)}
+                  className={inputClass}
+                />
               </label>
             )}
             {(!initialShift || isDuplicate) && endDate && (
               <p className="sm:col-span-2 -mt-1 rounded-[var(--radius-card)] bg-accent/10 px-3 py-2 text-xs leading-5 text-accent-text">
-                Буде створено {getDaysInclusive(date, endDate)} {formatShiftCount(getDaysInclusive(date, endDate))} — по одній на кожен день.
+                Буде створено {getDaysInclusive(date, endDate)}{" "}
+                {formatShiftCount(getDaysInclusive(date, endDate))} — по одній
+                на кожен день.
               </p>
             )}
             <label className="text-sm font-medium">
               Час початку
-              <TimePicker value={startTime} onChange={setStartTime} ariaLabel="Час початку" />
+              <TimePicker
+                value={startTime}
+                onChange={setStartTime}
+                ariaLabel="Час початку"
+              />
             </label>
             <label className="text-sm font-medium">
               Час завершення
-              <TimePicker value={endTime} onChange={setEndTime} ariaLabel="Час завершення" />
+              <TimePicker
+                value={endTime}
+                onChange={setEndTime}
+                ariaLabel="Час завершення"
+              />
             </label>
           </div>
         </fieldset>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="text-sm font-medium">Ставка, ₴/год<input type="number" min="1" step="0.01" value={hourlyRate} onChange={(event) => setHourlyRate(event.target.value)} className={inputClass} placeholder="200" /></label>
-          <label className="text-sm font-medium">Бонус, ₴<input type="number" min="0" step="0.01" value={bonusRate} onChange={(event) => setBonusRate(event.target.value)} className={inputClass} /></label>
+          <label className="text-sm font-medium">
+            Ставка, ₴/год
+            <input
+              type="number"
+              min="1"
+              step="0.01"
+              value={hourlyRate}
+              onChange={(event) => setHourlyRate(event.target.value)}
+              className={inputClass}
+              placeholder="200"
+            />
+          </label>
+          <label className="text-sm font-medium">
+            Бонус, ₴
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={bonusRate}
+              onChange={(event) => setBonusRate(event.target.value)}
+              className={inputClass}
+            />
+          </label>
         </div>
 
         <label className="block text-sm font-medium">
-          Опис завдання <span className="font-normal text-text-subtle">(необов’язково)</span>
-          <textarea value={description} onChange={(event) => setDescription(event.target.value)} className={`${inputClass} min-h-24 py-3`} placeholder="Коротко опишіть, що потрібно зробити" />
+          Опис завдання{" "}
+          <span className="font-normal text-text-subtle">(необов’язково)</span>
+          <textarea
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            className={`${inputClass} min-h-24 py-3`}
+            placeholder="Коротко опишіть, що потрібно зробити"
+          />
         </label>
 
-        {(formError || serverError) && <p className="text-sm text-danger">{formError || serverError}</p>}
-        <button type="submit" disabled={!canSubmit} className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--radius-pill)] bg-accent px-5 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60">
+        {(formError || serverError) && (
+          <p className="text-sm text-danger">{formError || serverError}</p>
+        )}
+        <button
+          type="submit"
+          disabled={!canSubmit}
+          className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--radius-pill)] bg-accent px-5 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+        >
           <MapPin className="h-4 w-4" />
-          {isSubmitting || isCreatingLocation ? "Зберігаємо…" : isDuplicate ? "Опублікувати повторно" : initialShift ? "Зберегти зміни" : endDate ? "Опублікувати зміни" : "Опублікувати зміну"}
+          {isSubmitting || isCreatingLocation
+            ? "Зберігаємо…"
+            : isDuplicate
+              ? "Опублікувати повторно"
+              : initialShift
+                ? "Зберегти зміни"
+                : endDate
+                  ? "Опублікувати зміни"
+                  : "Опублікувати зміну"}
         </button>
       </form>
     </Modal>
