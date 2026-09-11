@@ -80,7 +80,7 @@ export const createShiftInvoice = async (req, res, next) => {
     const bonusRate = Number(shift.bonusRate) || 0;
 
     // Чистий заробіток виконавця
-    const workerAmount = Math.round((hourlyRate + bonusRate) * durationHours);
+    const workerAmount = Math.round(hourlyRate * durationHours + bonusRate);
 
     // 15% комісія платформи з роботодавця
     const PLATFORM_FEE_PERCENT = 0.15;

@@ -15,7 +15,8 @@ const getDistanceInKilometres = (
   targetLatitude?: number,
   targetLongitude?: number,
 ) => {
-  if (targetLatitude === undefined || targetLongitude === undefined) return null;
+  if (targetLatitude === undefined || targetLongitude === undefined)
+    return null;
 
   const toRadians = (value: number) => (value * Math.PI) / 180;
   const latitudeDelta = toRadians(targetLatitude - latitude);
@@ -26,15 +27,20 @@ const getDistanceInKilometres = (
       Math.cos(toRadians(targetLatitude)) *
       Math.sin(longitudeDelta / 2) ** 2;
 
-  return 6371 * 2 * Math.atan2(Math.sqrt(calculation), Math.sqrt(1 - calculation));
+  return (
+    6371 * 2 * Math.atan2(Math.sqrt(calculation), Math.sqrt(1 - calculation))
+  );
 };
 
 const getShiftTotal = (shift: Shift) => {
   const duration = Math.max(
-    (new Date(shift.endTime).getTime() - new Date(shift.startTime).getTime()) / 3_600_000,
-    0,
+    (new Date(shift.endTime).getTime() - new Date(shift.startTime).getTime()) /
+      3_600_000,
+    1,
   );
-  return duration * (Number(shift.hourlyRate) || 0) + (Number(shift.bonusRate) || 0);
+  return (
+    duration * (Number(shift.hourlyRate) || 0) + (Number(shift.bonusRate) || 0)
+  );
 };
 
 export function NearbyShifts() {
@@ -90,7 +96,8 @@ export function NearbyShifts() {
       .map((shift) => ({
         shift,
         CategoryIcon:
-          CATEGORY_ICONS[shift.Category?.name ?? shift.category?.name ?? ""] ?? LayoutGrid,
+          CATEGORY_ICONS[shift.Category?.name ?? shift.category?.name ?? ""] ??
+          LayoutGrid,
         distance: origin
           ? getDistanceInKilometres(
               origin.latitude,
@@ -101,10 +108,14 @@ export function NearbyShifts() {
           : null,
       }))
       .sort((first, second) => {
-        if (first.distance !== null && second.distance !== null) return first.distance - second.distance;
+        if (first.distance !== null && second.distance !== null)
+          return first.distance - second.distance;
         if (first.distance !== null) return -1;
         if (second.distance !== null) return 1;
-        return new Date(first.shift.startTime).getTime() - new Date(second.shift.startTime).getTime();
+        return (
+          new Date(first.shift.startTime).getTime() -
+          new Date(second.shift.startTime).getTime()
+        );
       })
       .slice(0, 4);
   }, [origin, shifts]);
@@ -135,15 +146,24 @@ export function NearbyShifts() {
               className="inline-flex min-h-[40px] items-center gap-2 text-sm font-medium text-accent transition-colors hover:text-accent-text disabled:cursor-wait disabled:opacity-60"
             >
               <LocateFixed className="h-4 w-4" />
-              {isLocating ? "Визначаємо…" : coordinates ? "Оновити локацію" : "Визначити локацію"}
+              {isLocating
+                ? "Визначаємо…"
+                : coordinates
+                  ? "Оновити локацію"
+                  : "Визначити локацію"}
             </button>
-            <a href="#zavdannia" className="text-sm font-medium text-accent hover:text-accent-text">
+            <a
+              href="#zavdannia"
+              className="text-sm font-medium text-accent hover:text-accent-text"
+            >
               Усі зміни →
             </a>
           </div>
         </div>
 
-        {locationError && <p className="mt-3 text-xs text-danger">{locationError}</p>}
+        {locationError && (
+          <p className="mt-3 text-xs text-danger">{locationError}</p>
+        )}
 
         <div className="mt-6 grid grid-cols-1 gap-4 sm:mt-8 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
           {isLoading && (
@@ -151,26 +171,37 @@ export function NearbyShifts() {
               <Loader label="Завантажуємо зміни…" />
             </div>
           )}
-          {!isLoading && nearbyShifts.map(({ shift, distance, CategoryIcon }) => (
-            <ShiftCard
-              key={shift.id}
-              shift={{
-                id: shift.id,
-                category: <CategoryIcon className="h-4 w-4" />,
-                categoryLabel: shift.Category?.name ?? shift.category?.name,
-                role: shift.description || shift.JobPosition?.title || shift.Category?.name || "Зміна",
-                company: shift.Location?.Company?.name || "Партнер не вказаний",
-                address: shift.Location?.address,
-                city: shift.Location?.city,
-                date: `${formatShiftDate(shift.startTime)} · ${formatTimeRange(shift.startTime, shift.endTime)}`,
-                rate: Math.round(Number(shift.hourlyRate) || 0),
-                budget: Math.round(getShiftTotal(shift)),
-                distance: distance === null ? "Відстань уточнюється" : `${distance.toFixed(1)} км`,
-              }}
-            />
-          ))}
+          {!isLoading &&
+            nearbyShifts.map(({ shift, distance, CategoryIcon }) => (
+              <ShiftCard
+                key={shift.id}
+                shift={{
+                  id: shift.id,
+                  category: <CategoryIcon className="h-4 w-4" />,
+                  categoryLabel: shift.Category?.name ?? shift.category?.name,
+                  role:
+                    shift.description ||
+                    shift.JobPosition?.title ||
+                    shift.Category?.name ||
+                    "Зміна",
+                  company:
+                    shift.Location?.Company?.name || "Партнер не вказаний",
+                  address: shift.Location?.address,
+                  city: shift.Location?.city,
+                  date: `${formatShiftDate(shift.startTime)} · ${formatTimeRange(shift.startTime, shift.endTime)}`,
+                  rate: Math.round(Number(shift.hourlyRate) || 0),
+                  budget: Math.round(getShiftTotal(shift)),
+                  distance:
+                    distance === null
+                      ? "Відстань уточнюється"
+                      : `${distance.toFixed(1)} км`,
+                }}
+              />
+            ))}
           {!isLoading && nearbyShifts.length === 0 && (
-            <p className="text-sm text-text-muted sm:col-span-2 lg:col-span-4">Поки немає відкритих змін поруч.</p>
+            <p className="text-sm text-text-muted sm:col-span-2 lg:col-span-4">
+              Поки немає відкритих змін поруч.
+            </p>
           )}
         </div>
       </div>

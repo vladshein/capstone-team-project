@@ -12,29 +12,35 @@ interface DefMapProps {
   selectedCity?: CityLocation | null;
 }
 
-export default function DefMap({ shifts, userLocation, selectedCity }: DefMapProps) {
+export default function DefMap({
+  shifts,
+  userLocation,
+  selectedCity,
+}: DefMapProps) {
   const markers = useMemo<MapMarkerData[]>(() => {
     const shiftMarkers = shifts.flatMap((shift) => {
-        const latitude = Number(shift.Location?.latitude);
-        const longitude = Number(shift.Location?.longitude);
+      const latitude = Number(shift.Location?.latitude);
+      const longitude = Number(shift.Location?.longitude);
 
-        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return [];
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return [];
 
-        const title = shift.JobPosition?.title ?? "Зміна";
-        const companyName = shift.Location?.Company?.name ?? "Компанія";
-        const address = [shift.Location?.address, shift.Location?.city]
-          .filter(Boolean)
-          .join(", ");
-        const durationHours = Math.max(
-          0,
-          (new Date(shift.endTime).getTime() - new Date(shift.startTime).getTime()) /
-            (1000 * 60 * 60),
-        );
-        const totalEarnings =
-          durationHours * (Number(shift.hourlyRate) || 0) +
-          (Number(shift.bonusRate) || 0);
+      const title = shift.JobPosition?.title ?? "Зміна";
+      const companyName = shift.Location?.Company?.name ?? "Компанія";
+      const address = [shift.Location?.address, shift.Location?.city]
+        .filter(Boolean)
+        .join(", ");
+      const durationHours = Math.max(
+        1,
+        (new Date(shift.endTime).getTime() -
+          new Date(shift.startTime).getTime()) /
+          (1000 * 60 * 60),
+      );
+      const totalEarnings =
+        durationHours * (Number(shift.hourlyRate) || 0) +
+        (Number(shift.bonusRate) || 0);
 
-        return [{
+      return [
+        {
           id: shift.id,
           lat: latitude,
           lng: longitude,
@@ -43,8 +49,9 @@ export default function DefMap({ shifts, userLocation, selectedCity }: DefMapPro
           schedule: `${formatShiftDate(shift.startTime)} · ${formatTimeRange(shift.startTime, shift.endTime)}`,
           price: totalEarnings,
           currency: "₴",
-        }];
-      });
+        },
+      ];
+    });
     const markersByLocation = new globalThis.Map<string, MapMarkerData>();
 
     shiftMarkers.forEach((shiftMarker) => {
@@ -70,11 +77,11 @@ export default function DefMap({ shifts, userLocation, selectedCity }: DefMapPro
         : [50.4501, 30.5234];
 
   return (
-    <Map 
-      center={center} 
-      zoom={11} 
-      markers={markers} 
-      userLocation={userLocation} 
+    <Map
+      center={center}
+      zoom={11}
+      markers={markers}
+      userLocation={userLocation}
       selectedCity={selectedCity}
     />
   );

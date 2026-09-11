@@ -95,7 +95,7 @@ function formatTime(value: string) {
 function getShiftTotal(shift: Shift) {
   const start = new Date(shift.startTime).getTime();
   const end = new Date(shift.endTime).getTime();
-  const duration = Math.max((end - start) / 3_600_000, 0);
+  const duration = Math.max((end - start) / 3_600_000, 1);
   const hourlyRate = Number(shift.hourlyRate) || 0;
   const bonusRate = Number(shift.bonusRate) || 0;
 

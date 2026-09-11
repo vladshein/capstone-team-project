@@ -1,6 +1,8 @@
 import type { Shift } from "../../api/shifts";
 
-export const WEEKDAY_FORMATTER = new Intl.DateTimeFormat("uk-UA", { weekday: "short" });
+export const WEEKDAY_FORMATTER = new Intl.DateTimeFormat("uk-UA", {
+  weekday: "short",
+});
 export const TODAY_LABEL_FORMATTER = new Intl.DateTimeFormat("uk-UA", {
   day: "numeric",
   month: "long",
@@ -10,13 +12,18 @@ export const SELECTED_LABEL_FORMATTER = new Intl.DateTimeFormat("uk-UA", {
   month: "long",
   weekday: "long",
 });
-const TIME_FORMATTER = new Intl.DateTimeFormat("uk-UA", { hour: "2-digit", minute: "2-digit" });
+const TIME_FORMATTER = new Intl.DateTimeFormat("uk-UA", {
+  hour: "2-digit",
+  minute: "2-digit",
+});
 const SHIFT_DATE_FORMATTER = new Intl.DateTimeFormat("uk-UA", {
   weekday: "short",
   day: "numeric",
   month: "long",
 });
-const PRICE_FORMATTER = new Intl.NumberFormat("uk-UA", { maximumFractionDigits: 0 });
+const PRICE_FORMATTER = new Intl.NumberFormat("uk-UA", {
+  maximumFractionDigits: 0,
+});
 
 export function buildWeekStrip(startOffset: number) {
   const today = new Date();
@@ -51,11 +58,13 @@ export function formatPriceLabel(shift: Shift) {
   const start = new Date(shift.startTime).getTime();
   const end = new Date(shift.endTime).getTime();
   const hours =
-    Number.isFinite(start) && Number.isFinite(end) ? Math.max((end - start) / 3_600_000, 0) : 0;
+    Number.isFinite(start) && Number.isFinite(end)
+      ? Math.max((end - start) / 3_600_000, 1)
+      : 0;
   const hourlyRate = Number(shift.hourlyRate) || 0;
   const bonusRate = Number(shift.bonusRate) || 0;
   const total = hours * hourlyRate + bonusRate;
-  
+
   return total > 0
     ? `~${PRICE_FORMATTER.format(total)}₴`
     : `${PRICE_FORMATTER.format(hourlyRate)}₴/год`;
