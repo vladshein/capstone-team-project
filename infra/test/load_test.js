@@ -13,7 +13,7 @@ export const options = {
       // RPS=100
       // stages: [
       //   { duration: '30s', target: 50 },  // Overclocking from 10 to 50 RPS
-      //   { duration: '1m',  target: 150 }, // Peak Assault 150 RPS
+      //   { duration: '1m',  targe t: 150 }, // Peak Assault 150 RPS
       //   { duration: '30s', target: 0 },   // System cooling to 0
       // ],
       

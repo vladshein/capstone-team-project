@@ -28,11 +28,14 @@ services:
     container_name: test-runner
     command: >
       sh -c "
+        echo 'Waiting for database to be ready...' &&
+        sleep 3 &&
         npm run db:m &&
         npm run test
       "
     environment:
       - NODE_ENV=test
+      - DATABASE_DIALECT=postgres
       - DATABASE_USERNAME=test_user
       - DATABASE_PASSWORD=test_password
       - DATABASE_NAME=test_db
