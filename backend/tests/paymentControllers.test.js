@@ -69,6 +69,36 @@ describe("payment controllers", () => {
     );
   });
 
+  test("applies the one-hour minimum and adds the bonus once", async () => {
+    Shift.findByPk.mockResolvedValue({
+      id: 12,
+      status: "open",
+      startTime: "2030-01-01T08:00:00.000Z",
+      endTime: "2030-01-01T08:30:00.000Z",
+      hourlyRate: 100,
+      bonusRate: 25,
+    });
+    ShiftApplication.findByPk.mockResolvedValue({ id: 7, workerId: 44 });
+    sequelize.query.mockResolvedValue([[]]);
+    monopayService.createInvoice.mockResolvedValue({
+      invoiceId: "invoice-12",
+      pageUrl: "https://pay.example/invoice-12",
+    });
+
+    await createShiftInvoice(
+      { body: { shiftId: 12, applicationId: 7 }, user: { id: 5 } },
+      createResponse(),
+      jest.fn(),
+    );
+
+    expect(monopayService.createInvoice).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: 144 }),
+    );
+    expect(Transaction.create).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: 144 }),
+    );
+  });
+
   test("creates a fresh invoice when the previous invoice is still active", async () => {
     Shift.findByPk.mockResolvedValue({
       id: 12,
